@@ -1,0 +1,106 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #800000;
+  --color-primary-900: #7f1d1d;
+  --color-primary-950: #450a0a;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+
+  }
+
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    Padding: 0; 
+    Margin: 0;
+    
+  }
+}
+
+@layer components {
+  .btn-primary {
+    background-color: var(--color-primary-800);
+    color: white;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    transition: background-color 0.2s;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-900);
+  }
+
+  .btn-secondary {
+    background-color: white;
+    color: var(--color-primary-800);
+    border: 2px solid var(--color-primary-800);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background-color: #fafafa;
+  }
+
+  .section-padding {
+    padding: 4rem 1rem;
+  }
+  .h-32 {
+  height: auto !important;
+}
+
+
+  @media (min-width: 640px) {
+    .section-padding {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .section-padding {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  .container-custom {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+.main {
+  /* padding: calc(var(--spacing) * 4); */  /* disabled */
+  padding: 0; /* or set to none */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
