@@ -1,7 +1,12 @@
 import axios from "axios";
 
 // dynamic baseURL: use Vite environment variable (prefix VITE_) or fallback to relative path
-const baseURL = import.meta.env.VITE_API_URL || "/api";
+// the .env file defines VITE_API_BASE_URL, so check that first (for compatibility
+// with older installations we also fall back to VITE_API_URL).
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "/api";
 const API = axios.create({
   baseURL,
 });
