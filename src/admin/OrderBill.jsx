@@ -16,8 +16,15 @@ import {
 } from "lucide-react";
 
 export default function OrderBill() {
-  const { orders } = useOrders();
+  const { bills, fetchBills } = useOrders();
   const navigate = useNavigate();
+
+  // make sure bills are loaded when hitting the bill page directly
+  React.useEffect(() => {
+    if (!bills || bills.length === 0) {
+      fetchBills();
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Isolated Print Logic
   const handlePrintSingle = (orderId) => {
@@ -29,7 +36,7 @@ export default function OrderBill() {
     window.location.reload(); 
   };
 
-  if (!orders || orders.length === 0) {
+  if (!bills || bills.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center bg-[#F4F4F5]">
         <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
@@ -61,7 +68,7 @@ export default function OrderBill() {
       </header>
 
       <main className="max-w-md mx-auto p-4 space-y-20 mt-8">
-        {orders.map((order, index) => {
+        {bills.map((order, index) => {
           const subtotal = order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
           const tax = subtotal * 0.05; 
           const grandTotal = subtotal + tax;

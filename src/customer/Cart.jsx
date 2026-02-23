@@ -101,7 +101,20 @@ export default function Cart() {
     const orderId = generateId("ORD");
     localStorage.setItem("lastOrderId", orderId);
 
-    // include totalPrice so backend gets proper amount
+    // Immediately show success UI (Optimistic UI)
+    setPlacedDetails({ orderId, table, total: grandTotal });
+    setShowSuccess(true);
+    clearCart(); // Clear immediately for snappiness
+
+    // Trigger confetti immediately
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.7 },
+      colors: ['#10b981', '#fb923c', '#ffffff']
+    });
+
+    // Prep details
     const details = { 
       id: orderId, 
       table, 
@@ -113,27 +126,16 @@ export default function Cart() {
       totalPrice: grandTotal,
     };
 
-    // wait for server response so we can use real id
-    const created = await addOrder(details);
-    const effectiveId = created?._id || orderId;
-    setPlacedDetails({ orderId: effectiveId, table, total: grandTotal });
-    localStorage.setItem("lastOrderId", effectiveId);
-    
-    setTimeout(() => {
-      clearCart();
-      setShowSuccess(true);
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.7 },
-        colors: ['#10b981', '#fb923c', '#ffffff']
-      });
+    // Background process
+    addOrder(details).then(created => {
+      const effectiveId = created?._id || orderId;
+      localStorage.setItem("lastOrderId", effectiveId);
+    });
 
-      // IMPORTANT: Redirect with table parameter
-      setTimeout(() => {
-        navigate(`/order-summary?table=${table}`);
-      }, 2200);
-    }, 300);
+    // Navigate faster
+    setTimeout(() => {
+      navigate(`/order-summary?table=${table}`);
+    }, 1000); 
   };
 
   return (
@@ -320,7 +322,12 @@ export default function Cart() {
 }
 
 const SuccessView = ({ details, navigate, table }) => (
-  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center py-12">
+  <motion.div 
+    initial={{ scale: 0.95, opacity: 0 }} 
+    animate={{ scale: 1, opacity: 1 }} 
+    transition={{ duration: 0.3, ease: "easeOut" }}
+    className="text-center py-12"
+  >
     <div className="relative w-32 h-32 mx-auto mb-8">
         <div className="absolute inset-0 bg-emerald-500/20 rounded-[3rem] animate-pulse" />
         <div className="relative w-full h-full bg-emerald-500 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl">

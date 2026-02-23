@@ -19,11 +19,12 @@ const statusStep = { Preparing: 1, Cooking: 2, Ready: 3, Served: 4 };
 export default function OrdersDashboard() {
   const { orders, updateOrderStatus, fetchOrders } = useOrders();
 
+  // Orders are already hydrated by OrderProvider (which caches + fetches),
+  // and socket events keep the list fresh. No periodic polling needed here.
   useEffect(() => {
-    fetchOrders();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchOrders, 30000);
-    return () => clearInterval(interval);
+    if (orders.length === 0) {
+      fetchOrders();
+    }
   }, []);
 
   // DASHBOARD CALCULATIONS
