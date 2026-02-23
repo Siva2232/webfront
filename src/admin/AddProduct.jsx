@@ -63,7 +63,7 @@ export default function AddProduct() {
     str.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
   /* ---------- FIXED CATEGORY LOGIC ---------- */
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     const input = newCategoryInput.trim();
     if (!input) {
       setAddStatus("Please enter a category name");
@@ -73,16 +73,22 @@ export default function AddProduct() {
 
     const normalized = normalizeCategory(input);
 
-    // If category is new, add it to the global context
-    if (!orderedCategories.includes(normalized)) {
-      addCategory(normalized);
-    }
+    try {
+      setAddStatus("Adding Category...");
+      // If category is new, add it to the global context (which now calls the API)
+      if (!orderedCategories.includes(normalized)) {
+        await addCategory(normalized);
+      }
 
-    // ✅ Crucial Fix: Update form state to select the new category immediately
-    setForm((prev) => ({ ...prev, category: normalized }));
-    setNewCategoryInput("");
-    setAddStatus("Category Added!");
-    setTimeout(() => setAddStatus(""), 3000);
+      // ✅ Crucial Fix: Update form state to select the new category immediately
+      setForm((prev) => ({ ...prev, category: normalized }));
+      setNewCategoryInput("");
+      setAddStatus("Category Added!");
+    } catch (err) {
+      setAddStatus("Failed to add category");
+    } finally {
+      setTimeout(() => setAddStatus(""), 3000);
+    }
   };
 
   const handleSubmit = async () => {

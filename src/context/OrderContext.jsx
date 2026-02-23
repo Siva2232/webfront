@@ -24,6 +24,10 @@ export const OrderProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchOrders = async () => {
+    // only fetch if we have a token (admin or logged in user)
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     try {
       setIsLoading(true);
       // support optional limit param if needed to reduce payload size
@@ -47,6 +51,9 @@ export const OrderProvider = ({ children }) => {
 
   // fetch bills (invoices) - for admin billing screen
   const fetchBills = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     try {
       setIsLoading(true);
       const { data } = await API.get("/bills");
@@ -161,9 +168,33 @@ export const OrderProvider = ({ children }) => {
         setOrders(JSON.parse(cached));
       } catch (_) {}
     }
-    // always fetch fresh data regardless of cache
-    fetchOrders();
+    // always fetch fresh data regardless of cache if token exists
+    const token = localStorage.getItem("token");
+    if (token) {
+      fetchOrders();
+    }
   }, []);
+
+  // watch for login status changes to fetch data
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      if (token && orders.length === 0 && !isLoading) {
+        fetchOrders();
+      }
+    };
+
+    // check on mount and when window gains focus
+    checkAuth();
+    window.addEventListener("focus", checkAuth);
+    // also check periodically or when custom event fires
+    const interval = setInterval(checkAuth, 5000); 
+
+    return () => {
+      window.removeEventListener("focus", checkAuth);
+      clearInterval(interval);
+    };
+  }, [orders.length, isLoading]);
 
   return (
     <OrderContext.Provider

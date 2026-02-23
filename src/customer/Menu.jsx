@@ -15,6 +15,7 @@ import {
   Table as TableIcon,
   AlertCircle,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import API from "../api/axios";
 import butter from "../assets/images/butter.png";
@@ -36,6 +37,7 @@ export default function Menu() {
   const [showTableModal, setShowTableModal] = useState(false);
   const [manualTableInput, setManualTableInput] = useState(table || "");
   const [tableError, setTableError] = useState("");
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   const sectionRefs = useRef({});
   const [showLoader, setShowLoader] = useState(() => {
@@ -331,7 +333,7 @@ export default function Menu() {
 
               {/* Filters & Category Bar */}
               <div className="border-t border-slate-50 py-3 bg-white/50">
-                <div className="max-w-7xl mx-auto px-4 flex items-center gap-4">
+                <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
                   <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200 shrink-0">
                     {['all', 'veg', 'non-veg'].map((type) => (
                       <button
@@ -347,20 +349,57 @@ export default function Menu() {
                       </button>
                     ))}
                   </div>
-                  <div className="h-6 w-[1px] bg-slate-200 shrink-0" />
-                  <div className="overflow-x-auto no-scrollbar flex gap-2">
-                    {orderedCategories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => sectionRefs.current[cat]?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                        className="px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border border-slate-100 bg-white text-slate-500 hover:border-slate-900 hover:text-slate-900 active:scale-95 shadow-sm"
-                      >
-                        {cat}
-                      </button>
-                    ))}
+
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm hover:border-slate-900 transition-all active:scale-95"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Quick Menu</span>
+                      <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isCategoryOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-10" 
+                            onClick={() => setIsCategoryOpen(false)} 
+                          />
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-20 overflow-hidden"
+                          >
+                            <div className="max-h-[300px] overflow-y-auto no-scrollbar">
+                              <div className="px-5 py-2 border-b border-slate-100 bg-slate-50/50">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Select Category</span>
+                              </div>
+                              {orderedCategories.map((cat) => (
+                                <button
+                                  key={cat}
+                                  onClick={() => {
+                                    sectionRefs.current[cat]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                    setIsCategoryOpen(false);
+                                  }}
+                                  className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
+                                >
+                                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-widest leading-none block">
+                                    {cat}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </div>
+
+
             </div>
           </header>
 

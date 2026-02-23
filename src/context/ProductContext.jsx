@@ -5,12 +5,28 @@ const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState(["Starters", "Main Courses", "Desserts", "Beverages"]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchCategories = async () => {
+    try {
+      const { data } = await API.get("/categories");
+      if (Array.isArray(data) && data.length > 0) {
+        setCategories(data.map(c => c.name));
+      } else {
+        // Default categories if none exist in DB
+        setCategories(["Starters", "Main Courses", "Desserts", "Beverages"]);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setCategories(["Starters", "Main Courses", "Desserts", "Beverages"]);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
+      await fetchCategories();
       const { data } = await API.get("/products");
       const list = Array.isArray(data) ? data : [];
       setProducts(list);
@@ -105,13 +121,21 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
-  const addCategory = (categoryName) => {
+  const addCategory = async (categoryName) => {
     const trimmed = categoryName?.trim();
     if (!trimmed || categories.includes(trimmed)) return;
     
-    const updated = [...categories, trimmed];
-    setCategories(updated);
-    localStorage.setItem("categories", JSON.stringify(updated));
+    try {
+      const { data } = await API.post("/categories", { name: trimmed });
+      const updated = [...categories, data.name];
+      setCategories(updated);
+      localStorage.setItem("categories", JSON.stringify(updated));
+    } catch (error) {
+      console.error("Error adding category:", error);
+      // Fallback to local only if API fails
+      const updated = [...categories, trimmed];
+      setCategories(updated);
+    }
   };
 
   const updateProduct = async (id, updates) => {

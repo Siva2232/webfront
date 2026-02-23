@@ -33,4 +33,24 @@ API.interceptors.request.use((req) => {
   return Promise.reject(error);
 });
 
+// Add a response interceptor to handle 401 errors globally
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // If unauthorized, clear local storage and redirect to login
+      localStorage.removeItem("token");
+      localStorage.removeItem("isAdminLoggedIn");
+      localStorage.removeItem("userInfo");
+      
+      // We can't use useNavigate here as it's not a component, 
+      // but we can use window.location
+      if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/menu")) {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default API;
