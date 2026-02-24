@@ -172,7 +172,7 @@ export default function Login() {
           </form>
 
           {/* Demo Info - Refined for 2026 */}
-          <div className="mt-10 pt-8 border-t border-slate-50 text-center">
+          {/* <div className="mt-10 pt-8 border-t border-slate-50 text-center">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300 mb-4">Quick Access Credentials</p>
             <div className="flex justify-center gap-2">
               <button 
@@ -182,7 +182,7 @@ export default function Login() {
                 Auto-fill Demo
               </button>
             </div>
-          </div>
+          </div> */}
 
         </div>
       </motion.div>

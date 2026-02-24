@@ -22,6 +22,18 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
   const seenOrderIds = useRef(new Set());
   const pulseTimeout = useRef(null);
+  const containerRef = useRef(null);
+
+  // close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (open && containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   /* 🔊 EXISTING SOUND LOGIC — NOT TOUCHED */
   const audioRef = useRef(
@@ -75,7 +87,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     ]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* 🔔 Bell */}
       <button
         onClick={() => setOpen(!open)}
