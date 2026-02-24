@@ -24,8 +24,11 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("token") && localStorage.getItem("isAdminLoggedIn") === "true") {
-      navigate("/admin/dashboard", { replace: true });
+    if (localStorage.getItem("token") &&
+        (localStorage.getItem("isAdminLoggedIn") === "true" ||
+         localStorage.getItem("isKitchenLoggedIn") === "true")) {
+      const isKitchen = localStorage.getItem("isKitchenLoggedIn") === "true";
+      navigate(isKitchen ? "/kitchen/dashboard" : "/admin/dashboard", { replace: true });
     }
   }, [navigate]);
 
@@ -37,16 +40,22 @@ export default function Login() {
     try {
       const { data } = await API.post("/auth/login", { email, password });
       
-      // verify admin role
-      if (!data.isAdmin) {
-        throw { response: { data: { message: "Not an admin account" } } };
+      // verify role and redirect accordingly
+      let redirectPath = "/admin/dashboard";
+      if (data.isAdmin) {
+        localStorage.setItem("isAdminLoggedIn", "true");
+        toast.success("Logged in successfully");
+      } else if (data.isKitchen) {
+        localStorage.setItem("isKitchenLoggedIn", "true");
+        toast.success("Kitchen access granted");
+        redirectPath = "/kitchen/dashboard";
+      } else {
+        throw { response: { data: { message: "Unauthorized account" } } };
       }
       localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
-      localStorage.setItem("isAdminLoggedIn", "true");
       localStorage.setItem("showWelcomeMessage", "true");
-      toast.success("Logged in successfully");
-      navigate("/admin/dashboard", { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       const msg = error.response?.data?.message || "Invalid credentials. Please try again.";
       setError(msg);
@@ -107,7 +116,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Admin Identifier</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
               <div className="relative group">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
                 <input

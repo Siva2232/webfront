@@ -40,7 +40,7 @@ export default function KitchenLayout() {
               toast.dismiss(logoutToastId);
               localStorage.removeItem("isKitchenLoggedIn");
               toast.success("Logged out successfully");
-              navigate("/kitchen/login", { replace: true });
+              navigate("/login", { replace: true });
             }}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg"
           >
