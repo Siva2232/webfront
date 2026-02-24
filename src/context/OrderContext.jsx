@@ -20,7 +20,14 @@ const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
   const [orders, setOrders] = useState([]);
-  const [bills, setBills] = useState([]); // separate collection for invoices
+  const [bills, setBills] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cachedBills");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  }); // separate collection for invoices, hydrated from storage
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchOrders = async () => {
@@ -199,6 +206,17 @@ export const OrderProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (token) {
       fetchOrders();
+    }
+
+    // ensure bills are hydrated as well
+    const billsCache = localStorage.getItem("cachedBills");
+    if (billsCache) {
+      try {
+        setBills(JSON.parse(billsCache));
+      } catch (_) {}
+    }
+    if (token) {
+      fetchBills();
     }
   }, []);
 
