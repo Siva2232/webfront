@@ -70,10 +70,12 @@ export default function AdminLayout() {
         <div className="flex gap-2">
           <button
             onClick={() => {
-              toast.dismiss(logoutToastId);
-              localStorage.removeItem("isAdminLoggedIn");
+              toast.dismiss(logoutToastId);              localStorage.removeItem("token");
+              localStorage.removeItem("userInfo");              localStorage.removeItem("isAdminLoggedIn");
               toast.success("Logged out successfully");
-              navigate("/login", { replace: true });
+              // flag the logout so the shared login page won't auto-switch
+              // to the kitchen if that session is still active
+              navigate("/login?adminLogout=true", { replace: true });
             }}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg"
           >Yes</button>

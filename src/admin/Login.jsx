@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ import {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,13 +25,27 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("token") &&
-        (localStorage.getItem("isAdminLoggedIn") === "true" ||
-         localStorage.getItem("isKitchenLoggedIn") === "true")) {
-      const isKitchen = localStorage.getItem("isKitchenLoggedIn") === "true";
-      navigate(isKitchen ? "/kitchen/dashboard" : "/admin/dashboard", { replace: true });
+    const params = new URLSearchParams(location.search);
+    const kitchenLogoutFlag = params.get("kitchenLogout");
+    const adminLogoutFlag = params.get("adminLogout");
+
+    const token = localStorage.getItem("token");
+    const adminLogged = localStorage.getItem("isAdminLoggedIn") === "true";
+    const kitchenLogged = localStorage.getItem("isKitchenLoggedIn") === "true";
+
+    // when a logout flag is present, avoid automatically redirecting
+    // into the *other* panel.  we allow navigation if the same role remains
+    // logged in.
+    if (token) {
+      if (adminLogged && !kitchenLogoutFlag && !adminLogoutFlag) {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (kitchenLogged && !adminLogoutFlag) {
+        navigate("/kitchen/dashboard", { replace: true });
+      }
     }
-  }, [navigate]);
+    // keep any logout flags on the URL until user submits the form or leaves
+    // so that the redirection logic continues to respect them.
+  }, [navigate, location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,23 +54,25 @@ export default function Login() {
 
     try {
       const { data } = await API.post("/auth/login", { email, password });
-      
-      // verify role and redirect accordingly
-      let redirectPath = "/admin/dashboard";
-      if (data.isAdmin) {
-        localStorage.setItem("isAdminLoggedIn", "true");
-        toast.success("Logged in successfully");
-      } else if (data.isKitchen) {
-        localStorage.setItem("isKitchenLoggedIn", "true");
-        toast.success("Kitchen access granted");
-        redirectPath = "/kitchen/dashboard";
-      } else {
-        throw { response: { data: { message: "Unauthorized account" } } };
-      }
+
+      // persist token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
+      // update both role flags based on the account data (clears them if false)
+      localStorage.setItem("isAdminLoggedIn", data.isAdmin ? "true" : "false");
+      localStorage.setItem("isKitchenLoggedIn", data.isKitchen ? "true" : "false");
       localStorage.setItem("showWelcomeMessage", "true");
-      navigate(redirectPath, { replace: true });
+
+      if (data.isAdmin) {
+        toast.success("Logged in successfully");
+        navigate("/admin/dashboard", { replace: true });
+      } else if (data.isKitchen) {
+        toast.success("Kitchen access granted");
+        navigate("/kitchen/dashboard", { replace: true });
+      } else {
+        // not authorized for either panel
+        throw { response: { data: { message: "Account is not authorized for this system" } } };
+      }
     } catch (error) {
       const msg = error.response?.data?.message || "Invalid credentials. Please try again.";
       setError(msg);
@@ -111,12 +128,15 @@ export default function Login() {
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">
                 Enterprise Resource Gateway
               </p>
+              <p className="text-[9px] text-slate-500">
+                (use admin or kitchen credentials)
+              </p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Address</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Admin Identifier</label>
               <div className="relative group">
                 <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={18} />
                 <input

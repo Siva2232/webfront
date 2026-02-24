@@ -38,10 +38,11 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // If unauthorized, clear local storage and redirect to login
+      // If unauthorized, clear local storage for all roles and redirect to login
       localStorage.removeItem("token");
-      localStorage.removeItem("isAdminLoggedIn");
       localStorage.removeItem("userInfo");
+      localStorage.removeItem("isAdminLoggedIn");
+      localStorage.removeItem("isKitchenLoggedIn");
       
       // We can't use useNavigate here as it's not a component, 
       // but we can use window.location
