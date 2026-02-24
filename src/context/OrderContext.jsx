@@ -54,9 +54,20 @@ export const OrderProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
+    // try to hydrate immediately from cache for instant UI
+    try {
+      const cached = localStorage.getItem("cachedBills");
+      if (cached) {
+        setBills(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.warn("failed to read cached bills", e);
+    }
+
     try {
       setIsLoading(true);
-      const { data } = await API.get("/bills");
+      // limit to last 500 invoices, server should support pagination too
+      const { data } = await API.get("/bills?limit=500&sort=desc");
       // remove duplicates by orderRef or _id
       const seen = new Set();
       const unique = data.filter(b => {
@@ -66,6 +77,9 @@ export const OrderProvider = ({ children }) => {
         return true;
       });
       setBills(unique);
+      try {
+        localStorage.setItem("cachedBills", JSON.stringify(unique));
+      } catch (e) {}
     } catch (error) {
       console.error("Error fetching bills:", error);
     } finally {
@@ -146,6 +160,11 @@ export const OrderProvider = ({ children }) => {
     });
     socket.on("orderUpdated", (order) => {
       setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
+    });
+
+    // listen for bills added so billing page updates automatically
+    socket.on("billCreated", (bill) => {
+      setBills((prev) => [bill, ...prev]);
     });
 
     // if the server sends full snapshot (future enhancement)
