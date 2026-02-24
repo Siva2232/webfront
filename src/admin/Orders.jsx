@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, } from 'react';
 import { useOrders } from "../context/OrderContext";
 import {
   ShoppingBag, Activity, CheckCircle, Sparkles, Coffee,
@@ -18,17 +18,6 @@ const statusStep = { Preparing: 1, Cooking: 2, Ready: 3, Served: 4 };
 
 export default function OrdersDashboard() {
   const { orders, updateOrderStatus, fetchOrders } = useOrders();
-  const navigate = useNavigate();
-  const prevCountRef = React.useRef(orders.length);
-
-  // if we're on orders dashboard and a new order arrives, show its bill automatically
-  React.useEffect(() => {
-    if (orders.length > prevCountRef.current) {
-      // did not exist before
-      navigate("/admin/bill");
-    }
-    prevCountRef.current = orders.length;
-  }, [orders, navigate]);
 
   // Orders are already hydrated by OrderProvider (which caches + fetches),
   // and socket events keep the list fresh. No periodic polling needed here.
