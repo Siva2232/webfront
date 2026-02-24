@@ -20,6 +20,7 @@ import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
 import Analytics from "../admin/Analytics";
 import OrderBill from "../admin/OrderBill";
+import KitchenRoutes from "./KitchenRoutes";
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -60,6 +61,9 @@ export default function AppRoutes() {
         <Route path="/order-summary" element={<OrderSummary />} />
         <Route path="*" element={<Navigate to="/menu" replace />} />
       </Route>
+
+      {/* Kitchen-specific Routes */}
+      <Route path="/kitchen/*" element={<KitchenRoutes />} />
 
       {/* Protected Admin Routes */}
       <Route element={<ProtectedRoute />}>

@@ -12,7 +12,7 @@ import {
   ChefHat
 } from "lucide-react";
 
-export default function Notification() {
+export default function Notification({ targetPath = "/admin/orders" }) {
   const { orders } = useOrders();
   const navigate = useNavigate();
 
@@ -156,7 +156,7 @@ export default function Notification() {
                       order={order}
                       onMarkRead={() => markAsRead(order._id || order.id)}
                       onView={() => {
-                        navigate("/admin/orders");
+                        navigate(targetPath);
                         setOpen(false);
                       }}
                     />
