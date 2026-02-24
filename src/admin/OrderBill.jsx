@@ -16,15 +16,26 @@ import {
 } from "lucide-react";
 
 export default function OrderBill() {
-  const { bills, fetchBills } = useOrders();
+  const { bills, fetchBills, isLoading } = useOrders();
   const navigate = useNavigate();
 
   // make sure bills are loaded when hitting the bill page directly
+  // always call fetchBills on mount to refresh data, dedupe later
   React.useEffect(() => {
-    if (!bills || bills.length === 0) {
-      fetchBills();
-    }
+    fetchBills();
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // deduplicate by _id or id to prevent double rendering
+  const uniqueBills = React.useMemo(() => {
+    const seen = new Set();
+    return bills.filter(b => {
+      // prefer orderRef to collapse auto+manual entries, fallback to id
+      const key = b.orderRef || b._id || b.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [bills]);
 
   // Isolated Print Logic
   const handlePrintSingle = (orderId) => {
@@ -36,7 +47,15 @@ export default function OrderBill() {
     window.location.reload(); 
   };
 
-  if (!bills || bills.length === 0) {
+  if (isLoading && (!bills || bills.length === 0)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loader" />
+      </div>
+    );
+  }
+
+  if (!uniqueBills || uniqueBills.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center bg-[#F4F4F5]">
         <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
@@ -68,12 +87,10 @@ export default function OrderBill() {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {bills.map((order, index) => {
+        {uniqueBills.map((order, index) => {
           const subtotal = order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
           const tax = subtotal * 0.05; 
-          const grandTotal = subtotal + tax;
-
-          // BUG FIX: Capture the exact timestamp from the order data, not live time
+  const grandTotal = subtotal + tax; // exact amount, no rounding
           const orderTimestamp = order.createdAt ? new Date(order.createdAt) : new Date();
 
           return (
@@ -165,8 +182,8 @@ export default function OrderBill() {
       <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 leading-none">Total Payable</span>
       <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Inclusive of Taxes</span>
     </div>
-    <span className="text-3xl font-black tracking-tighter italic text-slate-900">
-      ₹{Math.round(grandTotal).toLocaleString()}
+    <span className="text-3xl font-black tracking-tighter italic text-slate-900 whitespace-nowrap flex-shrink-0 overflow-x-auto">
+      ₹{grandTotal.toLocaleString()}
     </span>
   </div>
 </div>

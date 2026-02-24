@@ -57,7 +57,15 @@ export const OrderProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const { data } = await API.get("/bills");
-      setBills(data);
+      // remove duplicates by orderRef or _id
+      const seen = new Set();
+      const unique = data.filter(b => {
+        const key = b.orderRef || b._id || b.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setBills(unique);
     } catch (error) {
       console.error("Error fetching bills:", error);
     } finally {

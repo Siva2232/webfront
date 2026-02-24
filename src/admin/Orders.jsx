@@ -44,7 +44,7 @@ export default function OrdersDashboard() {
 
   // 6 STATS DATA
   const stats = [
-    { label: "Total Revenue", value: `₹${Math.round(totalRevenue).toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Live Tables", value: new Set(activeOrders.map(o => o.table)).size, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
     { label: "Ready", value: orders.filter(o => o.status === "Ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Total Served", value: servedOrders.length, icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -204,7 +204,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
            </div>
            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
              <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Total Bill</span>
-             <span className="text-lg font-black text-slate-900 italic">₹{Math.round(grandTotal).toLocaleString()}</span>
+             <span className="text-lg font-black text-slate-900 italic">₹{grandTotal.toLocaleString()}</span>
            </div>
         </div>
 
