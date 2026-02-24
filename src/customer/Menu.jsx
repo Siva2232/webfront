@@ -154,8 +154,8 @@ export default function Menu() {
   const suggestions = useMemo(() => {
     if (!trimmedQuery) return [];
 
+    // include even sold‑out items so the user sees the stock badge
     return products.filter(product => {
-      if (product.isAvailable === false) return false;
       const nameLower = product.name.toLowerCase();
       return nameLower.split(/\s+/).some(word => word.startsWith(trimmedQuery));
     }).slice(0, 8);
@@ -173,15 +173,7 @@ export default function Menu() {
           <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-slate-100 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200">
-                    <Utensils className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none">The Menu</h1>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Est. 2024 • Organic</p>
-                  </div>
-                </div>
+                {/* header removed per request; table assignment UI remains below */}
 
                 {table && (
   <div className="relative group select-none">
@@ -280,9 +272,16 @@ export default function Menu() {
                                 </p>
                               </div>
                             </div>
-                            <p className="text-xs font-black text-emerald-600 flex-shrink-0">
-                              ₹{p.price}
-                            </p>
+                            <div className="flex flex-col items-end gap-1">
+                              <p className="text-xs font-black text-emerald-600 flex-shrink-0">
+                                ₹{p.price}
+                              </p>
+                              {!p.isAvailable && (
+                                <span className="text-[8px] font-black uppercase bg-rose-600 text-white px-1 rounded">
+                                  Sold Out
+                                </span>
+                              )}
+                            </div>
                           </button>
                         ))
                       ) : trimmedQuery ? (
@@ -462,8 +461,8 @@ export default function Menu() {
               let foundMatch = false;
 
               const renderedSections = orderedCategories.map((cat) => {
+                // products should remain visible even when sold out; ProductCard handles the overlay
                 const filtered = products.filter((p) => {
-                  if (p.isAvailable === false) return false;
                   const matchesSearch = (p.name?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
                   const matchesCategory = (p.category || "Other") === cat;
                   let matchesFoodType = true;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { generateId } from "../utils/generateId";
+import toast from "react-hot-toast"; // toast notifications
 
 export default function AddProduct() {
   const { addProduct, orderedCategories = [], addCategory } = useProducts();
@@ -114,12 +115,13 @@ export default function AddProduct() {
         type: form.type,
         available: true,
       });
+      toast.success("Product created successfully");
       navigate("/admin/products");
     } catch (err) {
       console.error(err);
-      setAddStatus(
-        err.response?.data?.message || "Failed to add product. See console."
-      );
+      const message = err.response?.data?.message || "Failed to add product. See console.";
+      toast.error(message);
+      setAddStatus(message);
       setTimeout(() => setAddStatus(""), 5000);
     }
   };

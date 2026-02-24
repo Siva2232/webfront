@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
+import toast from "react-hot-toast";
 import { 
   Lock, 
   Mail, 
@@ -40,10 +41,12 @@ export default function Login() {
       localStorage.setItem("userInfo", JSON.stringify(data));
       localStorage.setItem("isAdminLoggedIn", "true");
       localStorage.setItem("showWelcomeMessage", "true");
-      
+      toast.success("Logged in successfully");
       navigate("/admin/dashboard", { replace: true });
     } catch (error) {
-      setError(error.response?.data?.message || "Invalid credentials. Please try again.");
+      const msg = error.response?.data?.message || "Invalid credentials. Please try again.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }

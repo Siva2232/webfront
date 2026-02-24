@@ -23,6 +23,7 @@ import {
   Receipt
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
+import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { products = [] } = useProducts();
@@ -31,6 +32,8 @@ export default function AdminLayout() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showStockAlert, setShowStockAlert] = useState(false);
+  // ids that have been cleared from the alert list (until refresh)
+  const [clearedIds, setClearedIds] = useState([]);
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
@@ -53,15 +56,34 @@ export default function AdminLayout() {
     },
   ];
 
-  // Count out-of-stock products
-  const outOfStockProducts = products.filter((p) => p && !p.isAvailable);
+  // Count out-of-stock products, excluding any cleared by user
+  const outOfStockProducts = products.filter(
+    (p) => p && !p.isAvailable && !clearedIds.includes(p._id || p.id)
+  );
   const lowStockCount = outOfStockProducts.length;
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("isAdminLoggedIn");
-      navigate("/login", { replace: true });
-    }
+    // custom confirmation using toast so browser dialog is avoided
+    const logoutToastId = toast.loading(
+      <div className="flex flex-col items-center">
+        <p className="mb-2">Are you sure you want to log out?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              toast.dismiss(logoutToastId);
+              localStorage.removeItem("isAdminLoggedIn");
+              toast.success("Logged out successfully");
+              navigate("/login", { replace: true });
+            }}
+            className="px-4 py-2 bg-rose-500 text-white rounded-lg"
+          >Yes</button>
+          <button
+            onClick={() => toast.dismiss(logoutToastId)}
+            className="px-4 py-2 bg-slate-200 rounded-lg"
+          >No</button>
+        </div>
+      </div>
+    );
     setIsProfileOpen(false);
   };
 
@@ -95,21 +117,28 @@ export default function AdminLayout() {
     }
   };
 const handleClearAllStockAlerts = () => {
-  if (!confirm("Clear all low stock alerts? This won't change actual stock levels.")) return;
-
-  // Option 1: Just hide notification (most common approach)
-  // setLowStockCount(0);
-  // setOutOfStockProducts([]);
-
-  // Option 2: Call API to mark alerts as read/cleared
-  // await api.post('/notifications/clear-stock-alerts');
-
-  // Option 3: Reset local state completely
-  setLowStockCount(0);
-  setOutOfStockProducts([]);
-  setShowStockAlert(false);
-
-  toast.success("Stock alerts cleared");
+  // use toast-based confirm instead of native dialog
+  const toastId = toast.loading(
+    <div className="flex flex-col items-center">
+      <p className="mb-2">Clear all low stock alerts? This won't change actual stock levels.</p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => {
+            toast.dismiss(toastId);
+            const ids = outOfStockProducts.map(p => p._id || p.id);
+            setClearedIds(prev => [...prev, ...ids]);
+            setShowStockAlert(false);
+            toast.success("Stock alerts cleared");
+          }}
+          className="px-4 py-2 bg-rose-500 text-white rounded-lg"
+        >Yes</button>
+        <button
+          onClick={() => toast.dismiss(toastId)}
+          className="px-4 py-2 bg-slate-200 rounded-lg"
+        >No</button>
+      </div>
+    </div>
+  );
 };
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700">
@@ -359,7 +388,8 @@ const handleClearAllStockAlerts = () => {
                 <div
                   key={product._id || product.id}
                   onClick={() => {
-                    navigate(`/admin/products/edit/${product._id || product.id}`);
+                    // go to product list filtered for sold-out items
+                    navigate(`/admin/products?filter=out-of-stock`);
                     setShowStockAlert(false);
                   }}
                   className="px-5 sm:px-6 py-4 hover:bg-slate-50 active:bg-slate-100 cursor-pointer transition-colors flex items-center gap-4 group"
@@ -367,7 +397,7 @@ const handleClearAllStockAlerts = () => {
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      navigate(`/admin/products/edit/${product._id || product.id}`);
+                      navigate(`/admin/products?filter=out-of-stock`);
                       setShowStockAlert(false);
                     }
                   }}

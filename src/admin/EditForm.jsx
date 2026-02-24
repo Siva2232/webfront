@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { ArrowLeft, Save, IndianRupee, Type, Image as ImageIcon } from "lucide-react";
+import toast from "react-hot-toast"; // notifications
 
 export default function EditForm() {
   const { id } = useParams(); // Gets the ID from the URL
@@ -32,16 +33,24 @@ export default function EditForm() {
     }
   }, [id, isEditMode, products]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const formattedData = { ...formData, price: parseFloat(formData.price) };
 
-    if (isEditMode) {
-      updateProduct(id, formattedData);
-    } else {
-      addProduct(formattedData);
+    try {
+      if (isEditMode) {
+        await updateProduct(id, formattedData);
+        toast.success("Product updated successfully");
+      } else {
+        await addProduct(formattedData);
+        toast.success("Product created successfully");
+      }
+      navigate("/admin/products"); // Go back to list after saving
+    } catch (err) {
+      console.error(err);
+      const message = err.response?.data?.message || "Failed to save product";
+      toast.error(message);
     }
-    navigate("/admin/products"); // Go back to list after saving
   };
 
   return (

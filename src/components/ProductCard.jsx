@@ -219,7 +219,7 @@ export default function ProductCard({ product, onAdd, onRemove, initialQty = 0 }
         </div>
         {!isAvailable && (
           <div className="absolute inset-0 z-20 bg-white/40 flex items-center justify-center backdrop-blur-[2px]">
-            <div className="bg-black text-white px-5 py-2 font-black text-[10px] uppercase tracking-widest">
+            <div className="bg-rose-600 text-white px-5 py-2 font-black text-[10px] uppercase tracking-widest">
               Sold Out
             </div>
           </div>

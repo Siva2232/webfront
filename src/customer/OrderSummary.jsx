@@ -30,12 +30,12 @@ export default function OrderSummary() {
   // Get current table from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
 
-  // Find orders only for current table
+  // Find active (non-served) orders for current table only
   const tableOrders = currentTable 
-    ? orders.filter(o => o.table === currentTable)
+    ? orders.filter(o => o.table === currentTable && o.status !== "Served")
     : [];
 
-  // Get the most recent order for this table
+  // Get the most recent active order for this table (served orders are ignored)
   const order = tableOrders.length > 0 
     ? tableOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
     : null;

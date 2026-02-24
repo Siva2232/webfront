@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useProducts } from "../context/ProductContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import toast from "react-hot-toast";
 import { 
   Plus, Package, CheckCircle2, AlertCircle, Edit3, Trash2, 
   IndianRupee, Search, Sparkles, XCircle, RefreshCw
@@ -10,19 +11,40 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function AdminProducts() {
   const { products, toggleAvailability, deleteProduct } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Filter logic for search
+  // read query param once on mount
+  useEffect(() => {
+    const f = searchParams.get("filter");
+    if (f) {
+      setFilter(f);
+      if (f === "out-of-stock") {
+        setSearchTerm("");
+        // react-hot-toast doesn't include an "info" helper; use default toast or custom icon
+        toast("Showing only sold-out items");
+      }
+    }
+  }, [searchParams]);
+
+  // Filter logic for search and optional out‑of‑stock filter
   const filteredProducts = useMemo(() => {
-    return products.filter(p => 
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [products, searchTerm]);
+    const term = searchTerm.toLowerCase();
+    let list = products;
+    if (filter === "out-of-stock") {
+      list = list.filter(p => !p.isAvailable);
+    }
+    if (term) {
+      list = list.filter(p => p.name.toLowerCase().includes(term));
+    }
+    return list;
+  }, [products, searchTerm, filter]);
 
   const stats = [
     { label: "Assets", value: products.length, icon: Package, color: "indigo" },
     { label: "Live", value: products.filter(p => p.isAvailable).length, icon: CheckCircle2, color: "emerald" },
-    { label: "Hidden", value: products.filter(p => !p.isAvailable).length, icon: AlertCircle, color: "rose" },
+    { label: "Sold Out", value: products.filter(p => !p.isAvailable).length, icon: AlertCircle, color: "rose" },
   ];
 
   return (
@@ -42,6 +64,11 @@ export default function AdminProducts() {
           </div>
 
           <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+            {filter === "out-of-stock" && (
+              <div className="w-full md:w-auto bg-rose-50 text-rose-600 px-4 py-2 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest text-center">
+                Showing only sold‑out items
+              </div>
+            )}
             <div className="relative group w-full md:w-80">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
               <input 
@@ -142,7 +169,7 @@ function ProductCard({ product, onToggle, onDelete, onEdit }) {
                   ? "bg-white/90 text-emerald-600 border-white/20" 
                   : "bg-rose-600 text-white border-rose-400"}
             `}>
-              {product.isAvailable ? "● Live" : "✕ Hidden"}
+              {product.isAvailable ? "● Live" : "✕ Sold Out"}
             </div>
           </div>
         </div>

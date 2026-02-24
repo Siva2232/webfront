@@ -14,6 +14,7 @@ import Products from "../admin/Products";
 import Orders from "../admin/Orders";
 import Tables from "../admin/Tables";
 import AddProduct from "../admin/AddProduct";
+import EditForm from "../admin/EditForm";
 import OfferPanel from "../admin/OfferPanel";
 import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
@@ -69,6 +70,7 @@ export default function AppRoutes() {
           <Route path="bill" element={<OrderBill />} />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<AddProduct />} />
+          <Route path="products/edit/:id" element={<EditForm />} />
           <Route path="orders" element={<Orders />} />
           <Route path="tables" element={<Tables />} />
           <Route path="offers" element={<OfferPanel />} />

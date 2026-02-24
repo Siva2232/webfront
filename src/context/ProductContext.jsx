@@ -142,8 +142,11 @@ export const ProductProvider = ({ children }) => {
     try {
       const { data } = await API.put(`/products/${id}`, updates);
       setProducts(products.map(p => p._id === id ? data : p));
+      return data;
     } catch (error) {
       console.error("Error updating product:", error);
+      // propagate so callers can react (show toast, etc.)
+      throw error;
     }
   };
 

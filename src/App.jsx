@@ -1,4 +1,5 @@
 import AppRoutes from "./routes";
+import { Toaster } from "react-hot-toast"; // toast container
 
 /**
  * Root App Component
@@ -11,6 +12,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* All page routing handled here */}
       <AppRoutes />
+      <Toaster position="top-right" />
     </div>
   );
 }

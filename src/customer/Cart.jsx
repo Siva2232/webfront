@@ -231,9 +231,9 @@ export default function Cart() {
                       <p className="text-slate-400 font-bold text-[11px] mb-2 uppercase">₹{item.price}</p>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
-                          <button onClick={() => updateQuantity(item.id, item.qty - 1)} className="w-8 h-8 flex items-center justify-center"><Minus size={12}/></button>
+                          <button onClick={() => updateQuantity(item._id || item.id, item.qty - 1)} className="w-8 h-8 flex items-center justify-center"><Minus size={12}/></button>
                           <span className="w-8 text-center text-xs font-black">{item.qty}</span>
-                          <button onClick={() => updateQuantity(item.id, item.qty + 1)} className="w-8 h-8 flex items-center justify-center"><Plus size={12}/></button>
+                          <button onClick={() => updateQuantity(item._id || item.id, item.qty + 1)} className="w-8 h-8 flex items-center justify-center"><Plus size={12}/></button>
                         </div>
                         <p className="font-black text-slate-900 text-sm">₹{(item.price * item.qty).toLocaleString()}</p>
                       </div>
