@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect, useRef } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
 import {
@@ -8,6 +8,7 @@ import {
   Package,
   ShoppingCart,
   Table,
+  Users,
   LogOut,
   Menu,
   ChevronLeft,
@@ -20,7 +21,13 @@ import {
   X,
   Headset,
   BarChart2,
-  Receipt
+  Receipt,
+  BarChart,
+  UserPlus,
+  DollarSign,
+  Clock,
+  FileText,
+  Zap,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import toast from "react-hot-toast";
@@ -36,8 +43,12 @@ export default function AdminLayout() {
   const [clearedIds, setClearedIds] = useState([]);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const dropdownRef = useRef(null);
   const stockRef = useRef(null);
+
+  // track which top‑level menu has its submenu open (if any)
+  const [openSubmenu, setOpenSubmenu] = useState(null);
 
   const menuItems = [
     { name: "Analytics", icon: BarChart2, path: "reports" },
@@ -46,10 +57,32 @@ export default function AdminLayout() {
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Bill", icon: Receipt, path: "bill" },
     { name: "Tables", icon: Table, path: "tables" },
+    {
+      name: "Staff",
+      icon: Users,
+      path: "staff",
+      // submenu entries use `tab` to control the staff page's active tab
+      children: [
+        { name: "Overview", tab: "overview" },
+        { name: "Create Staff", tab: "create" },
+        { name: "Salaries", tab: "salary" },
+        { name: "Salary History", tab: "salaryHistory" },
+      ],
+    },
     { name: "Add Banner", icon: ImagePlus, path: "banner" },
     { name: "Add Offers", icon: Sparkles, path: "offers" },
     {
-      name: "Kitchen Features",
+      name: "Expense Tracker",
+      icon: FileText,
+      path: "expense",
+      children: [
+        { name: "Purchase", tab: "purchase" },
+        { name: "Utility", tab: "utility" },
+        { name: "Direct Expense", tab: "direct" },
+        { name: "Indirect Expense", tab: "indirect" },
+      ],
+    },
+    { name: "Kitchen Features",
       icon: Settings,
       path: "new-feature", // just placeholder - won't be used anyway
       disabled: true,
@@ -111,6 +144,20 @@ export default function AdminLayout() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // automatically expand the staff submenu if we're on a staff path
+  useEffect(() => {
+    if (
+      location.pathname.startsWith("/admin/staff") ||
+      location.pathname.startsWith("/admin/expense")
+    ) {
+      // open the appropriate submenu by looking at the path
+      if (location.pathname.startsWith("/admin/staff")) setOpenSubmenu("Staff");
+      else if (location.pathname.startsWith("/admin/expense")) setOpenSubmenu("Expense Tracker");
+    } else {
+      setOpenSubmenu(null);
+    }
+  }, [location.pathname, location.search]);
+
   // Helper to close mobile sidebar only on mobile
   const closeMobileMenu = () => {
     if (window.innerWidth < 1024) {
@@ -118,6 +165,23 @@ export default function AdminLayout() {
       setIsMobileOpen(false);
     }
   };
+
+  // toggle a top‑level submenu open/closed
+  const toggleSubmenu = (name) => {
+    setOpenSubmenu((prev) => (prev === name ? null : name));
+  };
+
+  // click handler for items that have children; opens submenu and optionally navigates
+  const handleParentItemClick = (item) => {
+    const isOpen = openSubmenu === item.name;
+    if (isOpen) {
+      setOpenSubmenu(null);
+    } else {
+      setOpenSubmenu(item.name);
+    }
+    closeMobileMenu();
+  };
+
 const handleClearAllStockAlerts = () => {
   // use toast-based confirm instead of native dialog
   const toastId = toast.loading(
@@ -232,7 +296,77 @@ const handleClearAllStockAlerts = () => {
       );
     }
 
-    // 2. ACTIVE CLICKABLE NAV LINK
+    // 2. MENU ITEM WITH CHILDREN (dropdown)
+    if (item.children) {
+      const isOpen = openSubmenu === item.name;
+      return (
+        <div key={item.name} className="relative">
+          <button
+            onClick={() => handleParentItemClick(item)}
+            className={`w-full text-left ${baseClasses} ${
+              isOpen
+                ? "bg-slate-900 text-white"
+                : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900"
+            }`}
+          >
+            <item.icon size={22} className="flex-shrink-0" />
+            <span
+              className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+                isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
+              }`}
+            >
+              {item.name}
+            </span>
+            {!isCollapsed && (
+              <ChevronDown
+                size={16}
+                className={`ml-auto transition-transform ${isOpen ? "rotate-180" : ""}`}
+              />
+            )}
+          </button>
+
+          {/* submenu list */}
+          {isOpen && !isCollapsed && (
+            <div className="ml-10 mt-1 flex flex-col space-y-1">
+              {(() => {
+                const currentTab = new URLSearchParams(location.search).get("tab");
+                return item.children.map((child) => {
+                  let icon = null;
+                  if (child.tab === "overview") icon = <BarChart size={14} className="inline mr-1" />;
+                  else if (child.tab === "create") icon = <UserPlus size={14} className="inline mr-1" />;
+                  else if (child.tab === "salary") icon = <DollarSign size={14} className="inline mr-1" />;
+                  else if (child.tab === "salaryHistory") icon = <Clock size={14} className="inline mr-1" />;
+                  else if (child.tab === "purchase") icon = <ShoppingCart size={14} className="inline mr-1" />;
+                  else if (child.tab === "utility") icon = <Zap size={14} className="inline mr-1" />;
+                  else if (child.tab === "direct") icon = <DollarSign size={14} className="inline mr-1" />;
+                  else if (child.tab === "indirect") icon = <Clock size={14} className="inline mr-1" />;
+                  const isActiveChild = currentTab === child.tab;
+                  return (
+                    <button
+                      key={child.tab}
+                      onClick={() => {
+                        navigate(`/admin/${item.path}?tab=${child.tab}`);
+                        closeMobileMenu();
+                      }}
+                      className={`w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors ${
+                        isActiveChild
+                          ? "bg-slate-200 text-slate-900"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {icon}
+                      {child.name}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 3. NORMAL ACTIVE CLICKABLE NAV LINK
     return (
       <NavLink
         key={item.path}

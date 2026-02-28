@@ -20,7 +20,10 @@ import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
 import Analytics from "../admin/Analytics";
 import OrderBill from "../admin/OrderBill";
+import AddStaff from "../admin/AddStaff";
+import ExpenseTracker from "../admin/ExpenseTracker";
 import KitchenRoutes from "./KitchenRoutes";
+import WaiterRoutes from "./WaiterRoutes"; // added for waiter panel
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -64,6 +67,8 @@ export default function AppRoutes() {
 
       {/* Kitchen-specific Routes */}
       <Route path="/kitchen/*" element={<KitchenRoutes />} />
+      {/* New waiter panel routes */}
+      <Route path="/waiter/*" element={<WaiterRoutes />} />
 
       {/* Protected Admin Routes */}
       <Route element={<ProtectedRoute />}>
@@ -79,6 +84,8 @@ export default function AppRoutes() {
           <Route path="tables" element={<Tables />} />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="banner" element={<BannerPanel />} />
+          <Route path="staff" element={<AddStaff />} />
+          <Route path="expense" element={<ExpenseTracker />} />
           <Route path="reports" element={<Analytics />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

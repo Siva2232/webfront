@@ -28,19 +28,23 @@ export default function Login() {
     const params = new URLSearchParams(location.search);
     const kitchenLogoutFlag = params.get("kitchenLogout");
     const adminLogoutFlag = params.get("adminLogout");
+    const waiterLogoutFlag = params.get("waiterLogout");
 
     const token = localStorage.getItem("token");
     const adminLogged = localStorage.getItem("isAdminLoggedIn") === "true";
     const kitchenLogged = localStorage.getItem("isKitchenLoggedIn") === "true";
+    const waiterLogged = localStorage.getItem("isWaiterLoggedIn") === "true";
 
     // when a logout flag is present, avoid automatically redirecting
     // into the *other* panel.  we allow navigation if the same role remains
     // logged in.
     if (token) {
-      if (adminLogged && !kitchenLogoutFlag && !adminLogoutFlag) {
+      if (adminLogged && !kitchenLogoutFlag && !adminLogoutFlag && !waiterLogoutFlag) {
         navigate("/admin/dashboard", { replace: true });
-      } else if (kitchenLogged && !adminLogoutFlag) {
+      } else if (kitchenLogged && !adminLogoutFlag && !waiterLogoutFlag) {
         navigate("/kitchen/dashboard", { replace: true });
+      } else if (waiterLogged && !adminLogoutFlag && !kitchenLogoutFlag) {
+        navigate("/waiter/dashboard", { replace: true });
       }
     }
     // keep any logout flags on the URL until user submits the form or leaves
@@ -58,9 +62,10 @@ export default function Login() {
       // persist token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
-      // update both role flags based on the account data (clears them if false)
+      // update all role flags based on the account data (clears them if false)
       localStorage.setItem("isAdminLoggedIn", data.isAdmin ? "true" : "false");
       localStorage.setItem("isKitchenLoggedIn", data.isKitchen ? "true" : "false");
+      localStorage.setItem("isWaiterLoggedIn", data.isWaiter ? "true" : "false");
       localStorage.setItem("showWelcomeMessage", "true");
 
       if (data.isAdmin) {
@@ -69,8 +74,11 @@ export default function Login() {
       } else if (data.isKitchen) {
         toast.success("Kitchen access granted");
         navigate("/kitchen/dashboard", { replace: true });
+      } else if (data.isWaiter) {
+        toast.success("Waiter access granted");
+        navigate("/waiter/dashboard", { replace: true });
       } else {
-        // not authorized for either panel
+        // not authorized for any panel
         throw { response: { data: { message: "Account is not authorized for this system" } } };
       }
     } catch (error) {
@@ -129,7 +137,7 @@ export default function Login() {
                 Enterprise Resource Gateway
               </p>
               <p className="text-[9px] text-slate-500">
-                (use admin or kitchen credentials)
+                (use admin, kitchen or waiter credentials)
               </p>
             </div>
           </div>

@@ -16,8 +16,9 @@ const gradientMap = {
 
 const statusStep = { Preparing: 1, Cooking: 2, Ready: 3, Served: 4 };
 
-export default function OrdersDashboard() {
-  const { orders, updateOrderStatus, fetchOrders } = useOrders();
+export default function OrdersDashboard({ overrideOrders = null }) {
+  const { orders: ctxOrders, updateOrderStatus, fetchOrders } = useOrders();
+  const orders = overrideOrders !== null ? overrideOrders : ctxOrders;
 
   // Orders are already hydrated by OrderProvider (which caches + fetches),
   // and socket events keep the list fresh. No periodic polling needed here.

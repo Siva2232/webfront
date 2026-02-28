@@ -117,7 +117,14 @@ export const OrderProvider = ({ children }) => {
         paymentMethod: orderData.paymentMethod,
         status: orderData.status, // e.g. "Preparing" from cart
       };
-      const { data } = await API.post("/orders", payload);
+
+      // attach waiter id if current user is a waiter
+      try {
+        const info = JSON.parse(localStorage.getItem("userInfo") || "{}");
+        if (info && info._id && info.isWaiter) {
+          payload.waiter = info._id;
+        }
+      } catch {}      const { data } = await API.post("/orders", payload);
       setOrders([...orders, data]);
 
       // also create a bill record -- backend auto-creates one, but we

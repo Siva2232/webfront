@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useOrders } from "../context/OrderContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -31,6 +32,10 @@ export default function Tables() {
   });
 
   // ── 2. Active Orders / Occupancy Status (persistent) ─────────────────────
+  // at first we store occupancy locally so the floor plan still works even when
+  // there is no server (offline demo mode). however we also listen to the
+  // order context and mark tables occupied when there are live orders for them.
+  const { orders } = useOrders();
   const [activeOrders, setActiveOrders] = useState(() => {
     const saved = localStorage.getItem("active_orders");
     return saved ? JSON.parse(saved) : {};
@@ -41,10 +46,25 @@ export default function Tables() {
     localStorage.setItem("restaurant_tables_config", JSON.stringify(tables));
   }, [tables]);
 
-  // Save active orders whenever occupancy changes
+  // Save active orders whenever occupancy changes (local cache)
   useEffect(() => {
     localStorage.setItem("active_orders", JSON.stringify(activeOrders));
   }, [activeOrders]);
+
+  // keep occupancy in sync with live orders coming from the server
+  useEffect(() => {
+    // build map of table -> true for any non-served orders
+    const liveMap = {};
+    orders.forEach(o => {
+      if (o.status && o.status !== "Served") {
+        liveMap[`table-${o.table}`] = true;
+      }
+    });
+    // if the service has any live state, prefer it over the cached map
+    if (Object.keys(liveMap).length > 0) {
+      setActiveOrders(prev => ({ ...prev, ...liveMap }));
+    }
+  }, [orders]);
 
   const goToMenu = (tableId) => {
     navigate(`/menu?table=${tableId}`);
