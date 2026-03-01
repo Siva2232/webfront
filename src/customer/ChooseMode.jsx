@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useCart } from "../context/CartContext";
-import { Utensils, ShoppingBag, MapPin } from "lucide-react"; // Optional: lucide-react icons
+import { Utensils, ShoppingBag, MapPin } from "lucide-react";
 
 export default function ChooseMode() {
   const [searchParams] = useSearchParams();
@@ -33,67 +33,84 @@ export default function ChooseMode() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-6 font-sans antialiased text-black">
-      <div className="max-w-md w-full space-y-12">
-        {/* Header Section */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-black tracking-tighter uppercase italic">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 py-8 md:py-12 font-sans antialiased text-black mt-[-104px]">
+      <div className="w-full max-w-md space-y-10 sm:space-y-12">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight uppercase italic">
             Welcome
           </h1>
-          <div className="h-1 w-12 bg-black mx-auto" />
-          <p className="text-sm font-medium text-gray-500 uppercase tracking-widest pt-2">
+          <div className="h-1 w-14 bg-black mx-auto rounded-full" />
+          <p className="text-base sm:text-lg font-medium text-gray-600 uppercase tracking-wide pt-1">
             Select Order Mode
           </p>
         </div>
 
-        {/* Options Grid */}
-        <div className="grid gap-4">
-          {/* Dine In Card */}
+        {/* Options */}
+        <div className="grid gap-5 sm:gap-6">
+          {/* Dine In */}
           <button
             onClick={chooseDineIn}
             disabled={!table}
-            className={`group relative flex flex-col items-start p-6 border-2 transition-all duration-200 text-left
-              ${table 
-                ? "border-black hover:bg-black hover:text-white" 
-                : "border-gray-100 opacity-50 cursor-not-allowed"
-              }`}
+            className={`
+              group relative flex flex-col items-start p-6 sm:p-7 
+              border-2 rounded-xl transition-all duration-300 text-left
+              touch-manipulation active:scale-[0.98]
+              ${table
+                ? "border-black hover:bg-black hover:text-white shadow-sm hover:shadow-md"
+                : "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
+              }
+            `}
           >
-            <div className="flex justify-between w-full items-center mb-4">
-              <Utensils size={28} strokeWidth={2.5} />
+            <div className="flex justify-between items-center w-full mb-5">
+              <Utensils size={32} strokeWidth={2.2} className="shrink-0" />
               {table && (
-                <span className="text-xs font-bold px-2 py-1 border border-current uppercase">
+                <span className="text-xs sm:text-sm font-bold px-3 py-1.5 border border-current rounded-full uppercase tracking-wide">
                   Table {table}
                 </span>
               )}
             </div>
-            <h2 className="text-2xl font-black uppercase italic">Dine In</h2>
-            <p className="text-sm mt-1 opacity-70">Enjoy your meal at our table.</p>
+            <h2 className="text-2xl sm:text-3xl font-black uppercase italic leading-tight">
+              Dine In
+            </h2>
+            <p className="text-sm sm:text-base mt-2 text-gray-600 group-hover:text-gray-200">
+              Enjoy your meal at our table
+            </p>
           </button>
 
-          {/* Takeaway Card */}
+          {/* Takeaway */}
           <button
             onClick={chooseTakeaway}
-            className="group relative flex flex-col items-start p-6 border-2 border-black hover:bg-black hover:text-white transition-all duration-200 text-left"
+            className={`
+              group relative flex flex-col items-start p-6 sm:p-7 
+              border-2 border-black rounded-xl 
+              hover:bg-black hover:text-white transition-all duration-300 
+              shadow-sm hover:shadow-md text-left touch-manipulation active:scale-[0.98]
+            `}
           >
-            <div className="mb-4">
-              <ShoppingBag size={28} strokeWidth={2.5} />
+            <div className="mb-5">
+              <ShoppingBag size={32} strokeWidth={2.2} className="shrink-0" />
             </div>
-            <h2 className="text-2xl font-black uppercase italic">Takeaway</h2>
-            <p className="text-sm mt-1 opacity-70">Grab your food and go.</p>
+            <h2 className="text-2xl sm:text-3xl font-black uppercase italic leading-tight">
+              Takeaway
+            </h2>
+            <p className="text-sm sm:text-base mt-2 text-gray-600 group-hover:text-gray-200">
+              Grab your food and go
+            </p>
           </button>
         </div>
 
-        {/* Footer Info */}
-        <div className="text-center">
+        {/* Footer hint */}
+        <div className="text-center pt-4">
           {!table ? (
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter">
+            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Scan a QR code to enable Dine-In
             </p>
           ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
-              <MapPin size={12} />
-              <span className="text-xs font-bold uppercase tracking-tight">
-                Confirmed Location: Section A
+            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-gray-50 rounded-full border border-gray-200 shadow-sm">
+              <MapPin size={14} className="text-gray-700" />
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-tight text-gray-800">
+                Location confirmed: Section A
               </span>
             </div>
           )}
