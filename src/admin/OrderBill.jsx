@@ -76,9 +76,12 @@ export default function OrderBill() {
 
       <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {uniqueBills.map((order, index) => {
-          const subtotal = order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
-          const tax = subtotal * 0.05; 
-  const grandTotal = subtotal + tax; // exact amount, no rounding
+          // Use billDetails if available (accurate after Add More Items), otherwise calculate
+          const subtotal = order.billDetails?.subtotal ?? order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) ?? 0;
+          const tax = order.billDetails?.cgst && order.billDetails?.sgst 
+            ? (order.billDetails.cgst + order.billDetails.sgst) 
+            : subtotal * 0.05;
+          const grandTotal = order.billDetails?.grandTotal ?? (subtotal + tax);
           const orderTimestamp = order.createdAt ? new Date(order.createdAt) : new Date();
 
           return (

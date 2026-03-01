@@ -223,6 +223,31 @@ export const OrderProvider = ({ children }) => {
       setBills((prev) => [bill, ...prev]);
     });
 
+    // listen for bill updates (e.g., when Add More Items merges into existing bill)
+    socket.on("billUpdated", (updatedBill) => {
+      setBills((prev) => {
+        const exists = prev.find((b) => (b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef);
+        if (exists) {
+          return prev.map((b) => 
+            ((b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
+          );
+        }
+        // If not found, add it (edge case)
+        return [updatedBill, ...prev];
+      });
+      // Also update localStorage cache immediately
+      try {
+        const cached = localStorage.getItem("cachedBills");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const updated = parsed.map((b) => 
+            ((b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
+          );
+          localStorage.setItem("cachedBills", JSON.stringify(updated));
+        }
+      } catch (e) {}
+    });
+
     // if the server sends full snapshot (future enhancement)
     socket.on("ordersSnapshot", (list) => {
       setOrders(list);
@@ -231,6 +256,8 @@ export const OrderProvider = ({ children }) => {
     return () => {
       socket.off("orderCreated");
       socket.off("orderUpdated");
+      socket.off("billCreated");
+      socket.off("billUpdated");
       socket.off("ordersSnapshot");
       socket.disconnect();
     };
