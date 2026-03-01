@@ -214,15 +214,25 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
           </div>
 
           <div className="space-y-3">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <span className="h-7 w-7 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black italic">{item.qty}</span>
-                  <span className="font-bold text-slate-700">{item.name}</span>
+            {order.items.map((item, idx) => {
+              // Check if item was added via "Add More Items" (within last 30 minutes)
+              const isNewlyAdded = item.isNewItem || (item.addedAt && (Date.now() - new Date(item.addedAt).getTime()) < 30 * 60 * 1000);
+              
+              return (
+                <div key={idx} className={`flex justify-between items-center ${isNewlyAdded ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-xl border border-emerald-100' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="h-7 w-7 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black italic">{item.qty}</span>
+                    <span className="font-bold text-slate-700">{item.name}</span>
+                    {isNewlyAdded && (
+                      <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full animate-pulse">
+                        NEW
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-slate-400 font-bold italic text-sm">₹{(item.price * item.qty).toLocaleString()}</span>
                 </div>
-                <span className="text-slate-400 font-bold italic text-sm">₹{(item.price * item.qty).toLocaleString()}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* ADDED KITCHEN NOTES DISPLAY */}
