@@ -4,7 +4,7 @@ import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 import {
   ShoppingBag, Activity, CheckCircle, Sparkles, Coffee,
   Clock, Flame, BellRing, ChevronRight, MessageSquare, Timer,
-  Users, DollarSign, UtensilsCrossed, PackageCheck, Package
+  Users, DollarSign, UtensilsCrossed, PackageCheck, Package, CreditCard, Wallet
 } from "lucide-react";
 
 // helper used by multiple components in this module
@@ -237,6 +237,12 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
               )}
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Timer size={12}/> {timeAgo} • #{(order._id || order.id || "").slice(-5)}
+                {/* Payment Status Badge */}
+                {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') && (
+                  <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-black uppercase tracking-wider rounded-full">
+                    <CreditCard size={10} /> PAID
+                  </span>
+                )}
               </p>
             </div>
           </div>

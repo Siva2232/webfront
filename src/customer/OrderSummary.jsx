@@ -16,7 +16,10 @@ import {
   ArrowRight,
   BellRing,
   AlertCircle,
-  Package
+  Package,
+  CreditCard,
+  CheckCircle,
+  Wallet
 } from "lucide-react";
 
 export default function OrderSummary() {
@@ -203,6 +206,12 @@ export default function OrderSummary() {
                 <p className="text-6xl font-black tracking-tighter leading-none">
                   {order.table === TAKEAWAY_TABLE ? "Takeaway" : `#${order.table}`}
                 </p>
+                {/* Payment Status Badge */}
+                {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') && (
+                  <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider rounded-full">
+                    <CheckCircle size={10} /> PAID
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -278,7 +287,15 @@ export default function OrderSummary() {
             <div className="pt-4 mt-2 border-t border-slate-200/60 flex justify-between items-center">
               <div className="space-y-0.5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Grand Total</p>
-                <p className="text-[9px] font-bold text-indigo-500 uppercase">Paid via Counter</p>
+                {order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? (
+                  <p className="text-[9px] font-bold text-emerald-600 uppercase flex items-center gap-1">
+                    <CheckCircle size={10} /> Paid Online
+                  </p>
+                ) : (
+                  <p className="text-[9px] font-bold text-orange-500 uppercase flex items-center gap-1">
+                    <Wallet size={10} /> Pay at Counter
+                  </p>
+                )}
               </div>
               <span className="text-3xl font-black text-slate-900 font-mono tracking-tighter">
                 ₹{grandTotal.toLocaleString()}

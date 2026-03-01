@@ -12,7 +12,10 @@ import {
   Scissors,
   Hash,
   Star,
-  Package
+  Package,
+  CreditCard,
+  CheckCircle,
+  Wallet
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
@@ -115,6 +118,18 @@ export default function OrderBill() {
                     <span className="flex items-center gap-1"><MapPin size={8} /> 01 SKYLINE DRIVE, BUSINESS DISTRICT</span>
                     <span className="flex items-center gap-1"><Phone size={8} /> +91 0000 000 000</span>
                   </div>
+                  {/* Payment Status Badge - Always Show */}
+                  {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') ? (
+                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full">
+                      <CheckCircle size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Paid Online</span>
+                    </div>
+                  ) : (
+                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full">
+                      <Wallet size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Pay at Counter</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Meta Grid */}
@@ -247,7 +262,15 @@ export default function OrderBill() {
   <div className="flex justify-between items-center pt-1">
     <div className="flex flex-col">
       <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 leading-none">Total Payable</span>
-      <span className="text-[8px] font-bold text-slate-400 uppercase mt-1">Inclusive of Taxes</span>
+      {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') ? (
+        <span className="text-[8px] font-bold text-emerald-600 uppercase mt-1 flex items-center gap-1">
+          <CheckCircle size={8} /> Paid Online
+        </span>
+      ) : (
+        <span className="text-[8px] font-bold text-orange-500 uppercase mt-1 flex items-center gap-1">
+          <Wallet size={8} /> Pay at Counter
+        </span>
+      )}
     </div>
     <span className="text-3xl font-black tracking-tighter italic text-slate-900 whitespace-nowrap flex-shrink-0 overflow-x-auto">
       ₹{grandTotal.toLocaleString()}
