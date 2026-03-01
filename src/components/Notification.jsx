@@ -9,7 +9,8 @@ import {
   Trash2,
   Ticket,
   CheckCircle2,
-  ChefHat
+  ChefHat,
+  PlusCircle
 } from "lucide-react";
 
 export default function Notification({ targetPath = "/admin/orders" }) {
@@ -19,6 +20,9 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const [open, setOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState([]);
   const [isNewOrder, setIsNewOrder] = useState(false);
+  
+  // Track "Add More Items" notifications
+  const [addMoreNotifications, setAddMoreNotifications] = useState([]);
 
   const seenOrderIds = useRef(new Set());
   const pulseTimeout = useRef(null);
@@ -34,6 +38,40 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  // Listen for "Add More Items" events
+  useEffect(() => {
+    const handleAddMore = (e) => {
+      const data = e.detail;
+      const notifId = `addmore-${data.order._id || data.order.id}-${Date.now()}`;
+      setAddMoreNotifications((prev) => [
+        { id: notifId, ...data },
+        ...prev.slice(0, 9), // Keep max 10
+      ]);
+      
+      // Trigger alert animation
+      setIsNewOrder(true);
+      clearTimeout(pulseTimeout.current);
+      pulseTimeout.current = setTimeout(() => {
+        setIsNewOrder(false);
+      }, 10000);
+      
+      // Play sound
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    };
+    
+    window.addEventListener("orderItemsAdded", handleAddMore);
+    return () => window.removeEventListener("orderItemsAdded", handleAddMore);
+  }, []);
+
+  const dismissAddMore = (id) => {
+    setAddMoreNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const clearAllAddMore = () => {
+    setAddMoreNotifications([]);
+  };
 
   /* 🔊 EXISTING SOUND LOGIC — NOT TOUCHED */
   const audioRef = useRef(
@@ -114,7 +152,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
           <Bell className="w-6 h-6" />
         </motion.div>
 
-        {pendingOrders.length > 0 && (
+        {(pendingOrders.length > 0 || addMoreNotifications.length > 0) && (
           <span className="absolute top-2 right-2 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
             <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
@@ -137,27 +175,83 @@ export default function Notification({ targetPath = "/admin/orders" }) {
                   <ChefHat size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black">New Orders</h3>
+                  <h3 className="text-lg font-black">Kitchen Alerts</h3>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500">
-                    Kitchen Feed
+                    Orders & Updates
                   </p>
                 </div>
               </div>
 
-              {pendingOrders.length > 0 && (
+              {(pendingOrders.length > 0 || addMoreNotifications.length > 0) && (
                 <button
-                  onClick={clearAll}
-                  className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-rose-500"
+                  onClick={() => { clearAll(); clearAllAddMore(); }}
+                  className="text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-rose-500 flex items-center gap-1"
                 >
-                  <Trash2 size={12} /> Clear
+                  <Trash2 size={12} /> Clear All
                 </button>
               )}
             </div>
 
+            {/* Add More Items Section */}
+            {addMoreNotifications.length > 0 && (
+              <div className="px-4 pb-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-2 flex items-center gap-1">
+                  <PlusCircle size={10} /> Items Added to Orders
+                </p>
+                <div className="space-y-2">
+                  {addMoreNotifications.map((notif) => (
+                    <motion.div
+                      key={notif.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between"
+                    >
+                      <div 
+                        onClick={() => { navigate(targetPath); setOpen(false); }}
+                        className="cursor-pointer flex items-center gap-3"
+                      >
+                        <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+                          <PlusCircle size={16} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-emerald-800">
+                            {notif.table === "TAKEAWAY" ? "Takeaway" : `Table ${notif.table}`}
+                          </p>
+                          <p className="text-[9px] font-bold text-emerald-600 uppercase">
+                            +{notif.newItems?.length || 0} items added
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => dismissAddMore(notif.id)}
+                        className="p-2 text-emerald-300 hover:text-emerald-600"
+                      >
+                        <CheckCircle2 size={18} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider if both sections have content */}
+            {addMoreNotifications.length > 0 && pendingOrders.length > 0 && (
+              <div className="mx-4 my-2 border-t border-zinc-100" />
+            )}
+
+            {/* New Orders Section */}
+            {pendingOrders.length > 0 && (
+              <div className="px-4 pb-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-2">
+                  New Orders
+                </p>
+              </div>
+            )}
+
             {/* Orders */}
-            <div className="p-4 max-h-[480px] overflow-y-auto">
-              {pendingOrders.length === 0 ? (
-                <div className="py-20 text-center text-zinc-400 font-bold">
+            <div className="p-4 pt-0 max-h-[320px] overflow-y-auto">
+              {pendingOrders.length === 0 && addMoreNotifications.length === 0 ? (
+                <div className="py-16 text-center text-zinc-400 font-bold">
                   Kitchen is clear
                 </div>
               ) : (

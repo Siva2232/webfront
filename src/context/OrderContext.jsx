@@ -223,6 +223,12 @@ export const OrderProvider = ({ children }) => {
       setBills((prev) => [bill, ...prev]);
     });
 
+    // listen for "Add More Items" so admin panel can show notification
+    socket.on("orderItemsAdded", (data) => {
+      // Dispatch a custom event that Notification component can listen to
+      window.dispatchEvent(new CustomEvent("orderItemsAdded", { detail: data }));
+    });
+
     // listen for bill updates (e.g., when Add More Items merges into existing bill)
     socket.on("billUpdated", (updatedBill) => {
       setBills((prev) => {
@@ -258,6 +264,7 @@ export const OrderProvider = ({ children }) => {
       socket.off("orderUpdated");
       socket.off("billCreated");
       socket.off("billUpdated");
+      socket.off("orderItemsAdded");
       socket.off("ordersSnapshot");
       socket.disconnect();
     };
