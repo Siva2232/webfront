@@ -10,6 +10,7 @@ import ProtectedWaiterRoute from "./ProtectedWaiterRoute";
 import WaiterDashboard from "../waiter/WaiterDashboard";
 import OrderBill from "../admin/OrderBill";
 import Tables from "../admin/Tables";
+import QrGenerator from "../admin/QrGenerator";
 import WaiterOrders from "../waiter/WaiterOrders";
 
 const ProtectedWaiterLogin = ({ children }) => {
@@ -31,6 +32,7 @@ export default function WaiterRoutes() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<WaiterDashboard />} />
           <Route path="tables" element={<Tables />} />
+          <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="orders" element={<WaiterOrders />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />

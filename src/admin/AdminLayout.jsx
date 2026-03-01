@@ -29,6 +29,7 @@ import {
   FileText,
   Zap,
   UtensilsCrossed,
+  QrCode,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
@@ -60,7 +61,15 @@ export default function AdminLayout() {
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
     { name: "Bill", icon: Receipt, path: "bill" },
-    { name: "Tables", icon: Table, path: "tables" },
+    {
+      name: "Manage Tables&QR",
+      icon: Table,
+      path: "tables",
+      children: [
+        { name: "Tables", path: "tables", icon: Table },
+        { name: "QR Generator", path: "qr-generator", icon: QrCode },
+      ],
+    },
     {
       name: "Staff",
       icon: Users,
@@ -155,11 +164,15 @@ export default function AdminLayout() {
   useEffect(() => {
     if (
       location.pathname.startsWith("/admin/staff") ||
-      location.pathname.startsWith("/admin/expense")
+      location.pathname.startsWith("/admin/expense") ||
+      location.pathname.startsWith("/admin/tables") ||
+      location.pathname.startsWith("/admin/qr-generator")
     ) {
       // open the appropriate submenu by looking at the path
       if (location.pathname.startsWith("/admin/staff")) setOpenSubmenu("Staff");
       else if (location.pathname.startsWith("/admin/expense")) setOpenSubmenu("Expense Tracker");
+      else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator"))
+        setOpenSubmenu("Menu Manage");
     } else {
       setOpenSubmenu(null);
     }
@@ -340,7 +353,9 @@ const handleClearAllStockAlerts = () => {
                 const currentTab = new URLSearchParams(location.search).get("tab");
                 return item.children.map((child) => {
                   let icon = null;
-                  if (child.tab === "overview") icon = <BarChart size={14} className="inline mr-1" />;
+                  if (child.icon) {
+                    icon = React.cloneElement(<child.icon />, { size: 14, className: "inline mr-1" });
+                  } else if (child.tab === "overview") icon = <BarChart size={14} className="inline mr-1" />;
                   else if (child.tab === "create") icon = <UserPlus size={14} className="inline mr-1" />;
                   else if (child.tab === "salary") icon = <DollarSign size={14} className="inline mr-1" />;
                   else if (child.tab === "salaryHistory") icon = <Clock size={14} className="inline mr-1" />;
@@ -351,9 +366,10 @@ const handleClearAllStockAlerts = () => {
                   const isActiveChild =
                     (child.path && location.pathname.endsWith(child.path)) ||
                     currentTab === child.tab;
+                  const key = child.tab || child.path || child.name;
                   return (
                     <button
-                      key={child.tab}
+                      key={key}
                       onClick={() => {
                         if (child.path) {
                           navigate(`/admin/${child.path}`);

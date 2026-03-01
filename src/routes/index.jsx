@@ -13,6 +13,7 @@ import Dashboard from "../admin/Dashboard";
 import Products from "../admin/Products";
 import Orders from "../admin/Orders";
 import Tables from "../admin/Tables";
+import QrGenerator from "../admin/QrGenerator";
 import AddProduct from "../admin/AddProduct";
 import EditForm from "../admin/EditForm";
 import OfferPanel from "../admin/OfferPanel";
@@ -92,6 +93,7 @@ export default function AppRoutes() {
           <Route path="orders" element={<Orders />} />
           <Route path="manual-order" element={<ManualOrder />} />
           <Route path="tables" element={<Tables />} />
+          <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="banner" element={<BannerPanel />} />
           <Route path="staff" element={<AddStaff />} />

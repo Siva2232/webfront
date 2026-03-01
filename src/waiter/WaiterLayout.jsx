@@ -197,29 +197,50 @@ export default function WaiterLayout() {
             </h2>
           </div>
 
-          <div className="relative" ref={dropdownRef}>
+          <div className="flex items-center gap-6">
+            <Notification targetPath="/waiter/orders" />
+            <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => setIsProfileOpen(prev => !prev)}
-              className="flex items-center gap-2 px-3 py-1 rounded-full hover:bg-slate-50 transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
             >
-              <span className="text-sm font-bold text-slate-800 uppercase">Waiter</span>
-              <ChevronDown size={16} className="text-slate-500" />
-            </button>
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-2">
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-rose-600 font-bold hover:bg-rose-50"
-                >
-                  Log out
-                </button>
+              <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Waiter" alt="avatar" />
               </div>
-            )}
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-bold text-slate-800 leading-none">Waiter User</p>
+                <p className="text-[10px] font-medium text-slate-400 mt-1">Staff</p>
+              </div>
+              <ChevronDown
+                size={14}
+                className={`text-slate-400 transition-transform ${isProfileOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {isProfileOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-4 w-64 bg-white rounded-[1.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden p-2"
+                >
+                  <div className="p-4 border-b border-slate-50">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
+                    <p className="text-sm font-bold text-slate-800">waiter@demo.com</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                  >
+                    <LogOut size={18} /> Sign Out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           </div>
         </header>
-
-        {/* notification slot */}
-        <Notification />
 
         {/* actual page content */}
         <main className="flex-1 overflow-y-auto">

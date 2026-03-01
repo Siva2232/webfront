@@ -13,10 +13,9 @@ import {
   UtensilsCrossed,
   QrCode
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Tables() {
-  const navigate = useNavigate();
-
   // ── 1. Physical Tables Configuration (persistent) ─────────────────────────
   const [tables, setTables] = useState(() => {
     const saved = localStorage.getItem("restaurant_tables_config");
@@ -190,6 +189,20 @@ export default function Tables() {
                         <ChevronRight size={20} />
                       </div>
                     )}
+                    {/* QR link copy button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/menu?table=${table.id}`;
+                        navigator.clipboard.writeText(url).then(() => {
+                          toast.success("QR link copied to clipboard");
+                        });
+                      }}
+                      className="ml-2 p-3.5 bg-slate-50 text-slate-400 hover:bg-slate-100 rounded-2xl transition-colors shadow-sm"
+                      title="Copy table QR link"
+                    >
+                      <QrCode size={20} />
+                    </button>
                   </div>
 
                   {/* Delete Button (only on hover) */}

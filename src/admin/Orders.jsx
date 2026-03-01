@@ -23,8 +23,26 @@ const gradientMap = {
 const statusStep = { Preparing: 1, Cooking: 2, Ready: 3, Served: 4 };
 
 export default function OrdersDashboard({ overrideOrders = null }) {
-  const { orders: ctxOrders, updateOrderStatus, fetchOrders } = useOrders();
+  const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders } = useOrders();
   const orders = overrideOrders !== null ? overrideOrders : ctxOrders;
+
+  // track orders that were just marked served so we can keep their card
+  // mounted long enough to show the completion modal before removing
+  const [servedPendingIds, setServedPendingIds] = useState(new Set());
+
+  const updateOrderStatus = (id, status) => {
+    if (status === "Served") {
+      setServedPendingIds((prev) => new Set(prev).add(id));
+      setTimeout(() => {
+        setServedPendingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }, 2000);
+    }
+    ctxUpdateStatus(id, status);
+  };
 
   // Orders are already hydrated by OrderProvider (which caches + fetches),
   // and socket events keep the list fresh. No periodic polling needed here.
@@ -35,7 +53,9 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   }, []);
 
   // DASHBOARD CALCULATIONS
-  const activeOrders = orders.filter((o) => o.status !== "Served").sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const activeOrders = orders
+    .filter((o) => o.status !== "Served" || servedPendingIds.has(o._id))
+    .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   const servedOrders = orders.filter((o) => o.status === "Served").sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   
   // Updated to include GST in Revenue stats if available
@@ -146,6 +166,8 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const [timeAgo, setTimeAgo] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [confirmedStatus, setConfirmedStatus] = useState("");
   
   // Billing Logic
   const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -315,13 +337,117 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                   <button 
                     onClick={() => {
                       updateOrderStatus(order._id || order.id, selectedStatus);
+                      setConfirmedStatus(selectedStatus);
                       setIsModalOpen(false);
+                      setShowSuccessModal(true);
+                      setTimeout(() => setShowSuccessModal(false), 2000);
                     }}
                     className="py-5 rounded-[2rem] bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-200 hover:scale-105 active:scale-95 transition-all"
                   >
                     Confirm
                   </button>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Success Modal */}
+        <AnimatePresence>
+          {showSuccessModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 30 }}
+                className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl text-center space-y-6 border border-slate-100"
+              >
+                <div className={`mx-auto w-24 h-24 rounded-3xl flex items-center justify-center ${
+                  confirmedStatus === "Served" ? "bg-emerald-50" :
+                  confirmedStatus === "Ready" ? "bg-indigo-50 text-indigo-500" :
+                  confirmedStatus === "Cooking" ? "bg-orange-50 text-orange-500" :
+                  "bg-amber-50 text-amber-500"
+                }`}>
+                  {confirmedStatus === "Served" ? (
+                    <motion.div className="relative">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                        className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-200"
+                      >
+                        <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none">
+                          <motion.path
+                            d="M5 13l4 4L19 7"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            transition={{ duration: 0.3, delay: 0.1 }}
+                          />
+                        </svg>
+                      </motion.div>
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: [0, 1.3, 0], opacity: [0, 0.6, 0] }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                        className="absolute inset-0 rounded-full border-4 border-emerald-400"
+                      />
+                    </motion.div>
+                  ) : confirmedStatus === "Ready" ? (
+                    <BellRing size={48} strokeWidth={2.5} className="animate-bounce" />
+                  ) : confirmedStatus === "Cooking" ? (
+                    <Flame size={48} strokeWidth={2.5} className="animate-bounce" />
+                  ) : (
+                    <Clock size={48} strokeWidth={2.5} className="animate-bounce" />
+                  )}
+                </div>
+                
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase">
+                    {confirmedStatus === "Served" ? "Order Served!" :
+                     confirmedStatus === "Ready" ? "Order Ready!" :
+                     confirmedStatus === "Cooking" ? "Now Cooking!" :
+                     "Preparing!"}
+                  </h3>
+                  <p className="text-slate-500 font-bold mt-3 text-sm leading-relaxed">
+                    Order <span className="text-slate-900">#{(order._id || order.id || "").slice(-5)}</span> has been updated to{" "}
+                    <span className={`uppercase tracking-wider font-black ${
+                      confirmedStatus === "Served" ? "text-emerald-500" :
+                      confirmedStatus === "Ready" ? "text-indigo-500" :
+                      confirmedStatus === "Cooking" ? "text-orange-500" :
+                      "text-amber-500"
+                    }`}>{confirmedStatus}</span>
+                  </p>
+                </div>
+
+                <div className={`w-full h-1.5 rounded-full overflow-hidden bg-slate-100`}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2 }}
+                    className={`h-full ${
+                      confirmedStatus === "Served" ? "bg-gradient-to-r from-emerald-400 to-teal-500" :
+                      confirmedStatus === "Ready" ? "bg-gradient-to-r from-indigo-400 to-purple-500" :
+                      confirmedStatus === "Cooking" ? "bg-gradient-to-r from-orange-400 to-rose-500" :
+                      "bg-gradient-to-r from-amber-400 to-orange-500"
+                    }`}
+                  />
+                </div>
+
+                <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${
+                    confirmedStatus === "Served" ? "bg-emerald-500 text-white hover:bg-emerald-600" :
+                    confirmedStatus === "Ready" ? "bg-indigo-500 text-white hover:bg-indigo-600" :
+                    confirmedStatus === "Cooking" ? "bg-orange-500 text-white hover:bg-orange-600" :
+                    "bg-amber-500 text-white hover:bg-amber-600"
+                  }`}
+                >
+                  Got it!
+                </button>
               </motion.div>
             </div>
           )}
