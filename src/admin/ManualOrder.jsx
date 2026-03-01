@@ -32,11 +32,13 @@ export default function ManualOrder() {
   const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
 
   const adjustQty = (prod, delta) => {
+    const prodId = prod._id || prod.id;
     setItems((prev) => {
-      const idx = prev.findIndex((i) => i._id === prod._id || i.id === prod.id);
+      const idx = prev.findIndex((i) => (i._id || i.id) === prodId);
       if (idx === -1) {
         if (delta <= 0) return prev;
-        return [...prev, { ...prod, qty: delta }];
+        // Add new product with normalized ID
+        return [...prev, { ...prod, _id: prodId, qty: delta }];
       }
       const newQty = prev[idx].qty + delta;
       if (newQty < 1) {
@@ -108,12 +110,17 @@ export default function ManualOrder() {
               {sorted.map((p) => {
                 const currentQty = (items.find((i) => (i._id || i.id) === (p._id || p.id)) || { qty: 0 }).qty;
                 return (
-                  <div key={p._id || p.id} className={`p-4 border-2 transition-all ${currentQty > 0 ? 'border-black bg-gray-50' : 'border-gray-100'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="font-bold text-lg leading-tight uppercase tracking-tight">{p.name}</p>
+                  <div key={p._id || p.id} className={`p-4 border-2 transition-all flex flex-col justify-between ${currentQty > 0 ? 'border-black bg-gray-50' : 'border-gray-100'}`}>
+                    <div className="flex justify-between items-start gap-4 mb-4">
+                      <div className="flex-1">
+                        <p className="font-bold text-lg leading-tight uppercase tracking-tight line-clamp-2">{p.name}</p>
                         <p className="text-sm font-medium text-gray-500 italic">₹{p.price}</p>
                       </div>
+                      {p.image && (
+                        <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-4">

@@ -182,6 +182,30 @@ export default function OrderBill() {
                   </span>
                 </div>
 
+                {/* Delivery Info Section - Only for delivery orders */}
+                {(order.table === DELIVERY_TABLE || order.table === "DELIVERY") && (
+                  <div className="px-6 py-4 bg-rose-50/50 border-b border-rose-100 space-y-2">
+                    {order.customerName && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Customer</span>
+                        <span className="text-[10px] font-black text-slate-800">{order.customerName}</span>
+                      </div>
+                    )}
+                    {order.customerAddress && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Address</span>
+                        <span className="text-[10px] font-bold text-slate-700 text-right max-w-[60%]">{order.customerAddress}</span>
+                      </div>
+                    )}
+                    {order.deliveryTime && (
+                      <div className="flex justify-between items-center pt-2 border-t border-rose-100">
+                        <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">Delivery Time</span>
+                        <span className="text-sm font-black text-rose-600 italic">{order.deliveryTime}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Items Manifest */}
                 <div className="p-8 space-y-6">
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] text-center mb-2 underline underline-offset-8 decoration-slate-100">Itemized Manifest</p>
