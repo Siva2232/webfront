@@ -13,6 +13,7 @@ import {
   Filter,
   Table as TableIcon,
   ChevronDown,
+  X
 } from "lucide-react";
 import API from "../api/axios";
 import butter from "../assets/images/butter.png";

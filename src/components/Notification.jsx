@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { io } from "socket.io-client";
 import {
   Bell,
   ShoppingBag,
@@ -12,6 +13,13 @@ import {
   ChefHat,
   PlusCircle
 } from "lucide-react";
+
+// Direct socket connection for notifications (backup to window events)
+const SOCKET_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+    : "http://localhost:5000");
 
 export default function Notification({ targetPath = "/admin/orders" }) {
   const { orders } = useOrders();
@@ -27,6 +35,39 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const seenOrderIds = useRef(new Set());
   const pulseTimeout = useRef(null);
   const containerRef = useRef(null);
+  const socketRef = useRef(null);
+  
+  /* 🔊 SOUND LOGIC */
+  const audioRef = useRef(
+    new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3")
+  );
+
+  // Helper to trigger notification alert
+  const triggerAlert = () => {
+    setIsNewOrder(true);
+    clearTimeout(pulseTimeout.current);
+    pulseTimeout.current = setTimeout(() => {
+      setIsNewOrder(false);
+    }, 10000);
+    
+    // Play sound
+    audioRef.current.currentTime = 0;
+    audioRef.current.play().catch(() => {});
+  };
+
+  // Helper to handle Add More Items notification
+  const handleAddMoreData = (data) => {
+    if (!data || !data.order) return;
+    
+    const notifId = `addmore-${data.order._id || data.order.id}-${Date.now()}`;
+    setAddMoreNotifications((prev) => [
+      { id: notifId, ...data },
+      ...prev.slice(0, 9), // Keep max 10
+    ]);
+    
+    triggerAlert();
+    console.log("[Notification] Add More Items received:", data);
+  };
 
   // close dropdown when clicking outside
   useEffect(() => {
@@ -39,30 +80,42 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  // Listen for "Add More Items" events
+  // Direct socket connection for "Add More Items" notifications
+  // This ensures notifications work even if OrderContext socket has issues
   useEffect(() => {
-    const handleAddMore = (e) => {
-      const data = e.detail;
-      const notifId = `addmore-${data.order._id || data.order.id}-${Date.now()}`;
-      setAddMoreNotifications((prev) => [
-        { id: notifId, ...data },
-        ...prev.slice(0, 9), // Keep max 10
-      ]);
-      
-      // Trigger alert animation
-      setIsNewOrder(true);
-      clearTimeout(pulseTimeout.current);
-      pulseTimeout.current = setTimeout(() => {
-        setIsNewOrder(false);
-      }, 10000);
-      
-      // Play sound
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
+    // Create dedicated socket for notifications
+    const notifSocket = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+    
+    socketRef.current = notifSocket;
+    
+    notifSocket.on("connect", () => {
+      console.log("[Notification] Socket connected");
+    });
+    
+    // Listen directly for orderItemsAdded event
+    notifSocket.on("orderItemsAdded", (data) => {
+      console.log("[Notification] Socket received orderItemsAdded:", data);
+      handleAddMoreData(data);
+    });
+    
+    // Also listen for window custom event (from OrderContext) as backup
+    const handleWindowEvent = (e) => {
+      console.log("[Notification] Window event received:", e.detail);
+      handleAddMoreData(e.detail);
     };
     
-    window.addEventListener("orderItemsAdded", handleAddMore);
-    return () => window.removeEventListener("orderItemsAdded", handleAddMore);
+    window.addEventListener("orderItemsAdded", handleWindowEvent);
+    
+    return () => {
+      window.removeEventListener("orderItemsAdded", handleWindowEvent);
+      notifSocket.off("orderItemsAdded");
+      notifSocket.disconnect();
+    };
   }, []);
 
   const dismissAddMore = (id) => {
@@ -72,11 +125,6 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const clearAllAddMore = () => {
     setAddMoreNotifications([]);
   };
-
-  /* 🔊 EXISTING SOUND LOGIC — NOT TOUCHED */
-  const audioRef = useRef(
-    new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3")
-  );
 
   const pendingOrders = orders
     .filter((o) => {
