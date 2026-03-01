@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
+import { TAKEAWAY_TABLE } from "./CartContext";
 
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
@@ -108,14 +109,20 @@ export const OrderProvider = ({ children }) => {
       }
 
       const payload = {
-        orderItems: orderData.items,
-        table: orderData.table,
-        totalAmount: total,
+        orderItems: orderData.orderItems || orderData.items,
+        // if table is empty / falsy treat as a takeaway to match
+        // frontend semantics and avoid disappearing orders.
+        table: orderData.table || TAKEAWAY_TABLE,
+        totalAmount: orderData.totalAmount || total,
         // forward optional metadata if provided
         notes: orderData.notes,
         billDetails: orderData.billDetails,
         paymentMethod: orderData.paymentMethod,
         status: orderData.status, // e.g. "Preparing" from cart
+        customerName: orderData.customerName,
+        customerAddress: orderData.customerAddress,
+        deliveryTime: orderData.deliveryTime,
+        existingOrderId: orderData.existingOrderId,
       };
 
       // attach waiter id if current user is a waiter
@@ -124,22 +131,39 @@ export const OrderProvider = ({ children }) => {
         if (info && info._id && info.isWaiter) {
           payload.waiter = info._id;
         }
-      } catch {}      const { data } = await API.post("/orders", payload);
-      setOrders([...orders, data]);
+      } catch {}
+
+      const { data } = await API.post("/orders", payload);
+
+      // If the backend merged the order, it returns 200 and the updated object.
+      // We should update the existing order in state instead of appending.
+      setOrders((prev) => {
+        const exists = prev.find((o) => o._id === data._id);
+        if (exists) {
+          return prev.map((o) => (o._id === data._id ? data : o));
+        }
+        return [...prev, data];
+      });
 
       // also create a bill record -- backend auto-creates one, but we
       // can optionally ensure it here for clients that bypass order API
       try {
-        await API.post("/bills", {
-          orderRef: data._id,
-          table: data.table,
-          items: data.items,
-          totalAmount: data.totalAmount,
-          status: data.status,
-          paymentMethod: data.paymentMethod,
-          notes: data.notes,
-          billDetails: data.billDetails,
-        });
+        const isNew = !orders.some((o) => o._id === data._id);
+        if (isNew) {
+          await API.post("/bills", {
+            orderRef: data._id,
+            table: data.table,
+            customerName: data.customerName,
+            customerAddress: data.customerAddress,
+            deliveryTime: data.deliveryTime,
+            items: data.items,
+            totalAmount: data.totalAmount,
+            status: data.status,
+            paymentMethod: data.paymentMethod,
+            notes: data.notes,
+            billDetails: data.billDetails,
+          });
+        }
       } catch (err) {
         // ignore; server already created on its side
       }
@@ -147,8 +171,46 @@ export const OrderProvider = ({ children }) => {
       return data;
     } catch (error) {
       console.error("Error adding order:", error);
+      throw error;
     }
   };
+
+  // manual orders are created by admin via dedicated endpoint; payload
+  // structure identical but call different URL and require auth middleware
+  const addManualOrder = async (orderData) => {
+    try {
+      // reuse same payload construction as addOrder
+      let total = orderData.totalPrice;
+      if (total === undefined) {
+        if (orderData.billDetails?.grandTotal) {
+          total = orderData.billDetails.grandTotal;
+        } else if (orderData.items) {
+          total = orderData.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+        }
+      }
+
+      const payload = {
+        orderItems: orderData.orderItems || orderData.items,
+        table: orderData.table || TAKEAWAY_TABLE,
+        totalAmount: orderData.totalAmount || total,
+        notes: orderData.notes,
+        billDetails: orderData.billDetails,
+        paymentMethod: orderData.paymentMethod,
+        status: orderData.status,
+        customerName: orderData.customerName,
+        customerAddress: orderData.customerAddress,
+        deliveryTime: orderData.deliveryTime,
+      };
+
+      const { data } = await API.post("/orders/manual", payload);
+      setOrders((prev) => [...prev, data]);
+      return data;
+    } catch (error) {
+      console.error("Error adding manual order:", error);
+      throw error;
+    }
+  };
+
 
   const updateOrderStatus = async (id, status) => {
     try {
@@ -254,6 +316,7 @@ export const OrderProvider = ({ children }) => {
         orders,
         bills,
         addOrder,
+        addManualOrder,
         updateOrderStatus,
         clearOrders,
         fetchOrders,

@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
 import StatusBadge from "../components/StatusBadge";
 import { useEffect } from "react";
+import { TAKEAWAY_TABLE } from "../context/CartContext";
 
 export default function OrderStatus() {
   const { orderId } = useParams();
@@ -26,7 +27,7 @@ export default function OrderStatus() {
       <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-sm w-full">
         <h1 className="text-2xl font-bold mb-2">Order Confirmed 🎉</h1>
         <p className="text-sm text-gray-500 mb-4">
-          Table {order.table}
+          {(order.table === TAKEAWAY_TABLE || !order.table) ? "Takeaway" : `Table ${order.table}`}
         </p>
 
         <StatusBadge status={order.status} />

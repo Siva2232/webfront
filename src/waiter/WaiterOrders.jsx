@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import OrdersDashboard from "../admin/Orders";
 import { useOrders } from "../context/OrderContext";
+import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
 
 // The admin Orders component already shows everything; for the waiter we
@@ -28,7 +29,13 @@ export default function WaiterOrders() {
       // fetch fresh results for this table (unprotected endpoint)
       fetchTableOrders(tableFilter.trim());
       setFiltered(
-        orders.filter(o => String(o.table) === tableFilter.trim())
+        orders.filter(o => {
+          const tf = tableFilter.trim();
+          return (
+            String(o.table) === tf ||
+            ((tf === TAKEAWAY_TABLE || tf === DELIVERY_TABLE) && !o.table)
+          );
+        })
       );
     }
   }, [orders, tableFilter]);
@@ -46,9 +53,9 @@ export default function WaiterOrders() {
           <input
             type="text"
             value={tableFilter}
-            onChange={e => setTableFilter(e.target.value.replace(/[^0-9]/g, ""))}
-            className="border border-slate-200 rounded-lg px-3 py-2 w-20"
-            placeholder="any"
+            onChange={e => setTableFilter(e.target.value.replace(/[^0-9A-Za-z]/g, "").toUpperCase())}
+            className="border border-slate-200 rounded-lg px-3 py-2 w-32"
+            placeholder={`any or ${TAKEAWAY_TABLE}/${DELIVERY_TABLE} (also blank)`}
           />
           <button
             onClick={() => setTableFilter("")}

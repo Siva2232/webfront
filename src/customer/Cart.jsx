@@ -1,4 +1,4 @@
-import { useCart } from "../context/CartContext";
+import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useOrders } from "../context/OrderContext";
 import { generateId } from "../utils/generateId";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -11,15 +11,38 @@ import {
 } from "lucide-react";
 import confetti from 'canvas-confetti';
 
-export default function Cart() {
+export default function Cart({ hideTable = false }) {
   const {
     cart, table, setTable, clearCart,
     totalAmount, updateQuantity, removeFromCart,
   } = useCart();
 
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode");
+  const isTakeaway = table === TAKEAWAY_TABLE || mode === "takeaway" || hideTable;
+
   const { addOrder } = useOrders();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+
+  // ensure the context table value is the special TAKEAWAY_TABLE when the
+  // `hideTable` prop is true (used only by the takeaway‑specific cart page)
+  useEffect(() => {
+    if (hideTable && table !== TAKEAWAY_TABLE) {
+      setTable(TAKEAWAY_TABLE);
+    }
+  }, [hideTable, table, setTable]);
+
+  // redirect only when we're in takeaway mode AND not already hiding the header
+  // (i.e. when hideTable=false).  the wrapper page will set hideTable.
+  useEffect(() => {
+    if (isTakeaway && !hideTable) {
+      navigate("/takeaway-cart?mode=takeaway", { replace: true });
+    }
+  }, [isTakeaway, hideTable, navigate]);
+
+  // display-friendly text for the current table/mode
+  // displayLocation no longer used directly, header hidden when takeaway
+  const displayLocation = table === TAKEAWAY_TABLE ? "Takeaway" : (table || "");
 
   const [notes, setNotes] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -35,6 +58,13 @@ export default function Cart() {
   // Auto-detect & update table from URL
   useEffect(() => {
     const urlTable = searchParams.get("table");
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "takeaway") {
+      // make sure CartContext is aware of a takeaway order
+      setTable(TAKEAWAY_TABLE);
+      setTableError("");
+      return;
+    }
     if (urlTable?.trim()) {
       const clean = urlTable.trim().replace(/^0+/, '') || "";
       if (clean !== table) {
@@ -89,7 +119,8 @@ export default function Cart() {
   };
 
   const placeOrder = async () => {
-    if (!table?.trim()) {
+    // if there is no table AND this is not a takeaway order we complain
+    if (!table?.trim() && !isTakeaway) {
       setTableError("Please enter your table number");
       return;
     }
@@ -101,8 +132,11 @@ export default function Cart() {
     const orderId = generateId("ORD");
     localStorage.setItem("lastOrderId", orderId);
 
+    const mergeId = searchParams.get("mergeId");
+
     // Immediately show success UI (Optimistic UI)
-    setPlacedDetails({ orderId, table, total: grandTotal });
+    const effectiveTable = isTakeaway ? TAKEAWAY_TABLE : table;
+    setPlacedDetails({ orderId: mergeId || orderId, table: effectiveTable, total: grandTotal });
     setShowSuccess(true);
     clearCart(); // Clear immediately for snappiness
 
@@ -117,13 +151,17 @@ export default function Cart() {
     // Prep details
     const details = { 
       id: orderId, 
-      table, 
-      items: [...cart], 
-      status: "Preparing", 
+      existingOrderId: mergeId, 
+      // make sure we send the effective table value (TAKEAWAY_TABLE when it's a
+      // takeaway order) rather than whatever the context happens to currently
+      // hold (which can lag behind when hideTable is used).
+      table: effectiveTable,
+      orderItems: [...cart], 
+      status: "Pending", 
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
-      totalPrice: grandTotal,
+      totalAmount: grandTotal,
     };
 
     // Background process
@@ -132,9 +170,14 @@ export default function Cart() {
       localStorage.setItem("lastOrderId", effectiveId);
     });
 
-    // Navigate faster
+    // Navigate faster; use effectiveTable as above so we don't rely on the
+    // context value having been updated synchronously.
     setTimeout(() => {
-      navigate(`/order-summary?table=${table}`);
+      if (effectiveTable === TAKEAWAY_TABLE) {
+        navigate(`/order-summary?mode=takeaway`);
+      } else {
+        navigate(`/order-summary?table=${effectiveTable}`);
+      }
     }, 1000); 
   };
 
@@ -143,7 +186,7 @@ export default function Cart() {
       
       <nav className="sticky top-0 z-[60] bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to={`/menu${table ? `?table=${table}` : ""}`} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
+          <Link to={`/menu${table ? `?table=${table}` : ""}${table === TAKEAWAY_TABLE ? "?mode=takeaway" : ""}`} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
             <ChevronLeft size={24} className="text-slate-900" />
           </Link>
           <div className="text-center">
@@ -175,26 +218,27 @@ export default function Cart() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
               
               {/* Table selection - kept your original beautiful style */}
-              <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                      <UtensilsCrossed size={20} className="text-orange-400" />
+              {!isTakeaway ? (
+                <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                        <UtensilsCrossed size={20} className="text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
+                          {table === TAKEAWAY_TABLE ? "Order Type" : "Serving At"}
+                        </p>
+                        <p className="text-lg font-black uppercase">
+                          {displayLocation || '??'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
-                        Serving At
-                      </p>
-                      <p className="text-lg font-black uppercase">
-                        Table {table || '??'}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="relative flex flex-col items-end">
-                    <input 
-                      type="text"
-                      value={table}
+                    <div className="relative flex flex-col items-end">
+                      <input 
+                        type="text"
+                        value={table}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, '');
                         setTable(val);
@@ -217,6 +261,11 @@ export default function Cart() {
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">
+                Takeaway Order
+              </div>
+            )}
 
               {/* Rest of your UI - Order items, Notes, Bill - unchanged */}
               <div className="space-y-4">
@@ -284,7 +333,7 @@ export default function Cart() {
             <div 
               ref={containerRef}
               className={`relative h-20 p-2 rounded-[2.5rem] flex items-center transition-all duration-500 shadow-2xl overflow-hidden ${
-                table?.trim() 
+                (isTakeaway || table?.trim()) 
                   ? 'bg-slate-900' 
                   : 'bg-slate-100 grayscale pointer-events-none'
               }`}
@@ -336,12 +385,19 @@ const SuccessView = ({ details, navigate, table }) => (
     </div>
     <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Order Placed!</h2>
     <p className="text-slate-400 text-sm mt-4 mb-10 px-10">
-      Table: <strong>{details.table}</strong><br/>
+      Table: <strong>{details.table === TAKEAWAY_TABLE ? "Takeaway" : details.table}</strong><br/>
       Total Bill: <span className="text-slate-900 font-black">₹{details.total.toLocaleString()}</span> (Incl. GST)
     </p>
     <div className="space-y-4 max-w-xs mx-auto">
         <button 
-          onClick={() => navigate(`/order-summary?table=${table}`)} 
+          onClick={() => {
+            // details.table already holds the effectiveTable value
+            if (details.table === TAKEAWAY_TABLE) {
+              navigate(`/order-summary?mode=takeaway`);
+            } else {
+              navigate(`/order-summary?table=${details.table}`);
+            }
+          }}
           className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
         >
             Track Status <ReceiptText size={18} />
@@ -357,7 +413,7 @@ const EmptyView = ({ table }) => (
     </div>
     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cart is empty</h3>
     <Link 
-      to={`/menu${table ? `?table=${table}` : ""}`} 
+      to={`/menu${table ? `?table=${table}` : ""}${table === TAKEAWAY_TABLE ? "?mode=takeaway" : ""}`} 
       className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg mt-6"
     >
       Back to Menu

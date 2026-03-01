@@ -1,4 +1,5 @@
 import { useOrders } from "../context/OrderContext";
+import { TAKEAWAY_TABLE } from "../context/CartContext";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import StatusBadge from "../components/StatusBadge";
 import OrderProgress from "../components/OrderProgress";
@@ -27,13 +28,35 @@ export default function OrderSummary() {
     if (orders.length === 0) fetchOrders();
   }, []);
 
-  // Get current table from URL
+  // Get current table & mode from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
+  const mode = searchParams.get("mode");
 
-  // Find active (non-served) orders for current table only
-  const tableOrders = currentTable 
-    ? orders.filter(o => o.table === currentTable && o.status !== "Served")
-    : [];
+  // helper to generate a menu URL that preserves takeaway mode when needed
+  const menuLink = (() => {
+    const params = new URLSearchParams();
+    if (currentTable) params.set("table", currentTable);
+    if (mode === "takeaway" || currentTable === TAKEAWAY_TABLE) {
+      params.set("mode", "takeaway");
+    }
+    const qs = params.toString();
+    return qs ? `/menu?${qs}` : "/menu";
+  })();
+
+  // Determine orders to show.  For a table we filter by that table;
+  // for takeaway mode we look for either the sentinel value or a missing
+  // table (older orders created before the bug fix may have had ``).
+  const isTakeawayOrder = (o) => o.table === TAKEAWAY_TABLE || !o.table;
+
+  const tableOrders = mode === "takeaway"
+    ? orders.filter(o => isTakeawayOrder(o) && o.status !== "Served")
+    : currentTable
+      ? orders.filter(o => 
+          o.status !== "Served" &&
+          (o.table === currentTable ||
+            (currentTable === TAKEAWAY_TABLE && !o.table))
+        )
+      : [];
 
   // Get the most recent active order for this table (served orders are ignored)
   const order = tableOrders.length > 0 
@@ -87,13 +110,15 @@ export default function OrderSummary() {
           NO ACTIVE ORDER
         </h2>
         <p className="text-slate-400 text-sm mb-8 leading-relaxed max-w-[300px]">
-          {currentTable 
-            ? `We couldn't find any recent orders for Table ${currentTable}.`
-            : "No table selected or no recent orders found."}
+          {mode === "takeaway"
+            ? "No recent takeaway orders found."
+            : currentTable 
+              ? `We couldn't find any recent orders for Table ${currentTable}.`
+              : "No table selected or no recent orders found."}
         </p>
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <Link 
-            to={`/menu${currentTable ? `?table=${currentTable}` : ""}`}
+            to={menuLink}
             className="bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-all"
           >
             Browse Menu
@@ -122,7 +147,7 @@ export default function OrderSummary() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button 
-            onClick={() => navigate(`/menu${currentTable ? `?table=${currentTable}` : ""}`)} 
+            onClick={() => navigate(menuLink)} 
             className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors"
           >
             <ChevronLeft size={22} className="text-slate-900" />
@@ -167,8 +192,12 @@ export default function OrderSummary() {
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Table</span>
-                <p className="text-6xl font-black tracking-tighter leading-none">#{order.table}</p>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {order.table === TAKEAWAY_TABLE ? "Order" : "Table"}
+                </span>
+                <p className="text-6xl font-black tracking-tighter leading-none">
+                  {order.table === TAKEAWAY_TABLE ? "Takeaway" : `#${order.table}`}
+                </p>
               </div>
             </div>
           </div>
@@ -270,7 +299,7 @@ export default function OrderSummary() {
           >
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 mt-25"></div>
             <Link 
-              to={`/menu${order.table ? `?table=${order.table}` : ""}`} 
+              to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
               className="relative flex items-center justify-center gap-3 w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all"
             >
               <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-700" />

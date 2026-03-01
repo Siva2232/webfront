@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from "framer-motion";
 import { Utensils, ShoppingCart, Receipt, ChefHat, Bell } from "lucide-react";
+import { TAKEAWAY_TABLE } from "../context/CartContext";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
@@ -10,8 +11,13 @@ export default function Navbar({ title }) {
   const [hasUnreadOffer, setHasUnreadOffer] = useState(false);
 
   const currentTable = searchParams.get("table")?.trim();
+  const mode = searchParams.get("mode");
 
   const getLinkWithTable = (path) => {
+    // if we know this is a takeaway order, preserve that on nav
+    if (mode === "takeaway") {
+      return `${path}?mode=takeaway`;
+    }
     if (!currentTable) return path;
     return `${path}?table=${currentTable}`;
   };

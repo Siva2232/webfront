@@ -1,4 +1,4 @@
-import { useCart } from "../context/CartContext";
+import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useProducts } from "../context/ProductContext";
 import ProductCard from "../components/ProductCard";
 import RestaurantLoader from "../components/RestaurantLoader";
@@ -7,14 +7,11 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  X,
   ShoppingCart,
   Utensils,
   ArrowRight,
   Filter,
   Table as TableIcon,
-  AlertCircle,
-  Check,
   ChevronDown,
 } from "lucide-react";
 import API from "../api/axios";
@@ -29,14 +26,14 @@ export default function Menu() {
   const { products, orderedCategories } = useProducts();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const mode = searchParams.get("mode");
+  const isTakeaway = table === TAKEAWAY_TABLE || mode === "takeaway";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [slide, setSlide] = useState(0);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [foodTypeFilter, setFoodTypeFilter] = useState("all");
-  const [showTableModal, setShowTableModal] = useState(false);
-  const [manualTableInput, setManualTableInput] = useState(table || "");
-  const [tableError, setTableError] = useState("");
+  // table modal removed – we rely on QR chooser or query param
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
   const sectionRefs = useRef({});
@@ -55,36 +52,40 @@ export default function Menu() {
     }
   }, [showLoader]);
 
-  // Automatic table from QR code
+  // Automatic table from QR code / mode handling
   useEffect(() => {
     const urlTable = searchParams.get("table");
+    const mode = searchParams.get("mode");
+    const from = searchParams.get("from");
+
+    // if the user has scanned a table but hasn't chosen dine-in/takeaway yet,
+    // send them to the chooser page first.  That page will in turn navigate
+    // back here with either ?table=... or ?mode=takeaway.
+    // only skip the redirect when we've just come from the chooser itself
+    // (marked via ?from=chooser).  otherwise we want the guest to make a
+    // choice even if the cart context already grabbed the table from the URL.
+    if (urlTable && !mode && !isTakeaway && from !== "chooser") {
+      navigate(`/choose-mode?table=${urlTable}`, { replace: true });
+      return;
+    }
+
+    if (mode === "takeaway") {
+      // don't prompt for a table; CartContext initialiser already set the
+      // special TAKEAWAY_TABLE value but in case the user navigated here
+      // after the fact we'll ensure it again and wipe any manual input.
+      setTable(TAKEAWAY_TABLE);
+      return;
+    }
+
     if (urlTable && urlTable.trim() !== "") {
       const cleanTable = urlTable.trim().replace(/^0+/, "") || "1";
       setTable(cleanTable);
-      setManualTableInput(cleanTable);
     } else if (!table) {
-      setTimeout(() => setShowTableModal(true), 1200);
+      // no table provided: continue showing menu but user will be prompted by
+      // the QR chooser page; we no longer display an overlay here.
     }
   }, [searchParams, setTable, table, navigate]);
 
-  const handleSetManualTable = () => {
-    const cleaned = manualTableInput.trim().replace(/[^0-9]/g, "");
-    if (!cleaned) {
-      setTableError("Please enter a table number");
-      return;
-    }
-    if (Number(cleaned) < 1 || Number(cleaned) > 99) {
-      setTableError("Table number must be 1–99");
-      return;
-    }
-    setTable(cleaned);
-    setTableError("");
-    setShowTableModal(false);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleSetManualTable();
-  };
 
   const [activeSlides, setActiveSlides] = useState([]);
 
@@ -175,7 +176,7 @@ export default function Menu() {
               <div className="flex items-center justify-between">
                 {/* header removed per request; table assignment UI remains below */}
 
-                {table && (
+                {(table || isTakeaway) && (
   <div className="relative group select-none">
     {/* Subtle soft glow to anchor the element */}
     <div className="absolute inset-0 bg-emerald-500/10 blur-2xl rounded-full" />
@@ -201,10 +202,10 @@ export default function Menu() {
       {/* Text Stack */}
       <div className="flex flex-col pr-1">
         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-tight">
-          Assigned
+          {isTakeaway ? "Order Type" : "Assigned"}
         </span>
         <span className="text-sm font-black text-slate-900 uppercase tracking-tighter">
-          Table {table}
+          {isTakeaway ? "Takeaway" : `Table ${table}`}
         </span>
       </div>
     </div>
@@ -537,7 +538,7 @@ export default function Menu() {
                 exit={{ y: 100 }}
                 className="fixed bottom-6 inset-x-4 z-50 flex justify-center pointer-events-none mb-19 sm:mb-0"
               >
-                <Link to={`/cart${table ? `?table=${table}` : ""}`} className="pointer-events-auto group">
+                <Link to={isTakeaway ? "/takeaway-cart?mode=takeaway" : `/cart${table ? `?table=${table}` : ""}`} className="pointer-events-auto group">
                   <div className="bg-slate-950 text-white px-8 py-4 rounded-[2rem] flex items-center gap-8 shadow-2xl transition-all hover:scale-[1.02] active:scale-95">
                     <div className="flex items-center gap-4">
                       <div className="relative">
@@ -559,74 +560,6 @@ export default function Menu() {
             )}
           </AnimatePresence>
 
-          {/* Table Selection Modal */}
-          <AnimatePresence>
-            {showTableModal && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-                onClick={() => setShowTableModal(false)}
-              >
-                <motion.div
-                  initial={{ scale: 0.88, y: 40 }}
-                  animate={{ scale: 1, y: 0 }}
-                  exit={{ scale: 0.88, y: 40 }}
-                  className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                        <TableIcon size={24} className="text-emerald-600" />
-                        Select Your Table
-                      </h3>
-                      <button onClick={() => setShowTableModal(false)} className="text-slate-400 hover:text-slate-700">
-                        <X size={24} />
-                      </button>
-                    </div>
-
-                    <p className="text-slate-600 mb-6">
-                      Scan the QR code on your table or enter your table number manually
-                    </p>
-
-                    <div className="relative mb-6">
-                      <input
-                        type="text"
-                        value={manualTableInput}
-                        onChange={(e) => {
-                          setManualTableInput(e.target.value.replace(/[^0-9]/g, ""));
-                          setTableError("");
-                        }}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Table number (e.g. 7)"
-                        className="w-full pl-14 pr-5 py-4 rounded-xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-0 text-xl font-bold text-center"
-                        maxLength={3}
-                        autoFocus
-                      />
-                      <TableIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
-                    </div>
-
-                    {tableError && (
-                      <div className="flex items-center gap-2 text-red-600 text-sm mb-4">
-                        <AlertCircle size={18} />
-                        <span>{tableError}</span>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={handleSetManualTable}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-3"
-                    >
-                      <Check size={22} />
-                      Confirm Table
-                    </button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
       )}
     </div>

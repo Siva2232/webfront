@@ -1,10 +1,16 @@
 import React, { useState, useEffect, } from 'react';
 import { useOrders } from "../context/OrderContext";
+import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 import {
   ShoppingBag, Activity, CheckCircle, Sparkles, Coffee,
   Clock, Flame, BellRing, ChevronRight, MessageSquare, Timer,
   Users, DollarSign, UtensilsCrossed, PackageCheck
 } from "lucide-react";
+
+// helper used by multiple components in this module
+// treat both takeaway or delivery (and legacy blank) as non-table orders
+export const isTakeawayOrder = (o) =>
+  o.table === TAKEAWAY_TABLE || o.table === DELIVERY_TABLE || !o.table || o.table === "TAKEAWAY" || o.table === "DELIVERY";
 import { motion, AnimatePresence } from "framer-motion";
 
 const gradientMap = {
@@ -44,11 +50,26 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   }, 0);
 
   // 6 STATS DATA
+
+  // how many unique table numbers currently have active (non-served) orders
+  const liveTablesCount = new Set(
+    activeOrders
+      .map(o => o.table)
+      .filter(t => t && t !== TAKEAWAY_TABLE)
+  ).size;
+
+  // count of takeaways (include blank/table-less ones for backwards
+  // compatibility)
+  const activeTakeawayCount = activeOrders.filter(isTakeawayOrder).length;
+  const servedTakeawayCount = servedOrders.filter(isTakeawayOrder).length;
+
   const stats = [
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Live Tables", value: new Set(activeOrders.map(o => o.table)).size, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Live Tables", value: liveTablesCount, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Active Takeaways/Delivery", value: activeTakeawayCount, icon: ShoppingBag, color: "text-pink-600", bg: "bg-pink-50" },
     { label: "Ready", value: orders.filter(o => o.status === "Ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Total Served", value: servedOrders.length, icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Takeaways/Delivery Served", value: servedTakeawayCount, icon: PackageCheck, color: "text-pink-600", bg: "bg-pink-50" },
     { label: "Items Sold", value: totalItemsSold, icon: UtensilsCrossed, color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Kitchen Load", value: activeOrders.length > 5 ? "High" : "Normal", icon: Activity, color: "text-slate-600", bg: "bg-slate-50" },
   ];
@@ -123,6 +144,8 @@ export default function OrdersDashboard({ overrideOrders = null }) {
 
 function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const [timeAgo, setTimeAgo] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
   
   // Billing Logic
   const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -159,10 +182,31 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
         <div className="flex-1 space-y-6">
           <div className="flex items-center gap-5">
             <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black text-2xl italic shadow-lg`}>
-              {order.table}
+              {isTakeawayOrder(order) ? "TA" : order.table}
             </div>
             <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Table {order.table}</h3>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                {isTakeawayOrder(order)
+                  ? order.table === DELIVERY_TABLE
+                    ? "Delivery"
+                    : "Takeaway"
+                  : `Table ${order.table}`}
+              </h3>
+              {order.customerName && (
+                <p className="text-sm font-medium text-slate-600">
+                  {order.customerName}
+                </p>
+              )}
+              {order.customerAddress && (
+                <p className="text-sm text-slate-500 italic">
+                  {order.customerAddress}
+                </p>
+              )}
+              {order.deliveryTime && (
+                <p className="text-sm font-black text-rose-500 uppercase tracking-tighter mt-1">
+                  Delivery Time: {order.deliveryTime}
+                </p>
+              )}
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Timer size={12}/> {timeAgo} • #{(order._id || order.id || "").slice(-5)}
               </p>
@@ -216,8 +260,13 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
               {["Preparing", "Cooking", "Ready", "Served"].map((s) => (
                 <button
                   key={s}
-                  onClick={() => updateOrderStatus(order._id || order.id, s)}
-                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${s === status ? 'bg-white text-slate-900 shadow-sm opacity-50' : 'bg-white text-slate-500 hover:bg-slate-900 hover:text-white border border-slate-100'}`}
+                  onClick={() => {
+                    if (s !== status) {
+                      setSelectedStatus(s);
+                      setIsModalOpen(true);
+                    }
+                  }}
+                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${s === status ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-900 hover:text-white border border-slate-100'}`}
                 >
                   {s}
                 </button>
@@ -225,6 +274,48 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
             </div>
           </div>
         )}
+
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl text-center space-y-8 border border-slate-100"
+              >
+                <div className="mx-auto w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-500">
+                  <Activity size={40} strokeWidth={2.5} className="animate-pulse" />
+                </div>
+                
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase">Update Status?</h3>
+                  <p className="text-slate-500 font-bold mt-3 text-sm leading-relaxed px-4">
+                    Change order <span className="text-slate-900">#{(order._id || order.id || "").slice(-5)}</span> from <span className="text-orange-500 uppercase tracking-wider">{status}</span> to <span className="text-indigo-600 uppercase tracking-wider">{selectedStatus}</span>?
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="py-5 rounded-[2rem] bg-slate-100 text-slate-600 font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={() => {
+                      updateOrderStatus(order._id || order.id, selectedStatus);
+                      setIsModalOpen(false);
+                    }}
+                    className="py-5 rounded-[2rem] bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-200 hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {isCompleted && (
           <div className="flex flex-col justify-center items-center px-8 text-emerald-500">

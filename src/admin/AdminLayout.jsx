@@ -28,12 +28,15 @@ import {
   Clock,
   FileText,
   Zap,
+  UtensilsCrossed,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
+import { useOrders } from "../context/OrderContext";
 import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { products = [] } = useProducts();
+  const { fetchOrders, fetchBills } = useOrders();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -55,6 +58,7 @@ export default function AdminLayout() {
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
     { name: "Products", icon: Package, path: "products" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
+    { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
     { name: "Bill", icon: Receipt, path: "bill" },
     { name: "Tables", icon: Table, path: "tables" },
     {
@@ -76,10 +80,10 @@ export default function AdminLayout() {
       icon: FileText,
       path: "expense",
       children: [
-        { name: "Purchase", tab: "purchase" },
-        { name: "Utility", tab: "utility" },
-        { name: "Direct Expense", tab: "direct" },
-        { name: "Indirect Expense", tab: "indirect" },
+        { name: "Purchase", tab: "purchase", path: "expense/purchase" },
+        { name: "Utility", tab: "utility", path: "expense/utility" },
+        { name: "Direct Expense", tab: "direct", path: "expense/direct" },
+        { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
       ],
     },
     { name: "Kitchen Features",
@@ -128,6 +132,9 @@ export default function AdminLayout() {
       localStorage.removeItem("showWelcomeMessage");
       setTimeout(() => setShowWelcome(false), 4000);
     }
+    // Refresh core admin data on mount
+    fetchOrders();
+    fetchBills();
   }, []);
 
   // Close profile dropdown & stock alert when clicking outside
@@ -340,12 +347,18 @@ const handleClearAllStockAlerts = () => {
                   else if (child.tab === "utility") icon = <Zap size={14} className="inline mr-1" />;
                   else if (child.tab === "direct") icon = <DollarSign size={14} className="inline mr-1" />;
                   else if (child.tab === "indirect") icon = <Clock size={14} className="inline mr-1" />;
-                  const isActiveChild = currentTab === child.tab;
+                  const isActiveChild =
+                    (child.path && location.pathname.endsWith(child.path)) ||
+                    currentTab === child.tab;
                   return (
                     <button
                       key={child.tab}
                       onClick={() => {
-                        navigate(`/admin/${item.path}?tab=${child.tab}`);
+                        if (child.path) {
+                          navigate(`/admin/${child.path}`);
+                        } else {
+                          navigate(`/admin/${item.path}?tab=${child.tab}`);
+                        }
                         closeMobileMenu();
                       }}
                       className={`w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors ${

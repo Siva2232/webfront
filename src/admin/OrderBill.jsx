@@ -14,16 +14,11 @@ import {
   Hash,
   Star
 } from "lucide-react";
+import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
 export default function OrderBill() {
   const { bills, fetchBills, isLoading } = useOrders();
   const navigate = useNavigate();
-
-  // make sure bills are loaded when hitting the bill page directly
-  // always call fetchBills on mount to refresh data, dedupe later
-  React.useEffect(() => {
-    fetchBills();
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // deduplicate by _id or id to prevent double rendering
   const uniqueBills = React.useMemo(() => {
@@ -122,16 +117,57 @@ export default function OrderBill() {
                 </div>
 
                 {/* Meta Grid */}
-                <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-                  <div className="p-6 space-y-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1"><Hash size={8}/> Order Ref</p>
-                    <p className="text-[10px] font-black text-slate-900 uppercase">#{(order._id || order.id || '').slice(-10)}</p>
-                  </div>
-                  <div className="p-6 text-right space-y-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Location</p>
-                    <p className="text-xl font-black italic text-slate-900 leading-none">TBL-{order.table}</p>
-                  </div>
-                </div>
+                {(() => {
+                  // treat blank table same as TAKEAWAY_TABLE (older orders might
+                  // have been saved incorrectly).  Conditionally render a smaller
+                  // block for takeaway so the word "Takeaway" doesn't appear twice
+                  const isTA = order.table === TAKEAWAY_TABLE || !order.table || order.table === "TAKEAWAY";
+                  const isDelivery = order.table === DELIVERY_TABLE || order.table === "DELIVERY";
+                  if (isTA || isDelivery) {
+                    // keep two‑column layout but show order type right side
+                    return (
+                      <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+                        <div className="p-6 space-y-1">
+                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1">
+                            <Hash size={8}/> Order Ref
+                          </p>
+                          <p className="text-[10px] font-black text-slate-900 uppercase">
+                            #{(order._id || order.id || '').slice(-10)}
+                          </p>
+                        </div>
+                        <div className="p-6 text-right space-y-1">
+                          <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+                            Order Type
+                          </p>
+                          <p className="text-xl font-black italic text-slate-900 leading-none">
+                            {isDelivery ? "Delivery" : "Takeaway"}
+                          </p>
+                          {isDelivery && order.deliveryTime && (
+                             <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-2">
+                               EST. TIME: {order.deliveryTime}
+                             </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+                      <div className="p-6 space-y-1">
+                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1"><Hash size={8}/> Order Ref</p>
+                        <p className="text-[10px] font-black text-slate-900 uppercase">#{(order._id || order.id || '').slice(-10)}</p>
+                      </div>
+                      <div className="p-6 text-right space-y-1">
+                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
+                          Location
+                        </p>
+                        <p className="text-xl font-black italic text-slate-900 leading-none">
+                          TBL-{order.table}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* PLACED DATE & TIME (Fixed Bug) */}
                 <div className="px-6 py-3 bg-slate-50/50 flex justify-between items-center border-b border-slate-100">

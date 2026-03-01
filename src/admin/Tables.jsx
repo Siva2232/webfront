@@ -67,7 +67,8 @@ export default function Tables() {
   }, [orders]);
 
   const goToMenu = (tableId) => {
-    navigate(`/menu?table=${tableId}`);
+    // send guests to the intermediate page where they can pick dine‑in or takeaway
+    navigate(`/choose-mode?table=${tableId}`);
   };
 
   const releaseTable = (e, tableId) => {

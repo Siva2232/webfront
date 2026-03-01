@@ -2,11 +2,21 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const CartContext = createContext();
 
+// special table identifiers used when the customer chooses takeaway or
+// when the staff creates a delivery/manual order without a specific table
+export const TAKEAWAY_TABLE = "TAKEAWAY";
+export const DELIVERY_TABLE = "DELIVERY";
+
 const getCartKey = (table) => `cart_${table?.trim() || 'guest'}`;
 
 export const CartProvider = ({ children }) => {
   const [table, setTableState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    if (mode === "takeaway") {
+      // use a sentinel string so backend still receives a value and UI knows it's a takeaway order
+      return TAKEAWAY_TABLE;
+    }
     const urlTable = params.get("table")?.trim()?.replace(/^0+/, "");
     return urlTable || localStorage.getItem("lastUsedTable") || "";
   });
