@@ -7,7 +7,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { 
   ShoppingBag, Trash2, Plus, Minus, ChevronLeft, 
   CheckCircle2, ReceiptText, ArrowRight, MessageSquare, 
-  UtensilsCrossed, AlertCircle
+  UtensilsCrossed, AlertCircle, Package
 } from "lucide-react";
 import confetti from 'canvas-confetti';
 
@@ -162,6 +162,8 @@ export default function Cart({ hideTable = false }) {
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
       totalAmount: grandTotal,
+      // Set hasTakeaway if any items are marked as takeaway
+      hasTakeaway: !isTakeaway && cart.some(item => item.isTakeaway),
     };
 
     // Background process
@@ -260,6 +262,21 @@ export default function Cart({ hideTable = false }) {
                     )}
                   </div>
                 </div>
+                
+                {/* Add Takeaway Items button - navigates to menu to select takeaway items */}
+                {table?.trim() && (
+                  <button 
+                    onClick={() => navigate(`/menu?table=${table}&addTakeaway=true&from=chooser`)}
+                    className={`w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs uppercase transition-all ${
+                      cart.some(item => item.isTakeaway) 
+                        ? 'bg-orange-500 text-white' 
+                        : 'bg-white/10 text-white/60 hover:bg-white/20'
+                    }`}
+                  >
+                    <Package size={16} /> 
+                    {cart.some(item => item.isTakeaway) ? '✓ Takeaway Items Added' : 'Also Want Takeaway? Tap to Add'}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">
@@ -271,12 +288,24 @@ export default function Cart({ hideTable = false }) {
               <div className="space-y-4">
                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">Order Summary</h2>
                 {cart.map((item) => (
-                  <motion.div layout key={item.id} className="flex gap-4 bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+                  <motion.div layout key={`${item.id}-${item.isTakeaway ? 'ta' : 'di'}`} className={`flex gap-4 bg-white p-4 rounded-[2rem] border shadow-sm ${item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'}`}>
                     <div className="relative w-20 h-20 shrink-0">
                         <img src={item.image} className="w-full h-full rounded-2xl object-cover" alt="" />
+                        {item.isTakeaway && (
+                          <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-1.5 rounded-full">
+                            <Package size={12} />
+                          </div>
+                        )}
                     </div>
                     <div className="flex-1 flex flex-col justify-center">
-                      <h3 className="font-black text-slate-900 text-sm uppercase">{item.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-black text-slate-900 text-sm uppercase">{item.name}</h3>
+                        {item.isTakeaway && (
+                          <span className="px-2 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase rounded-full">
+                            Takeaway
+                          </span>
+                        )}
+                      </div>
                       <p className="text-slate-400 font-bold text-[11px] mb-2 uppercase">₹{item.price}</p>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">

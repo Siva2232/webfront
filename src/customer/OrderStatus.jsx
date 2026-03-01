@@ -3,6 +3,7 @@ import { useOrders } from "../context/OrderContext";
 import StatusBadge from "../components/StatusBadge";
 import { useEffect } from "react";
 import { TAKEAWAY_TABLE } from "../context/CartContext";
+import { Package } from "lucide-react";
 
 export default function OrderStatus() {
   const { orderId } = useParams();
@@ -34,9 +35,19 @@ export default function OrderStatus() {
 
         <div className="mt-6 space-y-2 text-sm text-left">
           {order.items.map(item => (
-            <div key={item._id || item.id} className="flex justify-between">
-              <span>{item.name} × {item.qty}</span>
-              <span>₹{item.price * item.qty}</span>
+            <div key={item._id || item.id} className={`flex justify-between p-2 rounded-lg ${order.table !== TAKEAWAY_TABLE && item.isTakeaway ? 'bg-orange-50 border border-orange-100' : ''}`}>
+              <div className="flex flex-col">
+                <span className="font-bold flex items-center gap-2">
+                  {item.name} × {item.qty}
+                  {order.table !== TAKEAWAY_TABLE && item.isTakeaway && (
+                    <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase rounded flex items-center gap-1">
+                      <Package size={8} /> TAKEAWAY
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] text-gray-400">₹{item.price} each</span>
+              </div>
+              <span className="font-mono">₹{item.price * item.qty}</span>
             </div>
           ))}
         </div>

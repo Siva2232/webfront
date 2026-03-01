@@ -11,7 +11,8 @@ import {
   Phone,
   Scissors,
   Hash,
-  Star
+  Star,
+  Package
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
@@ -164,6 +165,12 @@ export default function OrderBill() {
                         <p className="text-xl font-black italic text-slate-900 leading-none">
                           TBL-{order.table}
                         </p>
+                        {/* Show combined dine-in + takeaway indicator */}
+                        {order.hasTakeaway && (
+                          <p className="text-[9px] font-black text-orange-500 uppercase tracking-wider mt-1 flex items-center justify-end gap-1">
+                            <Package size={10} /> + Takeaway
+                          </p>
+                        )}
                       </div>
                     </div>
                   );
@@ -207,9 +214,16 @@ export default function OrderBill() {
                 <div className="p-8 space-y-6">
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] text-center mb-2 underline underline-offset-8 decoration-slate-100">Itemized Manifest</p>
                   {order.items?.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-start group">
+                    <div key={idx} className={`flex justify-between items-start group ${item.isTakeaway ? 'bg-orange-50 -mx-2 px-2 py-2 rounded-lg border border-orange-100' : ''}`}>
                       <div className="flex flex-col">
-                        <span className="text-xs font-black uppercase tracking-tight text-slate-800 group-hover:text-indigo-600 transition-colors">{item.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black uppercase tracking-tight text-slate-800 group-hover:text-indigo-600 transition-colors">{item.name}</span>
+                          {item.isTakeaway && (
+                            <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded flex items-center gap-0.5">
+                              <Package size={8} /> T/A
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter italic">{item.qty} units @ ₹{item.price}</span>
                       </div>
                       <span className="text-xs font-black italic text-slate-900">₹{(item.price * item.qty).toLocaleString()}</span>

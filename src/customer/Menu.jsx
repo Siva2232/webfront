@@ -13,7 +13,8 @@ import {
   Filter,
   Table as TableIcon,
   ChevronDown,
-  X
+  X,
+  Package
 } from "lucide-react";
 import API from "../api/axios";
 import butter from "../assets/images/butter.png";
@@ -29,6 +30,8 @@ export default function Menu() {
   const navigate = useNavigate();
   const mode = searchParams.get("mode");
   const isTakeaway = table === TAKEAWAY_TABLE || mode === "takeaway";
+  // Detect if customer is adding takeaway items to an existing dine-in order
+  const addTakeawayMode = searchParams.get("addTakeaway") === "true";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [slide, setSlide] = useState(0);
@@ -171,6 +174,25 @@ export default function Menu() {
 
       {!showLoader && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col flex-1">
+          {/* Takeaway Mode Banner - Shows when customer is adding takeaway items to dine-in order */}
+          {addTakeawayMode && (
+            <div className="bg-orange-500 text-white px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Package size={20} />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider">Adding Takeaway Items</p>
+                  <p className="text-[10px] opacity-80">Items added here will be marked for takeaway</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate(`/cart?table=${table}`)}
+                className="px-4 py-2 bg-white text-orange-600 rounded-xl text-xs font-black uppercase"
+              >
+                Done
+              </button>
+            </div>
+          )}
+          
           {/* HEADER */}
           <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-slate-100 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-col gap-4">
@@ -496,8 +518,8 @@ export default function Menu() {
                           >
                             <ProductCard
                               product={product}
-                              initialQty={cart.find(i => (i._id || i.id) === (product._id || product.id))?.qty || 0}
-                              onAdd={() => product.isAvailable !== false && addToCart(product)}
+                              initialQty={cart.find(i => (i._id || i.id) === (product._id || product.id) && (addTakeawayMode ? i.isTakeaway : !i.isTakeaway))?.qty || 0}
+                              onAdd={() => product.isAvailable !== false && addToCart(product, addTakeawayMode)}
                               onRemove={() => removeFromCart(product._id || product.id)}
                             />
                           </motion.div>

@@ -57,15 +57,20 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = (product) => {
+  const addToCart = (product, isTakeawayItem = false) => {
     setCart((prev) => {
-      const exists = prev.find((i) => (i._id || i.id) === (product._id || product.id));
+      // For takeaway items, check if the same product exists with same takeaway status
+      const exists = prev.find(
+        (i) => (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
+      );
       if (exists) {
         return prev.map((i) =>
-          (i._id || i.id) === (product._id || product.id) ? { ...i, qty: i.qty + 1 } : i
+          (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
+            ? { ...i, qty: i.qty + 1 }
+            : i
         );
       }
-      return [...prev, { ...product, qty: 1 }];
+      return [...prev, { ...product, qty: 1, isTakeaway: isTakeawayItem }];
     });
   };
 

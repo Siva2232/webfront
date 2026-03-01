@@ -15,7 +15,8 @@ import {
   Sparkles, 
   ArrowRight,
   BellRing,
-  AlertCircle
+  AlertCircle,
+  Package
 } from "lucide-react";
 
 export default function OrderSummary() {
@@ -224,8 +225,12 @@ export default function OrderSummary() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  key={item.id} 
-                  className="flex items-center gap-4 group"
+                  key={item.id || idx} 
+                  className={`flex items-center gap-4 group p-3 rounded-2xl transition-all ${
+                    !isTakeawayOrder(order) && item.isTakeaway 
+                      ? "bg-orange-50 border border-orange-100/50" 
+                      : ""
+                  }`}
                 >
                   <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 shadow-sm">
                     <img 
@@ -235,8 +240,15 @@ export default function OrderSummary() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-900 truncate">{item.name}</p>
-                    <p className="text-[10px] font-black text-indigo-500 mt-0.5 uppercase tracking-wider">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-black text-slate-900 truncate">{item.name}</p>
+                      {!isTakeawayOrder(order) && item.isTakeaway && (
+                        <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase tracking-wider rounded-md flex items-center gap-0.5">
+                          <Package size={7} /> TA
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
                       {item.qty} × ₹{item.price.toLocaleString()}
                     </p>
                   </div>

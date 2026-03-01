@@ -4,7 +4,7 @@ import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 import {
   ShoppingBag, Activity, CheckCircle, Sparkles, Coffee,
   Clock, Flame, BellRing, ChevronRight, MessageSquare, Timer,
-  Users, DollarSign, UtensilsCrossed, PackageCheck
+  Users, DollarSign, UtensilsCrossed, PackageCheck, Package
 } from "lucide-react";
 
 // helper used by multiple components in this module
@@ -213,6 +213,12 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                     ? "Delivery"
                     : "Takeaway"
                   : `Table ${order.table}`}
+                {/* Show combined dine-in + takeaway badge */}
+                {order.hasTakeaway && !isTakeawayOrder(order) && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-wider rounded-full">
+                    <Package size={10} /> + Takeaway
+                  </span>
+                )}
               </h3>
               {order.customerName && (
                 <p className="text-sm font-medium text-slate-600">
@@ -239,15 +245,25 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
             {order.items.map((item, idx) => {
               // Check if item was added via "Add More Items" (within last 30 minutes)
               const isNewlyAdded = item.isNewItem || (item.addedAt && (Date.now() - new Date(item.addedAt).getTime()) < 30 * 60 * 1000);
+              // Check if item is marked as takeaway (for dine-in + takeaway orders)
+              const isTakeawayItem = item.isTakeaway;
               
+              // apply special styling only for dine-in orders where some items are takeaway
+              const isDineWithTA = !isTakeawayOrder(order) && isTakeawayItem;
               return (
-                <div key={idx} className={`flex justify-between items-center ${isNewlyAdded ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-xl border border-emerald-100' : ''}`}>
+                <div key={idx} className={`flex justify-between items-center ${isNewlyAdded ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-xl border border-emerald-100' : ''} ${isDineWithTA && !isNewlyAdded ? 'bg-orange-50 -mx-2 px-2 py-1 rounded-xl border border-orange-100' : ''}`}>
                   <div className="flex items-center gap-3">
                     <span className="h-7 w-7 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black italic">{item.qty}</span>
                     <span className="font-bold text-slate-700">{item.name}</span>
                     {isNewlyAdded && (
                       <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full animate-pulse">
                         NEW
+                      </span>
+                    )}
+                    {/* only mark individual items when the order itself is not a pure takeaway */}
+                    {!isTakeawayOrder(order) && isTakeawayItem && (
+                      <span className="px-2 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
+                        <Package size={8} /> TAKEAWAY
                       </span>
                     )}
                   </div>

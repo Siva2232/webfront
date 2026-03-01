@@ -3,21 +3,30 @@ import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
-import { Plus, Minus, ShoppingCart, MapPin, Utensils, ClipboardList } from "lucide-react";
+import { Plus, Minus, ShoppingCart, MapPin, Utensils, ClipboardList, Package } from "lucide-react";
 
 export default function ManualOrder() {
   const { products = [] } = useProducts();
   const { addManualOrder } = useOrders();
-  const [table, setTable] = useState("");
+  // table number removed; order mode determines destination
   const [isTakeaway, setIsTakeaway] = useState(false);
   const [isDelivery, setIsDelivery] = useState(false);
+  // New: flag for dine-in orders that also include takeaway items (single bill)
+  const [hasTakeawayWithDineIn, setHasTakeawayWithDineIn] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
 
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
-  const [notes, setNotes] = useState("");
+
+  // when user toggles global dine-in+takeaway switch, mark all existing items
+  useEffect(() => {
+    if (hasTakeawayWithDineIn) {
+      setItems(prev => prev.map(i => ({ ...i, isTakeaway: true })));
+    }
+    // do not clear individual flags when toggled off; user can adjust manually
+  }, [hasTakeawayWithDineIn]);  const [notes, setNotes] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,8 +46,8 @@ export default function ManualOrder() {
       const idx = prev.findIndex((i) => (i._id || i.id) === prodId);
       if (idx === -1) {
         if (delta <= 0) return prev;
-        // Add new product with normalized ID
-        return [...prev, { ...prod, _id: prodId, qty: delta }];
+        // Add new product with normalized ID and inherit global takeaway flag
+        return [...prev, { ...prod, _id: prodId, qty: delta, isTakeaway: hasTakeawayWithDineIn }];
       }
       const newQty = prev[idx].qty + delta;
       if (newQty < 1) {
@@ -52,9 +61,17 @@ export default function ManualOrder() {
     });
   };
 
+  const toggleItemTakeaway = (prodId) => {
+    setItems(prev => 
+      prev.map(i =>
+        (i._id || i.id) === prodId ? { ...i, isTakeaway: !i.isTakeaway } : i
+      )
+    );
+  };
+
   const handleSubmit = async () => {
-    if (!isTakeaway && !isDelivery && !table.trim()) {
-      alert("Please enter a table number or select takeaway/delivery.");
+    if (!isTakeaway && !isDelivery) {
+      alert("Please select takeaway or delivery mode.");
       return;
     }
     if (items.length === 0) {
@@ -65,9 +82,7 @@ export default function ManualOrder() {
     const orderData = {
       table: isDelivery
         ? DELIVERY_TABLE
-        : isTakeaway
-        ? TAKEAWAY_TABLE
-        : table.trim(),
+        : TAKEAWAY_TABLE,
       orderItems: items, // Using orderItems to match controller expectations
       notes: notes.trim(),
       status: "Preparing",
@@ -78,6 +93,8 @@ export default function ManualOrder() {
       customerName: customerName.trim(),
       customerAddress: customerAddress.trim(),
       deliveryTime: isDelivery ? deliveryTime.trim() : "",
+      // hasTakeaway should reflect whether any item is marked takeaway
+      hasTakeaway: items.some(i => i.isTakeaway),
     };
 
     await addManualOrder(orderData);
@@ -108,9 +125,23 @@ export default function ManualOrder() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {sorted.map((p) => {
-                const currentQty = (items.find((i) => (i._id || i.id) === (p._id || p.id)) || { qty: 0 }).qty;
+                const prodId = p._id || p.id;
+                const existing = items.find((i) => (i._id || i.id) === prodId) || {};
+                const currentQty = existing.qty || 0;
+                const isTakeawayItem = existing.isTakeaway;
                 return (
-                  <div key={p._id || p.id} className={`p-4 border-2 transition-all flex flex-col justify-between ${currentQty > 0 ? 'border-black bg-gray-50' : 'border-gray-100'}`}>
+                  <div key={prodId} className={`relative p-4 border-2 transition-all flex flex-col justify-between 
+                    ${currentQty > 0 ? 'border-black bg-gray-50' : 'border-gray-100'}
+                    ${isTakeawayItem ? 'bg-orange-50 border-orange-200' : ''}`}>
+                    {currentQty > 0 && (
+                      <button
+                        onClick={() => toggleItemTakeaway(prodId)}
+                        className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${isTakeawayItem ? 'bg-orange-500 text-white' : 'bg-white text-gray-300 hover:bg-gray-200'}`}
+                        title="Mark item as takeaway"
+                      >
+                        <Package size={16} />
+                      </button>
+                    )}
                     <div className="flex justify-between items-start gap-4 mb-4">
                       <div className="flex-1">
                         <p className="font-bold text-lg leading-tight uppercase tracking-tight line-clamp-2">{p.name}</p>
@@ -144,13 +175,13 @@ export default function ManualOrder() {
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Order Mode</h2>
               <div className="grid grid-cols-2 gap-2">
                 <button 
-                  onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setTable(""); setIsDelivery(false); }}}
+                  onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setIsDelivery(false); setHasTakeawayWithDineIn(false); }}}
                   className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isTakeaway ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
                 >
                   <ShoppingCart size={16} /> Takeaway
                 </button>
                 <button 
-                  onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setTable(""); }}}
+                  onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setHasTakeawayWithDineIn(false); }}}
                   className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isDelivery ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
                 >
                   <MapPin size={16} /> Delivery
