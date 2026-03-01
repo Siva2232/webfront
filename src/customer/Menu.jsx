@@ -538,7 +538,20 @@ export default function Menu() {
                 exit={{ y: 100 }}
                 className="fixed bottom-6 inset-x-4 z-50 flex justify-center pointer-events-none mb-19 sm:mb-0"
               >
-                <Link to={isTakeaway ? "/takeaway-cart?mode=takeaway" : `/cart${table ? `?table=${table}` : ""}`} className="pointer-events-auto group">
+                {/* Build cart link preserving mergeId for Add More Items flow */}
+                <Link to={(() => {
+                  const params = new URLSearchParams();
+                  if (isTakeaway) {
+                    params.set("mode", "takeaway");
+                  } else if (table) {
+                    params.set("table", table);
+                  }
+                  // Preserve mergeId if coming from Add More Items
+                  const mergeId = searchParams.get("mergeId");
+                  if (mergeId) params.set("mergeId", mergeId);
+                  const qs = params.toString();
+                  return isTakeaway ? `/takeaway-cart${qs ? `?${qs}` : ""}` : `/cart${qs ? `?${qs}` : ""}`;
+                })()} className="pointer-events-auto group">
                   <div className="bg-slate-950 text-white px-8 py-4 rounded-[2rem] flex items-center gap-8 shadow-2xl transition-all hover:scale-[1.02] active:scale-95">
                     <div className="flex items-center gap-4">
                       <div className="relative">

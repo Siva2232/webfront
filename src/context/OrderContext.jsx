@@ -145,28 +145,8 @@ export const OrderProvider = ({ children }) => {
         return [...prev, data];
       });
 
-      // also create a bill record -- backend auto-creates one, but we
-      // can optionally ensure it here for clients that bypass order API
-      try {
-        const isNew = !orders.some((o) => o._id === data._id);
-        if (isNew) {
-          await API.post("/bills", {
-            orderRef: data._id,
-            table: data.table,
-            customerName: data.customerName,
-            customerAddress: data.customerAddress,
-            deliveryTime: data.deliveryTime,
-            items: data.items,
-            totalAmount: data.totalAmount,
-            status: data.status,
-            paymentMethod: data.paymentMethod,
-            notes: data.notes,
-            billDetails: data.billDetails,
-          });
-        }
-      } catch (err) {
-        // ignore; server already created on its side
-      }
+      // NOTE: Backend already creates/updates bills automatically.
+      // No need to create bills here - this would cause duplicates.
 
       return data;
     } catch (error) {
