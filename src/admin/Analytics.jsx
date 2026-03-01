@@ -7,7 +7,8 @@ import {
 import { 
   TrendingUp, IndianRupee, Activity, Download, FileText, Wallet, Target, Search, Filter,
   Zap, ShieldCheck, History, ArrowUpRight, Layers, Box, FileSpreadsheet,
-  AlertCircle, CheckCircle2, Info, Calendar, Percent, Crown, ShoppingBag, AlertTriangle
+  AlertCircle, CheckCircle2, Info, Calendar, Percent, Crown, ShoppingBag, AlertTriangle,
+  Award, Sparkles
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
@@ -46,6 +47,22 @@ export default function Analytics() {
     return Object.values(map)
       .sort((a,b) => b.revenue - a.revenue)
       .slice(0, 8);
+  }, [orders]);
+
+  // ── BEST SELLERS BY VOLUME ──────────────────────────────────────────
+  const bestSellersByVolume = useMemo(() => {
+    const map = {};
+    orders.forEach(order => {
+      order.items?.forEach(it => {
+        if (!map[it.name]) {
+          map[it.name] = { name: it.name, qty: 0 };
+        }
+        map[it.name].qty += it.qty;
+      });
+    });
+    return Object.values(map)
+      .sort((a,b) => b.qty - a.qty)
+      .slice(0, 5);
   }, [orders]);
 
   // ── CATEGORY REVENUE BREAKDOWN ────────────────────────────────────
@@ -380,146 +397,94 @@ export default function Analytics() {
           </div>
         </section>
 
-        {/* ── SECTION 3: INVENTORY & FISCAL HEALTH ─────────────────────── */}
+        {/* ── SECTION 2B: BEST SELLERS PERFORMANCE VOLUME ───────────────── */}
         <section>
           <h2 className="text-2xl md:text-3xl font-black mb-6 md:mb-8 flex items-center gap-3">
-            <ShieldCheck className="text-indigo-600" size={28} />
-            Inventory & Fiscal Health
+            <ShoppingBag className="text-indigo-600" size={28} />
+            Best Sellers Performance Volume
           </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Stock Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            {/* Volume Bar Chart */}
             <motion.div 
-              whileHover={{ scale: 1.02 }}
-              className="lg:col-span-5 bg-slate-900 hover:bg-white p-8 rounded-3xl text-white hover:text-slate-900 shadow-2xl border border-transparent hover:border-slate-200 transition-all duration-300 flex flex-col items-center justify-center group"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="lg:col-span-3 bg-white border border-slate-100 rounded-[3rem] p-10 space-y-8 shadow-xl shadow-slate-200/50"
             >
-              <h3 className="text-sm font-black uppercase tracking-widest mb-6 text-indigo-400 group-hover:text-indigo-600">
-                Current Stock Status
-              </h3>
-              
-              <div className="h-[260px] md:h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie 
-                      data={engine.pieData} 
-                      innerRadius={70} 
-                      outerRadius={95} 
-                      paddingAngle={6} 
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {engine.pieData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{
-                        backgroundColor: '#ffffff', 
-                        border: '1px solid #e2e8f0', 
-                        borderRadius: '16px',
-                        color: '#000000'
-                      }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-black uppercase tracking-tight text-slate-700 flex items-center gap-3">
+                  <span className="h-6 w-1.5 bg-slate-900 rounded-full"/>
+                  Top Selling Items
+                </h3>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
+                  By Units Sold
+                </span>
               </div>
-
-              <div className="w-full space-y-3 mt-6">
-                {engine.pieData.map((d, i) => (
-                  <div 
-                    key={i} 
-                    className="flex justify-between items-center bg-white/5 group-hover:bg-slate-50 p-4 rounded-2xl border border-white/10 group-hover:border-slate-200 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
-                      <span className="text-sm font-bold">{d.name}</span>
-                    </div>
-                    <span className="text-base font-black group-hover:text-indigo-600">{d.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* NEW FEATURE 2: Critical Products Alert */}
-              {criticalProducts.length > 0 && (
-                <div className="mt-8 bg-gradient-to-r from-rose-50 to-rose-100/40 border border-rose-200 rounded-3xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <AlertTriangle className="text-rose-600" size={20} />
-                    <h4 className="font-bold text-rose-800">Critical Products Alert</h4>
-                  </div>
-                  
-                  <div className="space-y-3 text-sm">
-                    {criticalProducts.map(p => (
-                      <div key={p.id} className="flex justify-between items-center font-medium">
-                        <span>{p.name}</span>
-                        <span className={`${
-                          p.issue === "Out of Stock" ? 'text-rose-700' : 'text-amber-700'
-                        }`}>
-                          {p.issue}
-                        </span>
+              <div className="space-y-6 py-4">
+                {bestSellersByVolume.length > 0 ? (
+                  bestSellersByVolume.map((item, idx) => (
+                    <div key={item.name} className="flex items-center gap-5">
+                      <div className={`flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center font-black text-lg ${
+                        idx === 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>{idx + 1}</div>
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-2 items-center">
+                          <span className="font-bold text-slate-800">{item.name}</span>
+                          <span className={`text-[11px] font-black px-3 py-1 rounded-full ${
+                            idx === 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-50 text-slate-500'
+                          }`}>{item.qty} units</span>
+                        </div>
+                        <div className="h-3 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(item.qty / bestSellersByVolume[0].qty) * 100}%` }}
+                            transition={{ duration: 1.5, ease: "circOut" }}
+                            className={`h-full rounded-full ${idx === 0 ? 'bg-indigo-600' : 'bg-slate-900'}`}
+                          />
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-10 text-center text-slate-300 font-bold uppercase text-[10px] tracking-widest">
+                    Waiting for sales data...
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
 
-            {/* Financial Ledger */}
-            <div className="lg:col-span-7 bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-8">
-                <div>
-                  <h3 className="text-base md:text-lg font-black flex items-center gap-3">
-                    <History className="text-rose-500" size={20} />
-                    Financial Ledger
-                  </h3>
-                  <p className="text-xs md:text-sm text-slate-500 mt-1">
-                    Showing {engine.filtered.length} products
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => handleExport('xlsx')} 
-                    className="flex items-center gap-2 px-5 py-3 bg-emerald-50 text-emerald-700 rounded-2xl text-xs md:text-sm font-black uppercase hover:bg-emerald-600 hover:text-white transition-all"
-                  >
-                    <FileSpreadsheet size={16}/> Excel
-                  </button>
-                  <button 
-                    onClick={() => handleExport('pdf')} 
-                    className="flex items-center gap-2 px-5 py-3 bg-rose-50 text-rose-600 rounded-2xl text-xs md:text-sm font-black uppercase hover:bg-rose-600 hover:text-white transition-all"
-                  >
-                    <FileText size={16}/> PDF
-                  </button>
-                </div>
+            {/* Performance Highlight Card */}
+            <motion.div 
+               initial={{ opacity: 0, x: 20 }}
+               animate={{ opacity: 1, x: 0 }}
+               className="lg:col-span-2 bg-indigo-600 rounded-[3rem] p-10 text-white relative overflow-hidden flex flex-col justify-between shadow-2xl shadow-indigo-100"
+            >
+              <div className="absolute -right-10 -top-10 opacity-10 rotate-12">
+                 <Award size={240} />
+              </div>
+              
+              <div className="relative z-10">
+                 <div className="h-14 w-14 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/30 mb-8">
+                   <Sparkles size={28} />
+                 </div>
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 mb-2">Most Popular Item</h3>
+                 {bestSellersByVolume[0] ? (
+                   <>
+                     <p className="text-4xl font-black tracking-tighter leading-none mb-4">{bestSellersByVolume[0].name}</p>
+                     <div className="flex items-center gap-2 text-indigo-100 bg-white/10 w-fit px-4 py-2 rounded-full border border-white/10">
+                       <TrendingUp size={14} />
+                       <span className="text-xs font-bold uppercase tracking-widest">{bestSellersByVolume[0].qty} units sold</span>
+                     </div>
+                   </>
+                 ) : (
+                   <p className="text-xl font-bold">Collecting Data...</p>
+                 )}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Product</th>
-                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Price</th>
-                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Tax 18%</th>
-                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {engine.filtered.slice(0, 10).map((p, i) => (
-                      <tr key={i} className="group hover:bg-slate-50 transition-colors">
-                        <td className="py-4 font-medium text-sm">{p.name}</td>
-                        <td className="py-4 font-black text-indigo-600">₹{p.price?.toLocaleString() || "—"}</td>
-                        <td className="py-4 text-sm text-slate-600">₹{(p.price * 0.18).toFixed(0)}</td>
-                        <td className="py-4">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider ${
-                            p.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                          }`}>
-                            {p.isAvailable ? 'Active' : 'Out of Stock'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="relative z-10 bg-white/10 border border-white/20 py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 mt-8">
+                 <Crown size={16} /> Top Performer
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
       </main>

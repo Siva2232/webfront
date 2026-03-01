@@ -130,7 +130,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
               <div className="h-[1px] w-12 bg-slate-200" />
             </div>
             
-            <div className="grid gap-6 opacity-60 hover:opacity-100 transition-opacity duration-500 grayscale-[0.5] hover:grayscale-0">
+            <div className="grid gap-6 opacity-60 hover:opacity-100 transition-opacity duration-150 grayscale-[0.5] hover:grayscale-0">
               {servedOrders.slice(0, 5).map((order) => (
                 <PremiumOrderCard key={order._id || order.id} order={order} updateOrderStatus={updateOrderStatus} isCompleted />
               ))}
@@ -172,7 +172,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
       {!isCompleted && (
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-50">
           <div 
-            className={`h-full bg-gradient-to-r ${gradient} transition-all duration-1000`}
+            className={`h-full bg-gradient-to-r ${gradient} transition-all duration-300`}
             style={{ width: `${(currentStep / 4) * 100}%` }}
           />
         </div>

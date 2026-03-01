@@ -43,6 +43,10 @@ export default function OrderSummary() {
     return qs ? `/menu?${qs}` : "/menu";
   })();
 
+  // simplified back link that never includes `table` (avoids triggering
+  // choose‑mode redirect).  takeaway mode is still respected.
+  const backLink = mode === "takeaway" ? "/menu?mode=takeaway" : "/menu";
+
   // Determine orders to show.  For a table we filter by that table;
   // for takeaway mode we look for either the sentinel value or a missing
   // table (older orders created before the bug fix may have had ``).
@@ -147,7 +151,7 @@ export default function OrderSummary() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <button 
-            onClick={() => navigate(menuLink)} 
+            onClick={() => navigate(backLink)} 
             className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors"
           >
             <ChevronLeft size={22} className="text-slate-900" />

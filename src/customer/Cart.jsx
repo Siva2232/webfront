@@ -186,7 +186,7 @@ export default function Cart({ hideTable = false }) {
       
       <nav className="sticky top-0 z-[60] bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to={`/menu${table ? `?table=${table}` : ""}${table === TAKEAWAY_TABLE ? "?mode=takeaway" : ""}`} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
+          <Link to={isTakeaway ? "/menu?mode=takeaway" : "/menu"} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
             <ChevronLeft size={24} className="text-slate-900" />
           </Link>
           <div className="text-center">
@@ -413,7 +413,7 @@ const EmptyView = ({ table }) => (
     </div>
     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cart is empty</h3>
     <Link 
-      to={`/menu${table ? `?table=${table}` : ""}${table === TAKEAWAY_TABLE ? "?mode=takeaway" : ""}`} 
+      to={table === TAKEAWAY_TABLE ? "/menu?mode=takeaway" : "/menu"} 
       className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg mt-6"
     >
       Back to Menu

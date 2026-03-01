@@ -6,7 +6,6 @@ import {
   Plus, Package, CheckCircle2, AlertCircle, Edit3, Trash2, 
   IndianRupee, Search, Sparkles, XCircle, RefreshCw
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminProducts() {
   const { products, toggleAvailability, deleteProduct } = useProducts();
@@ -91,49 +90,43 @@ export default function AdminProducts() {
         {/* --- ANALYTICS HUD --- */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {stats.map((stat, i) => (
-            <motion.div 
+            <div 
               key={i}
-              whileHover={{ y: -5 }}
-              className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-[0_20px_40px_rgba(0,0,0,0.02)] flex items-center justify-between group"
+              className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-150 flex items-center justify-between group"
             >
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
                 <p className="text-4xl font-black text-slate-950 tracking-tighter italic">{stat.value}</p>
               </div>
-              <div className={`p-5 rounded-2xl transition-transform duration-500 group-hover:scale-110 
+              <div className={`p-5 rounded-2xl 
                 ${stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' : 
                   stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
                   'bg-rose-50 text-rose-600'}`}>
                 <stat.icon size={28} strokeWidth={2.5} />
               </div>
-            </motion.div>
+            </div>
           ))}
         </section>
 
         {/* --- PRODUCT GRID --- */}
         <main>
-          <AnimatePresence mode="popLayout">
-            {filteredProducts.length === 0 ? (
-              <EmptyState />
-            ) : (
-              <motion.div 
-                layout
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10"
-              >
-                {filteredProducts.map((p) => (
-                  <ProductCard 
-                    key={p._id} 
-                    product={p} 
-                    onToggle={toggleAvailability} 
-                    onDelete={() => {
-                      if(window.confirm(`Delete ${p.name}?`)) deleteProduct(p._id)
-                    }}
-                    onEdit={(id) => navigate(`/admin/products/edit/${id}`)}
-                  />
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {filteredProducts.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+              {filteredProducts.map((p) => (
+                <ProductCard 
+                  key={p._id} 
+                  product={p} 
+                  onToggle={toggleAvailability} 
+                  onDelete={() => {
+                    if(window.confirm(`Delete ${p.name}?`)) deleteProduct(p._id)
+                  }}
+                  onEdit={(id) => navigate(`/admin/products/edit/${id}`)}
+                />
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -142,15 +135,9 @@ export default function AdminProducts() {
 
 function ProductCard({ product, onToggle, onDelete, onEdit }) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      className="group relative"
-    >
-      <div className={`relative bg-white rounded-[3rem] overflow-hidden border transition-all duration-700 hover:-translate-y-3 hover:shadow-2xl 
-        ${product.isAvailable ? 'border-slate-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)]' : 'border-rose-100 shadow-none opacity-90'}
+    <div className="group relative">
+      <div className={`relative bg-white rounded-[3rem] overflow-hidden border transition-shadow duration-150 hover:shadow-lg 
+        ${product.isAvailable ? 'border-slate-100 shadow-sm' : 'border-rose-100 shadow-none opacity-90'}
       `}>
         
         {/* IMAGE SECTION */}
@@ -158,7 +145,7 @@ function ProductCard({ product, onToggle, onDelete, onEdit }) {
           <img
             src={product.image || "https://images.unsplash.com/photo-1546213271-73fca27ad291"}
             alt={product.name}
-            className={`w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110 
+            className={`w-full h-full object-cover 
               ${!product.isAvailable && "grayscale blur-[2px] contrast-75"}`}
           />
           
@@ -221,19 +208,16 @@ function ProductCard({ product, onToggle, onDelete, onEdit }) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 const EmptyState = () => (
-  <motion.div 
-    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-    className="flex flex-col items-center justify-center py-40 bg-white border border-slate-100 rounded-[4rem] shadow-sm text-center"
-  >
+  <div className="flex flex-col items-center justify-center py-40 bg-white border border-slate-100 rounded-[4rem] shadow-sm text-center">
     <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-8 border border-slate-100">
       <Sparkles className="text-indigo-400" size={40} />
     </div>
     <h3 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">The Vault is Clear</h3>
     <p className="text-slate-400 font-medium max-w-sm mx-auto mt-3">Ready to curate your next masterpiece? Add your first product to the gallery above.</p>
-  </motion.div>
+  </div>
 );

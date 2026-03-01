@@ -2,7 +2,6 @@ import React from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
 import { 
   ChevronLeft, 
   Receipt, 
@@ -85,10 +84,8 @@ export default function OrderBill() {
           const orderTimestamp = order.createdAt ? new Date(order.createdAt) : new Date();
 
           return (
-            <motion.div 
+            <div 
               key={order._id || order.id || index}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
               className="relative group w-full"
             >
               {/* Floating Print Trigger */}
@@ -253,7 +250,7 @@ export default function OrderBill() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </main>

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
 import { motion } from "framer-motion";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   Package,
   ShoppingBag,
@@ -15,8 +16,15 @@ import {
   IndianRupee,
   Zap,
   Crown,
-  Award
+  Award,
+  ShieldCheck,
+  History,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 export default function Dashboard() {
   const { products = [] } = useProducts();
@@ -45,6 +53,52 @@ export default function Dashboard() {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5); // Top 5 items
   }, [orders]);
+
+  // Pie chart data for inventory status
+  const pieData = useMemo(() => {
+    const liveCount = products.filter(p => p.isAvailable).length;
+    const outCount = products.length - liveCount;
+    return [
+      { name: 'Active Stock', value: liveCount, color: '#6366f1' },
+      { name: 'Out of Stock', value: outCount, color: '#f43f5e' }
+    ];
+  }, [products]);
+
+  // Critical products alert
+  const criticalProducts = useMemo(() => {
+    return products
+      .filter(p => {
+        const cost = p.costPrice || p.price * 0.6;
+        const margin = p.price ? ((p.price - cost) / p.price) * 100 : 0;
+        return !p.isAvailable || margin < 30;
+      })
+      .map(p => ({
+        ...p,
+        issue: !p.isAvailable ? "Out of Stock" : "Low Margin"
+      }))
+      .slice(0, 5);
+  }, [products]);
+
+  // Export functionality
+  const handleExport = (format) => {
+    const data = products.map(p => ({
+      Name: p.name,
+      Price: p.price,
+      GST: (p.price * 0.18).toFixed(2),
+      Status: p.isAvailable ? 'Live' : 'Stocked'
+    }));
+    if (format === 'xlsx') {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Inventory_Report");
+      XLSX.writeFile(wb, `Inventory_Report.xlsx`);
+    } else {
+      const doc = new jsPDF();
+      doc.text("Inventory Report", 14, 20);
+      doc.autoTable({ head: [['Product', 'Price', 'Tax']], body: data.map(o => [o.Name, o.Price, o.GST]) });
+      doc.save("Inventory_Report.pdf");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 lg:p-10 font-sans">
@@ -200,7 +254,142 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* --- 4. INVENTORY STATUS SECTION --- */}
+        {/* --- 4. INVENTORY & FISCAL HEALTH SECTION --- */}
+        <div className="space-y-6">
+          <h2 className="text-2xl md:text-3xl font-black flex items-center gap-3">
+            <ShieldCheck className="text-indigo-600" size={28} />
+            Inventory & Fiscal Health
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Stock Distribution */}
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              className="lg:col-span-5 bg-slate-900 hover:bg-white p-8 rounded-3xl text-white hover:text-slate-900 shadow-2xl border border-transparent hover:border-slate-200 transition-all duration-300 flex flex-col items-center justify-center group"
+            >
+              <h3 className="text-sm font-black uppercase tracking-widest mb-6 text-indigo-400 group-hover:text-indigo-600">
+                Current Stock Status
+              </h3>
+              
+              <div className="h-[260px] md:h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie 
+                      data={pieData} 
+                      innerRadius={70} 
+                      outerRadius={95} 
+                      paddingAngle={6} 
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="w-full space-y-3 mt-6">
+                {pieData.map((d, i) => (
+                  <div 
+                    key={i} 
+                    className="flex justify-between items-center bg-white/5 group-hover:bg-slate-50 p-4 rounded-2xl border border-white/10 group-hover:border-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: d.color }} />
+                      <span className="text-sm font-bold">{d.name}</span>
+                    </div>
+                    <span className="text-base font-black group-hover:text-indigo-600">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Critical Products Alert */}
+              {criticalProducts.length > 0 && (
+                <div className="mt-8 bg-gradient-to-r from-rose-50 to-rose-100/40 border border-rose-200 rounded-3xl p-6 w-full">
+                  <div className="flex items-center gap-3 mb-4">
+                    <AlertTriangle className="text-rose-600" size={20} />
+                    <h4 className="font-bold text-rose-800">Critical Products Alert</h4>
+                  </div>
+                  
+                  <div className="space-y-3 text-sm">
+                    {criticalProducts.map(p => (
+                      <div key={p._id || p.id} className="flex justify-between items-center font-medium">
+                        <span className="text-slate-800">{p.name}</span>
+                        <span className={`${
+                          p.issue === "Out of Stock" ? 'text-rose-700' : 'text-amber-700'
+                        }`}>
+                          {p.issue}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Financial Ledger */}
+            <div className="lg:col-span-7 bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-8">
+                <div>
+                  <h3 className="text-base md:text-lg font-black flex items-center gap-3">
+                    <History className="text-rose-500" size={20} />
+                    Financial Ledger
+                  </h3>
+                  <p className="text-xs md:text-sm text-slate-500 mt-1">
+                    Showing {products.length} products
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => handleExport('xlsx')} 
+                    className="flex items-center gap-2 px-5 py-3 bg-emerald-50 text-emerald-700 rounded-2xl text-xs md:text-sm font-black uppercase hover:bg-emerald-600 hover:text-white transition-all"
+                  >
+                    <FileSpreadsheet size={16}/> Excel
+                  </button>
+                  <button 
+                    onClick={() => handleExport('pdf')} 
+                    className="flex items-center gap-2 px-5 py-3 bg-rose-50 text-rose-600 rounded-2xl text-xs md:text-sm font-black uppercase hover:bg-rose-600 hover:text-white transition-all"
+                  >
+                    <FileText size={16}/> PDF
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Product</th>
+                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Price</th>
+                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Tax 18%</th>
+                      <th className="pb-4 text-xs font-black text-slate-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {products.slice(0, 10).map((p, i) => (
+                      <tr key={i} className="group hover:bg-slate-50 transition-colors">
+                        <td className="py-4 font-medium text-sm">{p.name}</td>
+                        <td className="py-4 font-black text-indigo-600">₹{p.price?.toLocaleString() || "—"}</td>
+                        <td className="py-4 text-sm text-slate-600">₹{(p.price * 0.18).toFixed(0)}</td>
+                        <td className="py-4">
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider ${
+                            p.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {p.isAvailable ? 'Active' : 'Out of Stock'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* --- 5. INVENTORY STATUS SECTION --- */}
         <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}

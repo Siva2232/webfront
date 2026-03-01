@@ -222,6 +222,7 @@ const handleClearAllStockAlerts = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.1 }}
             onClick={() => setIsMobileOpen(false)}
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[60] lg:hidden"
           />
@@ -232,7 +233,7 @@ const handleClearAllStockAlerts = () => {
       <aside
         className={`
           fixed lg:sticky top-0 left-0 z-[70] h-screen flex flex-col
-          bg-white border-r border-slate-200 transition-all duration-500 ease-in-out
+          bg-white border-r border-slate-200 transition-all duration-150 ease-out
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${isCollapsed ? "lg:w-[90px]" : "w-72"}
         `}
@@ -254,12 +255,12 @@ const handleClearAllStockAlerts = () => {
           </button>
         </div>
 
-       <nav className="flex-1 px-4 space-y-2 mt-4 max-h-[calc(100vh-160px)] overflow-y-auto no-scrollbar">
+       <nav className="flex-1 px-4 space-y-1 mt-4 max-h-[calc(100vh-160px)] overflow-y-auto no-scrollbar">
   {menuItems.map((item) => {
     // Shared classes for both Disabled and Active states to maintain visual harmony
     const baseClasses = `
-      group relative flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all duration-300
-      active:scale-95 touch-none select-none
+      group relative flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors duration-100
+      active:scale-[0.98] touch-none select-none
     `;
 
     // 1. DISABLED / COMING SOON STATE
@@ -275,7 +276,7 @@ const handleClearAllStockAlerts = () => {
             <item.icon size={22} className="flex-shrink-0 opacity-50" />
             
             <span
-              className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+              className={`transition-opacity duration-100 whitespace-nowrap overflow-hidden ${
                 isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
               }`}
             >
@@ -293,7 +294,7 @@ const handleClearAllStockAlerts = () => {
 
           {/* Tooltip: Hidden on touch devices to avoid "sticky hover" bugs */}
           <div className={`
-            hidden lg:block pointer-events-none absolute z-50 opacity-0 group-hover:opacity-100 transition-all duration-200
+            hidden lg:block pointer-events-none absolute z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-100
             bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl shadow-2xl whitespace-nowrap
             ${isCollapsed ? "left-20 top-1/2 -translate-y-1/2" : "left-4 top-full mt-2"}
           `}>
@@ -318,7 +319,7 @@ const handleClearAllStockAlerts = () => {
           >
             <item.icon size={22} className="flex-shrink-0" />
             <span
-              className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+              className={`transition-opacity duration-100 whitespace-nowrap overflow-hidden ${
                 isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
               }`}
             >
@@ -327,7 +328,7 @@ const handleClearAllStockAlerts = () => {
             {!isCollapsed && (
               <ChevronDown
                 size={16}
-                className={`ml-auto transition-transform ${isOpen ? "rotate-180" : ""}`}
+                className={`ml-auto transition-transform duration-100 ${isOpen ? "rotate-180" : ""}`}
               />
             )}
           </button>
@@ -398,11 +399,11 @@ const handleClearAllStockAlerts = () => {
           <>
             <item.icon 
               size={22} 
-              className={`flex-shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} 
+              className="flex-shrink-0"
             />
             
             <span
-              className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+              className={`transition-opacity duration-100 whitespace-nowrap overflow-hidden ${
                 isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
               }`}
             >
@@ -411,15 +412,12 @@ const handleClearAllStockAlerts = () => {
 
             {/* Active Indicator Dot (Mobile/Expanded only) */}
             {isActive && !isCollapsed && (
-              <motion.div 
-                layoutId="activeDot"
-                className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"
-              />
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />
             )}
 
             {/* Desktop Collapsed Tooltip */}
             {isCollapsed && (
-              <div className="hidden lg:block absolute left-full ml-6 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 pointer-events-none z-[100] shadow-xl">
+              <div className="hidden lg:block absolute left-full ml-6 px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-[100] shadow-xl">
                 {item.name}
               </div>
             )}
@@ -489,10 +487,10 @@ const handleClearAllStockAlerts = () => {
         />
 
         <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.96 }}
-          transition={{ duration: 0.15 }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          transition={{ duration: 0.1 }}
           className="fixed left-4 right-4 top-20 mx-auto w-[calc(100vw-32px)] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96 lg:w-[420px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[100]"
         >
           {/* Header */}
@@ -627,9 +625,10 @@ const handleClearAllStockAlerts = () => {
               <AnimatePresence>
                 {isProfileOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{ duration: 0.1 }}
                     className="absolute right-0 mt-4 w-64 bg-white rounded-[1.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden p-2"
                   >
                     <div className="p-4 border-b border-slate-50">
