@@ -30,6 +30,7 @@ import {
   Zap,
   UtensilsCrossed,
   QrCode,
+  Ticket,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
@@ -57,6 +58,7 @@ export default function AdminLayout() {
   const menuItems = [
     { name: "Analytics", icon: BarChart2, path: "reports" },
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
+    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Products", icon: Package, path: "products" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
@@ -94,11 +96,6 @@ export default function AdminLayout() {
         { name: "Direct Expense", tab: "direct", path: "expense/direct" },
         { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
       ],
-    },
-    { name: "Kitchen Features",
-      icon: Settings,
-      path: "new-feature", // just placeholder - won't be used anyway
-      disabled: true,
     },
   ];
 

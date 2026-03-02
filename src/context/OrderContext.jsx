@@ -181,6 +181,8 @@ export const OrderProvider = ({ children }) => {
         notes: orderData.notes,
         billDetails: orderData.billDetails,
         paymentMethod: orderData.paymentMethod,
+        paymentStatus: orderData.paymentStatus, // IMPORTANT: forward payment status
+        paymentId: orderData.paymentId, // IMPORTANT: forward Stripe payment ID
         status: orderData.status, // e.g. "Preparing" from cart
         customerName: orderData.customerName,
         customerAddress: orderData.customerAddress,

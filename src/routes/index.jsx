@@ -21,6 +21,7 @@ import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
 import Analytics from "../admin/Analytics";
 import OrderBill from "../admin/OrderBill";
+import KitchenBill from "../admin/KitchenBill";
 import ManualOrder from "../admin/ManualOrder";
 import AddStaff from "../admin/AddStaff";
 import ExpenseTracker from "../admin/ExpenseTracker"; // temporary redirect component (can be removed later)
@@ -85,6 +86,7 @@ export default function AppRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="products" element={<Products />} />

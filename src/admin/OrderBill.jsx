@@ -123,18 +123,42 @@ export default function OrderBill() {
                     <span className="flex items-center gap-1"><MapPin size={8} /> 01 SKYLINE DRIVE, BUSINESS DISTRICT</span>
                     <span className="flex items-center gap-1"><Phone size={8} /> +91 0000 000 000</span>
                   </div>
-                  {/* Payment Status Badge - Always Show */}
-                  {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') ? (
-                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full">
-                      <CheckCircle size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-wider">Paid Online</span>
-                    </div>
-                  ) : (
-                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full">
-                      <Wallet size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-wider">Pay at Counter</span>
-                    </div>
-                  )}
+                  
+                  {/* Payment Summary */}
+                  <div className="mt-4 flex flex-col items-center gap-1.5">
+                    {order.paymentSessions && order.paymentSessions.length > 0 ? (
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {(() => {
+                          const onlineSessions = order.paymentSessions.filter(s => s.method === 'online');
+                          const allOnlinePaid = onlineSessions.length > 0 && onlineSessions.every(s => ['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()));
+                          const codSessions = order.paymentSessions.filter(s => s.method === 'cod');
+                          const hasUnpaidCod = codSessions.some(s => !['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()));
+                          
+                          return (
+                            <>
+                              {allOnlinePaid && (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 shadow-sm">
+                                  <CheckCircle size={10} className="text-emerald-600" />
+                                  <span className="text-[9px] font-black uppercase tracking-wider italic">Online Paid</span>
+                                </div>
+                              )}
+                              {hasUnpaidCod && (
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full border border-rose-200 animate-pulse">
+                                  <Wallet size={10} className="text-rose-600" />
+                                  <span className="text-[9px] font-black uppercase tracking-wider italic">Collect Cash</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? <CheckCircle size={12} /> : <Wallet size={12} />}
+                        <span className="text-[9px] font-black uppercase tracking-wider">{order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? 'Online Paid' : 'Cash Pending'}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Meta Grid */}
@@ -265,21 +289,62 @@ export default function OrderBill() {
   </div>
   
   <div className="flex justify-between items-center pt-1">
-    <div className="flex flex-col">
-      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 leading-none">Total Payable</span>
-      {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') ? (
-        <span className="text-[8px] font-bold text-emerald-600 uppercase mt-1 flex items-center gap-1">
-          <CheckCircle size={8} /> Paid Online
-        </span>
+    <div className="flex flex-col gap-1 w-full">
+      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 leading-none">Total Summary</span>
+      
+      {order.paymentSessions && order.paymentSessions.length > 0 ? (
+        <div className="mt-2 space-y-1 bg-slate-50 p-3 rounded-2xl border border-dotted border-slate-200">
+          {order.paymentSessions.map((session, sidx) => {
+            const isSuccessfullyPaid = ['paid', 'succeeded', 'success'].includes(session.status?.toLowerCase());
+            const isOnline = session.method === 'online';
+
+            return (
+              <div key={sidx} className="flex justify-between text-[9px] font-black italic">
+                <span className={`uppercase flex items-center gap-1 ${isSuccessfullyPaid ? "text-emerald-600" : "text-slate-500"}`}>
+                  {isOnline ? <CheckCircle size={8}/> : <Wallet size={8}/>}
+                  {session.method} 
+                  {isSuccessfullyPaid ? (
+                    <span className="text-emerald-500 ml-1 font-black">✓ PAID</span>
+                  ) : (
+                    <span className="text-rose-500 ml-1">⚠️ DUE</span>
+                  )}
+                </span>
+                <span className={isSuccessfullyPaid ? "text-emerald-600" : "text-rose-600"}>
+                  ₹{session.amount.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+          
+          {(() => {
+            const unpaidAmount = order.paymentSessions
+              .filter(s => !['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()))
+              .reduce((acc, s) => acc + s.amount, 0);
+            
+            if (unpaidAmount <= 0) return null;
+
+            return (
+              <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-xs uppercase transition-all">
+                <span className="text-rose-600">Total Unpaid (Collect Cash)</span>
+                <span className="text-rose-600 animate-pulse">
+                  ₹{unpaidAmount.toLocaleString()}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
       ) : (
-        <span className="text-[8px] font-bold text-orange-500 uppercase mt-1 flex items-center gap-1">
-          <Wallet size={8} /> Pay at Counter
+        <span className="text-3xl font-black tracking-tighter italic text-slate-900 whitespace-nowrap flex-shrink-0 overflow-x-auto mt-2">
+          ₹{grandTotal.toLocaleString()}
         </span>
       )}
     </div>
-    <span className="text-3xl font-black tracking-tighter italic text-slate-900 whitespace-nowrap flex-shrink-0 overflow-x-auto">
-      ₹{grandTotal.toLocaleString()}
-    </span>
+    
+    {!order.paymentSessions && (
+      <span className="text-3xl font-black tracking-tighter italic text-slate-900 whitespace-nowrap flex-shrink-0 overflow-x-auto transition-all">
+        ₹{grandTotal.toLocaleString()}
+      </span>
+    )}
   </div>
 </div>
                 {/* Footer Section */}
