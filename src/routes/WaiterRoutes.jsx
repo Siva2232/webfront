@@ -12,6 +12,7 @@ import OrderBill from "../admin/OrderBill";
 import Tables from "../admin/Tables";
 import QrGenerator from "../admin/QrGenerator";
 import WaiterOrders from "../waiter/WaiterOrders";
+import KitchenBill from "../admin/KitchenBill";
 
 const ProtectedWaiterLogin = ({ children }) => {
   const isLoggedIn = localStorage.getItem("isWaiterLoggedIn") === "true";
@@ -34,6 +35,7 @@ export default function WaiterRoutes() {
           <Route path="tables" element={<Tables />} />
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="orders" element={<WaiterOrders />} />
+          <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

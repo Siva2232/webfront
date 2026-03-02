@@ -13,6 +13,7 @@ import {
   BarChart2,
   Menu,
   ChevronDown,
+  Ticket,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -26,6 +27,7 @@ export default function KitchenLayout() {
 
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "dashboard" },
+    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Bill", icon: Receipt, path: "bill" },
   ];

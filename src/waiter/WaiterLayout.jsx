@@ -12,6 +12,7 @@ import {
   BarChart2,
   Menu,
   ChevronDown,
+  Ticket,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -26,6 +27,7 @@ export default function WaiterLayout() {
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "dashboard" },
     { name: "Tables", icon: ShoppingCart, path: "tables" },
+    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Bill", icon: Receipt, path: "bill" },
   ];

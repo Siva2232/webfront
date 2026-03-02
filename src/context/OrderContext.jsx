@@ -29,6 +29,17 @@ export const OrderProvider = ({ children }) => {
       return [];
     }
   }); // separate collection for invoices, hydrated from storage
+  
+  // Kitchen bills - separate batches for kitchen/waiter view
+  const [kitchenBills, setKitchenBills] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cachedKitchenBills");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchOrders = async () => {
@@ -92,6 +103,58 @@ export const OrderProvider = ({ children }) => {
       console.error("Error fetching bills:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch kitchen bills - separate batches for kitchen/waiter display
+  const fetchKitchenBills = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    // Try to hydrate from cache for instant UI
+    try {
+      const cached = localStorage.getItem("cachedKitchenBills");
+      if (cached) {
+        setKitchenBills(JSON.parse(cached));
+      }
+    } catch (e) {
+      console.warn("failed to read cached kitchen bills", e);
+    }
+
+    try {
+      setIsLoading(true);
+      const { data } = await API.get("/kitchen-bills?limit=500");
+      setKitchenBills(data);
+      try {
+        localStorage.setItem("cachedKitchenBills", JSON.stringify(data));
+      } catch (e) {}
+    } catch (error) {
+      console.error("Error fetching kitchen bills:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch active (non-served) kitchen bills only
+  const fetchActiveKitchenBills = async () => {
+    try {
+      const { data } = await API.get("/kitchen-bills/active");
+      setKitchenBills(data);
+      try {
+        localStorage.setItem("cachedKitchenBills", JSON.stringify(data));
+      } catch (e) {}
+    } catch (error) {
+      console.error("Error fetching active kitchen bills:", error);
+    }
+  };
+
+  // Update kitchen bill status
+  const updateKitchenBillStatus = async (id, status) => {
+    try {
+      const { data } = await API.put(`/kitchen-bills/${id}/status`, { status });
+      setKitchenBills((prev) => prev.map((kb) => (kb._id === id ? data : kb)));
+    } catch (error) {
+      console.error("Error updating kitchen bill status:", error);
     }
   };
 
@@ -254,6 +317,38 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     });
 
+    // Kitchen bill socket events
+    socket.on("kitchenBillCreated", (kitchenBill) => {
+      setKitchenBills((prev) => [kitchenBill, ...prev]);
+      // Also update localStorage cache
+      try {
+        const cached = localStorage.getItem("cachedKitchenBills");
+        const parsed = cached ? JSON.parse(cached) : [];
+        localStorage.setItem("cachedKitchenBills", JSON.stringify([kitchenBill, ...parsed]));
+      } catch (e) {}
+    });
+
+    socket.on("kitchenBillUpdated", (updatedKitchenBill) => {
+      setKitchenBills((prev) => {
+        const exists = prev.find((kb) => kb._id === updatedKitchenBill._id);
+        if (exists) {
+          return prev.map((kb) => (kb._id === updatedKitchenBill._id ? updatedKitchenBill : kb));
+        }
+        return [updatedKitchenBill, ...prev];
+      });
+      // Update localStorage cache
+      try {
+        const cached = localStorage.getItem("cachedKitchenBills");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const updated = parsed.map((kb) => 
+            kb._id === updatedKitchenBill._id ? updatedKitchenBill : kb
+          );
+          localStorage.setItem("cachedKitchenBills", JSON.stringify(updated));
+        }
+      } catch (e) {}
+    });
+
     // if the server sends full snapshot (future enhancement)
     socket.on("ordersSnapshot", (list) => {
       setOrders(list);
@@ -266,6 +361,8 @@ export const OrderProvider = ({ children }) => {
       socket.off("billUpdated");
       socket.off("orderItemsAdded");
       socket.off("ordersSnapshot");
+      socket.off("kitchenBillCreated");
+      socket.off("kitchenBillUpdated");
       socket.disconnect();
     };
   }, []);
@@ -329,13 +426,17 @@ export const OrderProvider = ({ children }) => {
       value={{
         orders,
         bills,
+        kitchenBills,
         addOrder,
         addManualOrder,
         updateOrderStatus,
+        updateKitchenBillStatus,
         clearOrders,
         fetchOrders,
         fetchTableOrders,
         fetchBills,
+        fetchKitchenBills,
+        fetchActiveKitchenBills,
         isLoading,
       }}
     >

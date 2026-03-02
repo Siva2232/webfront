@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -22,6 +22,11 @@ import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 export default function OrderBill() {
   const { bills, fetchBills, isLoading } = useOrders();
   const navigate = useNavigate();
+
+  // Fetch bills on mount
+  useEffect(() => {
+    fetchBills();
+  }, []);
 
   // deduplicate by _id or id to prevent double rendering
   const uniqueBills = React.useMemo(() => {
@@ -94,7 +99,7 @@ export default function OrderBill() {
             >
               {/* Floating Print Trigger */}
               <button 
-                onClick={() => handlePrintSingle(order.id || index)}
+                onClick={() => handlePrintSingle(order._id || order.id || index)}
                 className="absolute -top-5 right-6 z-10 no-print bg-white border border-slate-200 shadow-xl px-5 py-2.5 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-300 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
               >
                 <Printer size={12} /> Print Receipt

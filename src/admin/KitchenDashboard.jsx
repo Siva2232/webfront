@@ -89,12 +89,20 @@ export default function KitchenDashboard() {
             ))}
           </div>
         )}
-        <button
-          onClick={() => navigate("/kitchen/orders")}
-          className="mt-6 px-6 py-3 bg-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-600 transition-all shadow-lg shadow-orange-100"
-        >
-          Open Order Queue
-        </button>
+        <div className="flex gap-4 mt-6">
+          <button
+            onClick={() => navigate("/kitchen/kitchen-bill")}
+            className="px-6 py-3 bg-indigo-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-100"
+          >
+            Kitchen Bills
+          </button>
+          <button
+            onClick={() => navigate("/kitchen/orders")}
+            className="px-6 py-3 bg-orange-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-orange-600 transition-all shadow-lg shadow-orange-100"
+          >
+            Full Orders View
+          </button>
+        </div>
       </section>
     </div>
   );

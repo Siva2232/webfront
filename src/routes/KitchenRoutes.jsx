@@ -10,6 +10,7 @@ import ProtectedKitchenRoute from "./ProtectedKitchenRoute";
 /* Kitchen Pages */
 import KitchenDashboard from "../admin/KitchenDashboard";
 import Orders from "../admin/Orders";
+import KitchenBill from "../admin/KitchenBill";
 import OrderBill from "../admin/OrderBill";
 
 // we no longer have a separate kitchen login page; forward to the shared system login
@@ -34,6 +35,7 @@ export default function KitchenRoutes() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<KitchenDashboard />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

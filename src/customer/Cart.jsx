@@ -171,6 +171,7 @@ export default function Cart({ hideTable = false }) {
   const displayLocation = table === TAKEAWAY_TABLE ? "Takeaway" : (table || "");
 
   const [notes, setNotes] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [placedDetails, setPlacedDetails] = useState(null);
   const [isSwiped, setIsSwiped] = useState(false);
@@ -293,6 +294,7 @@ export default function Cart({ hideTable = false }) {
       table: effectiveTable,
       orderItems: [...cart], 
       status: "Pending", 
+      customerName: customerName.trim() || undefined,
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
@@ -493,6 +495,20 @@ export default function Cart({ hideTable = false }) {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-2 text-slate-400">
+                    <UtensilsCrossed size={14} />
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Customer Name (Optional)</h2>
+                </div>
+                <input 
+                  type="text"
+                  value={customerName} 
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="For order tracking & merging..."
+                  className="w-full bg-white border border-slate-100 shadow-sm rounded-[2rem] px-6 py-4 text-sm outline-none focus:border-orange-500 transition-colors"
+                />
               </div>
 
               <div className="space-y-3">
