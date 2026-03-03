@@ -33,11 +33,11 @@ const statusColors = {
 };
 
 export default function KitchenBill() {
-  const { kitchenBills, fetchKitchenBills, updateKitchenBillStatus, isLoading } = useOrders();
+  const { kitchenBills, fetchActiveKitchenBills, updateKitchenBillStatus, isLoading } = useOrders();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchKitchenBills();
+    fetchActiveKitchenBills();
   }, []);
 
   // Isolated Print Logic

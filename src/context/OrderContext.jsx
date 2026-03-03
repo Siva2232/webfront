@@ -50,7 +50,7 @@ export const OrderProvider = ({ children }) => {
     try {
       setIsLoading(true);
       // support optional limit param if needed to reduce payload size
-      const { data } = await API.get("/orders?limit=200");
+      const { data } = await API.get("/orders?limit=50&status=Pending,Preparing,Cooking,Ready");
       setOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -103,6 +103,18 @@ export const OrderProvider = ({ children }) => {
       console.error("Error fetching bills:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // mark a bill as paid on the server and update local cache
+  const markBillPaid = async (id) => {
+    try {
+      const { data } = await API.put(`/bills/${id}/pay`);
+      setBills((prev) => prev.map((b) => (b._id === id ? data : b)));
+      return data;
+    } catch (err) {
+      console.error("Error marking bill paid", err);
+      throw err;
     }
   };
 
@@ -439,6 +451,7 @@ export const OrderProvider = ({ children }) => {
         fetchBills,
         fetchKitchenBills,
         fetchActiveKitchenBills,
+        markBillPaid,
         isLoading,
       }}
     >

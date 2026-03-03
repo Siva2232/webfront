@@ -39,6 +39,7 @@ export default function AddStaff() {
   const [salaryMode, setSalaryMode] = useState(false);
   const [salaryInputs, setSalaryInputs] = useState({});
   const [advanceInputs, setAdvanceInputs] = useState({});
+  const [noteInputs, setNoteInputs] = useState({});
   const [paidInputs, setPaidInputs] = useState({});
 
   // derive active tab from query parameter instead of state
@@ -92,10 +93,12 @@ export default function AddStaff() {
           });
         setSalaryInputs(mapping);
         setAdvanceInputs(mapping);
+        setNoteInputs(mapping);
       }
     } else {
       setSalaryInputs({});
       setAdvanceInputs({});
+      setNoteInputs({});
     }
   }, [salaryMode, users]);
 
@@ -215,6 +218,7 @@ export default function AddStaff() {
         advance: salaryMode
           ? Number(advanceInputs[user._id] || 0)
           : Number(user.advance) || 0,
+        note: salaryMode ? noteInputs[user._id] || "" : user.note || "",
       };
 
       if (user.newPassword?.trim()) {
@@ -631,6 +635,7 @@ export default function AddStaff() {
                     <th className="border px-4 py-2">Role</th>
                     <th className="border px-4 py-2">Salary</th>
                     <th className="border px-4 py-2">Advance</th>
+                    <th className="border px-4 py-2">Note</th>
                     <th className="border px-4 py-2">Payable</th>
                     <th className="border px-4 py-2">Action</th>
                   </tr>
@@ -639,7 +644,8 @@ export default function AddStaff() {
                   {filteredUsers.map((u) => {
                     const sal = Number(salaryInputs[u._id] ?? u.salary ?? 0);
                     const adv = Number(advanceInputs[u._id] ?? u.advance ?? 0);
-                    const payable = sal - adv;
+                    const note = noteInputs[u._id] ?? "";
+                    const payable = sal - adv;  // note doesn't affect payable
 
                     return (
                       <tr key={u._id} className="even:bg-slate-50">
@@ -666,6 +672,19 @@ export default function AddStaff() {
                             value={advanceInputs[u._id] ?? ""}
                             onChange={(e) =>
                               setAdvanceInputs((prev) => ({
+                                ...prev,
+                                [u._id]: e.target.value,
+                              }))
+                            }
+                            className="w-full border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border px-4 py-2">
+                          <input
+                            type="text"
+                            value={noteInputs[u._id] ?? ""}
+                            onChange={(e) =>
+                              setNoteInputs((prev) => ({
                                 ...prev,
                                 [u._id]: e.target.value,
                               }))
@@ -713,6 +732,7 @@ export default function AddStaff() {
                   <th className="border px-4 py-2">Date</th>
                   <th className="border px-4 py-2">Amount</th>
                   <th className="border px-4 py-2">Advance</th>
+                  <th className="border px-4 py-2">Note</th>
                   <th className="border px-4 py-2">Paid</th>
                   <th className="border px-4 py-2">Remaining</th>
                   <th className="border px-4 py-2">Action</th>
@@ -743,6 +763,7 @@ export default function AddStaff() {
                         </td>
                         <td className="border px-4 py-2">₹{h.amount || 0}</td>
                         <td className="border px-4 py-2">₹{h.advance || 0}</td>
+                        <td className="border px-4 py-2">{h.note || ""}</td>
                         <td className="border px-4 py-2">
                           <input
                             type="number"

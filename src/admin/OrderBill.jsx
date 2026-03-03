@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
 import { 
   ChevronLeft, 
   Receipt, 
@@ -20,7 +21,7 @@ import {
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
 export default function OrderBill() {
-  const { bills, fetchBills, isLoading } = useOrders();
+  const { bills, fetchBills, markBillPaid, isLoading } = useOrders();
   const navigate = useNavigate();
 
   // Fetch bills on mount
@@ -92,6 +93,18 @@ export default function OrderBill() {
           const grandTotal = order.billDetails?.grandTotal ?? (subtotal + tax);
           const orderTimestamp = order.createdAt ? new Date(order.createdAt) : new Date();
 
+          // prepare payment summary values once so header/footer stay in sync
+          const sessions = order.paymentSessions || [];
+          const paidAmount = sessions
+            .filter(s => ['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()))
+            .reduce((acc, s) => acc + (s.amount || 0), 0);
+          const unpaidAmount = Math.max(0, (order.totalAmount || 0) - paidAmount);
+          const onlineSessions = sessions.filter(s => s.method === 'online');
+          const allOnlinePaid = onlineSessions.length > 0 && onlineSessions.every(s => ['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()));
+          // any unpaid cod session regardless of original paymentMethod
+          const hasUnpaidCod = unpaidAmount > 0 && sessions.some(s => s.method === 'cod');
+          const allCodPaid = sessions.some(s => s.method === 'cod') && unpaidAmount <= 0;
+
           return (
             <div 
               key={order._id || order.id || index}
@@ -128,29 +141,25 @@ export default function OrderBill() {
                   <div className="mt-4 flex flex-col items-center gap-1.5">
                     {order.paymentSessions && order.paymentSessions.length > 0 ? (
                       <div className="flex flex-wrap justify-center gap-2">
-                        {(() => {
-                          const onlineSessions = order.paymentSessions.filter(s => s.method === 'online');
-                          const allOnlinePaid = onlineSessions.length > 0 && onlineSessions.every(s => ['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()));
-                          const codSessions = order.paymentSessions.filter(s => s.method === 'cod');
-                          const hasUnpaidCod = codSessions.some(s => !['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()));
-                          
-                          return (
-                            <>
-                              {allOnlinePaid && (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 shadow-sm">
-                                  <CheckCircle size={10} className="text-emerald-600" />
-                                  <span className="text-[9px] font-black uppercase tracking-wider italic">Online Paid</span>
-                                </div>
-                              )}
-                              {hasUnpaidCod && (
-                                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full border border-rose-200 animate-pulse">
-                                  <Wallet size={10} className="text-rose-600" />
-                                  <span className="text-[9px] font-black uppercase tracking-wider italic">Collect Cash</span>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
+                        {/* show status pills based on precomputed amounts */}
+                        {allOnlinePaid && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 shadow-sm">
+                            <CheckCircle size={10} className="text-emerald-600" />
+                            <span className="text-[9px] font-black uppercase tracking-wider italic">Online Paid</span>
+                          </div>
+                        )}
+                        {hasUnpaidCod && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full border border-rose-200 animate-pulse">
+                            <Wallet size={10} className="text-rose-600" />
+                            <span className="text-[9px] font-black uppercase tracking-wider italic">Collect Cash</span>
+                          </div>
+                        )}
+                        {!hasUnpaidCod && allCodPaid && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 shadow-sm">
+                            <CheckCircle size={10} className="text-emerald-600" />
+                            <span className="text-[9px] font-black uppercase tracking-wider italic">Cash Paid</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
@@ -317,18 +326,37 @@ export default function OrderBill() {
           })}
           
           {(() => {
-            const unpaidAmount = order.paymentSessions
-              .filter(s => !['paid', 'succeeded', 'success'].includes(s.status?.toLowerCase()))
-              .reduce((acc, s) => acc + s.amount, 0);
-            
-            if (unpaidAmount <= 0) return null;
+            // rely on previously computed unpaidAmount variable and pay type
+            if (unpaidAmount <= 0 || !hasUnpaidCod) return null;
 
             return (
-              <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-xs uppercase transition-all">
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center font-black text-xs uppercase transition-all gap-2">
                 <span className="text-rose-600">Total Unpaid (Collect Cash)</span>
                 <span className="text-rose-600 animate-pulse">
                   ₹{unpaidAmount.toLocaleString()}
                 </span>
+                <button
+                  onClick={async () => {
+                    const targetId = order._id || order.id;
+                    console.log("Attempting markBillPaid for id", targetId, order);
+                    try {
+                      await markBillPaid(targetId);
+                      toast.success("Bill marked paid");
+                      fetchBills();
+                    } catch (err) {
+                      console.error("markBillPaid error", err);
+                      // show server-provided message if available
+                      const msg =
+                        err?.response?.data?.message ||
+                        err?.message ||
+                        "Failed to mark paid";
+                      toast.error(msg);
+                    }
+                  }}
+                  className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase hover:bg-indigo-700 transition"
+                >
+                  Mark Paid
+                </button>
               </div>
             );
           })()}

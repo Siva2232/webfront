@@ -11,14 +11,16 @@ import {
 } from "lucide-react";
 
 export default function KitchenDashboard() {
-  const { orders = [], fetchOrders } = useOrders();
+  const { orders = [], fetchOrders, isLoading } = useOrders();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (orders.length === 0) {
+    // only fetch if we have a token and no orders at all
+    const token = localStorage.getItem("token");
+    if (token && orders.length === 0 && !isLoading) {
       fetchOrders();
     }
-  }, [orders, fetchOrders]);
+  }, []);
 
   const activeOrders = orders.filter((o) => o.status !== "Served");
   const preparing = orders.filter((o) => o.status === "Preparing").length;
