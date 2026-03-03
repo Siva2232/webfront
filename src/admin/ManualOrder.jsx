@@ -55,6 +55,8 @@ export default function ManualOrder() {
   // table number removed; order mode determines destination
   const [isTakeaway, setIsTakeaway] = useState(false);
   const [isDelivery, setIsDelivery] = useState(false);
+  const [isDineIn, setIsDineIn] = useState(false);
+  const [dineInTable, setDineInTable] = useState("");
   // New: flag for dine-in orders that also include takeaway items (single bill)
   const [hasTakeawayWithDineIn, setHasTakeawayWithDineIn] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -77,13 +79,13 @@ export default function ManualOrder() {
   }, []);
 
   // Memoize filtered active orders to prevent recalculation on every render
+  // Include ALL active orders (dine-in, takeaway, delivery) for Add More Items
   const activeOrders = useMemo(() => 
     orders.filter(
       (o) =>
-        (o.table === TAKEAWAY_TABLE || o.table === DELIVERY_TABLE || o.table === "TAKEAWAY" || o.table === "DELIVERY") &&
         o.status !== "Served" &&
         o.status !== "Cancelled"
-    ),
+    ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [orders]
   );
 
@@ -93,12 +95,17 @@ export default function ManualOrder() {
       setCustomerName(selectedExistingOrder.customerName || "");
       setCustomerAddress(selectedExistingOrder.customerAddress || "");
       setDeliveryTime(selectedExistingOrder.deliveryTime || "");
-      // Set mode based on existing order
-      if (selectedExistingOrder.table === DELIVERY_TABLE || selectedExistingOrder.table === "DELIVERY") {
+      // Set mode based on existing order type
+      const table = selectedExistingOrder.table;
+      if (table === DELIVERY_TABLE || table === "DELIVERY") {
         setIsDelivery(true);
         setIsTakeaway(false);
-      } else {
+      } else if (table === TAKEAWAY_TABLE || table === "TAKEAWAY" || !table) {
         setIsTakeaway(true);
+        setIsDelivery(false);
+      } else {
+        // Dine-in order (has a table number) - don't set takeaway/delivery flags
+        setIsTakeaway(false);
         setIsDelivery(false);
       }
     }
@@ -176,8 +183,12 @@ export default function ManualOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateOrder = () => {
-    if (!isAddMoreMode && !isTakeaway && !isDelivery) {
-      toast.error("Please select takeaway or delivery mode.", { icon: <AlertCircle size={18} /> });
+    if (!isAddMoreMode && !isTakeaway && !isDelivery && !isDineIn) {
+      toast.error("Please select an order mode.", { icon: <AlertCircle size={18} /> });
+      return false;
+    }
+    if (!isAddMoreMode && isDineIn && !dineInTable.trim()) {
+      toast.error("Please enter a table number for dine-in.", { icon: <AlertCircle size={18} /> });
       return false;
     }
     if (items.length === 0) {
@@ -201,10 +212,17 @@ export default function ManualOrder() {
     if (!validateOrder()) return;
 
     setIsSubmitting(true);
+    // Determine table: in Add More mode, use the existing order's table
+    let orderTable;
+    if (isAddMoreMode && selectedExistingOrder) {
+      orderTable = selectedExistingOrder.table;
+    } else if (isDineIn) {
+      orderTable = dineInTable.trim();
+    } else {
+      orderTable = isDelivery ? DELIVERY_TABLE : TAKEAWAY_TABLE;
+    }
     const orderData = {
-      table: isDelivery
-        ? DELIVERY_TABLE
-        : TAKEAWAY_TABLE,
+      table: orderTable,
       orderItems: items,
       notes: notes.trim(),
       status: "Preparing",
@@ -339,7 +357,7 @@ export default function ManualOrder() {
                   <p className="text-xs text-gray-500">Select an active order to add items:</p>
                   {activeOrders.length === 0 ? (
                     <p className="text-xs text-gray-400 italic p-3 bg-gray-50 border border-gray-100">
-                      No active takeaway/delivery orders found.
+                      No active orders found.
                     </p>
                   ) : (
                     <div className="max-h-48 overflow-y-auto space-y-2 border border-gray-100 p-2">
@@ -357,11 +375,17 @@ export default function ManualOrder() {
                             <div className="flex items-center gap-2">
                               {order.table === DELIVERY_TABLE || order.table === "DELIVERY" ? (
                                 <MapPin size={14} className="text-indigo-500" />
-                              ) : (
+                              ) : order.table === TAKEAWAY_TABLE || order.table === "TAKEAWAY" || !order.table ? (
                                 <ShoppingCart size={14} className="text-orange-500" />
+                              ) : (
+                                <Package size={14} className="text-emerald-500" />
                               )}
                               <span className="font-bold text-xs uppercase">
-                                {order.table === DELIVERY_TABLE || order.table === "DELIVERY" ? "Delivery" : "Takeaway"}
+                                {order.table === DELIVERY_TABLE || order.table === "DELIVERY" 
+                                  ? "Delivery" 
+                                  : order.table === TAKEAWAY_TABLE || order.table === "TAKEAWAY" || !order.table
+                                    ? "Takeaway"
+                                    : `Table ${order.table}`}
                               </span>
                             </div>
                             <span className="text-[10px] font-medium text-gray-400">
@@ -396,20 +420,39 @@ export default function ManualOrder() {
             {!isAddMoreMode && (
             <section className="space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Order Mode</h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button 
-                  onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setIsDelivery(false); setHasTakeawayWithDineIn(false); }}}
+                  onClick={() => { setIsDineIn(!isDineIn); if(!isDineIn) { setIsTakeaway(false); setIsDelivery(false); }}}
+                  className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isDineIn ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-100 hover:border-black'}`}
+                >
+                  <Package size={16} /> Dine-in
+                </button>
+                <button 
+                  onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setIsDelivery(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
                   className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isTakeaway ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
                 >
                   <ShoppingCart size={16} /> Takeaway
                 </button>
                 <button 
-                  onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setHasTakeawayWithDineIn(false); }}}
+                  onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
                   className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isDelivery ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
                 >
                   <MapPin size={16} /> Delivery
                 </button>
               </div>
+
+              {/* Dine-in Table Number Input */}
+              {isDineIn && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <input
+                    type="text"
+                    value={dineInTable}
+                    onChange={(e) => setDineInTable(e.target.value)}
+                    placeholder="TABLE NUMBER (E.G. 5, A1)"
+                    className="w-full p-3 border-2 border-emerald-200 bg-emerald-50 font-bold focus:border-emerald-500 outline-none uppercase text-sm"
+                  />
+                </div>
+              )}
 
             </section>
             )}
@@ -524,11 +567,34 @@ export default function ManualOrder() {
               <div className="p-6 space-y-4">
                 {/* Order Type */}
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  {isDelivery ? <MapPin size={20} className="text-indigo-500" /> : <ShoppingCart size={20} className="text-orange-500" />}
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase font-bold">Order Type</p>
-                    <p className="font-bold">{isDelivery ? "Delivery" : "Takeaway"}</p>
-                  </div>
+                  {(() => {
+                    // Determine order type display for modal
+                    let table;
+                    if (isAddMoreMode && selectedExistingOrder) {
+                      table = selectedExistingOrder.table;
+                    } else if (isDineIn) {
+                      table = dineInTable.trim();
+                    } else {
+                      table = isDelivery ? DELIVERY_TABLE : TAKEAWAY_TABLE;
+                    }
+                    const isDeliveryOrder = table === DELIVERY_TABLE || table === "DELIVERY";
+                    const isTakeawayOrder = table === TAKEAWAY_TABLE || table === "TAKEAWAY" || !table;
+                    const isDineInOrder = !isDeliveryOrder && !isTakeawayOrder;
+                    
+                    return (
+                      <>
+                        {isDeliveryOrder ? <MapPin size={20} className="text-indigo-500" /> 
+                          : isTakeawayOrder ? <ShoppingCart size={20} className="text-orange-500" />
+                          : <Package size={20} className="text-emerald-500" />}
+                        <div>
+                          <p className="text-xs text-gray-400 uppercase font-bold">Order Type</p>
+                          <p className="font-bold">
+                            {isDeliveryOrder ? "Delivery" : isTakeawayOrder ? "Takeaway" : `Dine-in • Table ${table}`}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Customer Name */}

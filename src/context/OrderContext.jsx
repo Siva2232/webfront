@@ -257,10 +257,20 @@ export const OrderProvider = ({ children }) => {
         customerName: orderData.customerName,
         customerAddress: orderData.customerAddress,
         deliveryTime: orderData.deliveryTime,
+        hasTakeaway: orderData.hasTakeaway,
+        existingOrderId: orderData.existingOrderId, // For Add More Items functionality
       };
 
       const { data } = await API.post("/orders/manual", payload);
-      setOrders((prev) => [...prev, data]);
+      
+      // If backend merged the order, update existing entry instead of appending
+      setOrders((prev) => {
+        const exists = prev.find((o) => o._id === data._id);
+        if (exists) {
+          return prev.map((o) => (o._id === data._id ? data : o));
+        }
+        return [...prev, data];
+      });
       return data;
     } catch (error) {
       console.error("Error adding manual order:", error);

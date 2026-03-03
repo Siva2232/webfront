@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
+import { AnimatePresence, motion } from "framer-motion";
 import { 
   ChevronLeft, 
   Receipt, 
@@ -16,18 +17,44 @@ import {
   Package,
   CreditCard,
   CheckCircle,
-  Wallet
+  Wallet,
+  AlertCircle
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, isLoading } = useOrders();
   const navigate = useNavigate();
+  
+  // State for mark paid confirmation modal
+  const [markPaidModal, setMarkPaidModal] = useState(null); // { billId, amount }
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
   // Fetch bills on mount
   useEffect(() => {
     fetchBills();
   }, []);
+  
+  // Handle confirm mark paid
+  const handleConfirmMarkPaid = async () => {
+    if (!markPaidModal || isMarkingPaid) return;
+    setIsMarkingPaid(true);
+    try {
+      await markBillPaid(markPaidModal.billId);
+      toast.success(`₹${markPaidModal.amount.toLocaleString()} collected successfully!`, {
+        icon: <CheckCircle size={18} className="text-emerald-500" />,
+        duration: 3000,
+      });
+      fetchBills();
+      setMarkPaidModal(null);
+    } catch (err) {
+      console.error("markBillPaid error", err);
+      const msg = err?.response?.data?.message || err?.message || "Failed to mark paid";
+      toast.error(msg);
+    } finally {
+      setIsMarkingPaid(false);
+    }
+  };
 
   // deduplicate by _id or id to prevent double rendering
   const uniqueBills = React.useMemo(() => {
@@ -336,24 +363,9 @@ export default function OrderBill() {
                   ₹{unpaidAmount.toLocaleString()}
                 </span>
                 <button
-                  onClick={async () => {
-                    const targetId = order._id || order.id;
-                    console.log("Attempting markBillPaid for id", targetId, order);
-                    try {
-                      await markBillPaid(targetId);
-                      toast.success("Bill marked paid");
-                      fetchBills();
-                    } catch (err) {
-                      console.error("markBillPaid error", err);
-                      // show server-provided message if available
-                      const msg =
-                        err?.response?.data?.message ||
-                        err?.message ||
-                        "Failed to mark paid";
-                      toast.error(msg);
-                    }
-                  }}
-                  className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase hover:bg-indigo-700 transition"
+                  onClick={() => setMarkPaidModal({ billId: order._id || order.id, amount: unpaidAmount })}
+                  disabled={isMarkingPaid}
+                  className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Mark Paid
                 </button>
@@ -389,6 +401,61 @@ export default function OrderBill() {
           );
         })}
       </main>
+
+      {/* Mark Paid Confirmation Modal */}
+      <AnimatePresence>
+        {markPaidModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => !isMarkingPaid && setMarkPaidModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-center w-14 h-14 bg-amber-100 rounded-full mx-auto mb-4">
+                <AlertCircle size={28} className="text-amber-600" />
+              </div>
+              <h3 className="text-lg font-black text-center text-slate-900 mb-2">Confirm Cash Collection</h3>
+              <p className="text-sm text-slate-500 text-center mb-6">
+                Collect <span className="font-bold text-slate-900">₹{markPaidModal.amount.toLocaleString()}</span> cash from customer?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMarkPaidModal(null)}
+                  disabled={isMarkingPaid}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmMarkPaid}
+                  disabled={isMarkingPaid}
+                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isMarkingPaid ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} />
+                      Confirm
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @media print {
