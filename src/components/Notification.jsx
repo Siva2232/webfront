@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 import {
   Bell,
@@ -11,7 +12,8 @@ import {
   Ticket,
   CheckCircle2,
   ChefHat,
-  PlusCircle
+  PlusCircle,
+  X
 } from "lucide-react";
 
 // Direct socket connection for notifications (backup to window events)
@@ -22,8 +24,53 @@ const SOCKET_URL =
     : "http://localhost:5000");
 
 export default function Notification({ targetPath = "/admin/orders" }) {
-  const { orders } = useOrders();
+  // toast for pop‑ups
   const navigate = useNavigate();
+  
+  // helper to show a toast for a single order
+  const showOrderToast = (order) => {
+    const timestamp = order.createdAt ? new Date(order.createdAt).toLocaleString() : null;
+    toast.custom((t) => (
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        onClick={() => {
+          navigate(targetPath);
+          toast.dismiss(t.id);
+        }}
+        className="bg-white shadow-xl rounded-3xl p-4 flex flex-col cursor-pointer max-w-xs ring-1 ring-orange-200"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Ticket size={18} className="text-orange-500" />
+            <div>
+              <p className="font-black text-sm">
+                {order.table === "TAKEAWAY" ? "Takeaway" : `Table ${order.table}`}
+              </p>
+              <p className="text-[10px] text-zinc-500">
+                {order.items.length} item{order.items.length !== 1 && "s"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toast.dismiss(t.id);
+            }}
+            className="text-zinc-400 hover:text-zinc-600 ml-2"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        {timestamp && (
+          <p className="mt-1 text-[9px] text-zinc-400">{timestamp}</p>
+        )}
+      </motion.div>
+    ), { duration: 5000 });
+  };
+  const { orders } = useOrders();
 
   const [open, setOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState([]);
@@ -139,16 +186,19 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   /* 🔔 NEW ORDER DETECTION — SAME LOGIC + SHAKE DURATION FIX */
   useEffect(() => {
     let hasNew = false;
+    const newOrders = [];
 
     pendingOrders.forEach((order) => {
       const oid = order._id || order.id;
       if (!seenOrderIds.current.has(oid)) {
         hasNew = true;
+        newOrders.push(order);
         seenOrderIds.current.add(oid);
       }
     });
 
     if (hasNew) {
+      // play sound & shake bell
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
 
@@ -158,6 +208,10 @@ export default function Notification({ targetPath = "/admin/orders" }) {
       pulseTimeout.current = setTimeout(() => {
         setIsNewOrder(false);
       }, 10000); // ✅ SHAKE FOR 10 SECONDS
+
+      // show a toast popup for each new order so all panels see it
+      // iterate oldest→newest so the most recent order ends up at the top of the stack
+      newOrders.slice().reverse().forEach(showOrderToast);
     }
 
     return () => clearTimeout(pulseTimeout.current);
