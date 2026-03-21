@@ -18,6 +18,7 @@ export default function EditForm() {
     type: "veg",
     description: "",
     image: "",
+    subItems: [],
   });
 
   // 1. If we are editing, find the product and fill the form
@@ -32,6 +33,65 @@ export default function EditForm() {
       }
     }
   }, [id, isEditMode, products]);
+
+  const addSubItemGroup = () => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: [...(prev.subItems || []), { groupName: "", type: "single", required: false, options: [] }],
+    }));
+  };
+
+  const updateSubItemGroup = (groupIndex, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: prev.subItems.map((g, idx) => idx === groupIndex ? { ...g, [field]: value } : g),
+    }));
+  };
+
+  const removeSubItemGroup = (groupIndex) => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: prev.subItems.filter((_, idx) => idx !== groupIndex),
+    }));
+  };
+
+  const addSubItemOption = (groupIndex) => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: prev.subItems.map((g, idx) =>
+        idx === groupIndex
+          ? { ...g, options: [...(g.options || []), { name: "", price: 0 }] }
+          : g
+      ),
+    }));
+  };
+
+  const updateSubItemOption = (groupIndex, optionIndex, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: prev.subItems.map((g, idx) =>
+        idx === groupIndex
+          ? {
+              ...g,
+              options: g.options.map((opt, optIdx) =>
+                optIdx === optionIndex ? { ...opt, [field]: value } : opt
+              ),
+            }
+          : g
+      ),
+    }));
+  };
+
+  const removeSubItemOption = (groupIndex, optionIndex) => {
+    setFormData(prev => ({
+      ...prev,
+      subItems: prev.subItems.map((g, idx) =>
+        idx === groupIndex
+          ? { ...g, options: g.options.filter((_, optIdx) => optIdx !== optionIndex) }
+          : g
+      ),
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,6 +164,94 @@ export default function EditForm() {
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-3 bg-slate-50 p-3 rounded-lg">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Subitem Groups</p>
+                <button
+                  type="button"
+                  onClick={addSubItemGroup}
+                  className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded-lg"
+                >
+                  + Add Group
+                </button>
+              </div>
+
+              {(formData.subItems || []).map((group, groupIdx) => (
+                <div key={groupIdx} className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="grid gap-2 sm:grid-cols-3 items-end">
+                    <input
+                      type="text"
+                      value={group.groupName}
+                      onChange={(e) => updateSubItemGroup(groupIdx, "groupName", e.target.value)}
+                      placeholder="Group name (e.g., Sauce)"
+                      className="border rounded-lg px-3 py-2"
+                    />
+                    <select
+                      value={group.type}
+                      onChange={(e) => updateSubItemGroup(groupIdx, "type", e.target.value)}
+                      className="border rounded-lg px-3 py-2"
+                    >
+                      <option value="single">Single select</option>
+                      <option value="multiple">Multi select</option>
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={group.required}
+                        onChange={(e) => updateSubItemGroup(groupIdx, "required", e.target.checked)}
+                      />
+                      <span className="text-xs">Required</span>
+                    </div>
+                  </div>
+
+                  {(group.options || []).map((opt, optIdx) => (
+                    <div key={optIdx} className="mt-2 grid gap-2 sm:grid-cols-3 items-end">
+                      <input
+                        type="text"
+                        value={opt.name}
+                        onChange={(e) => updateSubItemOption(groupIdx, optIdx, "name", e.target.value)}
+                        placeholder="Option name"
+                        className="border rounded-lg px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={opt.price}
+                        onChange={(e) => updateSubItemOption(groupIdx, optIdx, "price", Number(e.target.value))}
+                        placeholder="Price"
+                        className="border rounded-lg px-3 py-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSubItemOption(groupIdx, optIdx)}
+                        className="text-xs text-rose-600 font-black"
+                      >
+                        Remove option
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => addSubItemOption(groupIdx)}
+                      className="text-xs font-black uppercase tracking-wider text-white bg-indigo-600 px-3 py-1 rounded-lg"
+                    >
+                      + Add option
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSubItemGroup(groupIdx)}
+                      className="text-xs text-rose-500 font-black uppercase tracking-wider"
+                    >
+                      Remove group
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2">

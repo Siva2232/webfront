@@ -29,6 +29,7 @@ export default function AdminProducts() {
     image: "",
     category: "",
     type: "veg",
+    subItems: [],
   });
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [isCompressing, setIsCompressing] = useState(false);
@@ -71,6 +72,70 @@ export default function AdminProducts() {
   const normalizeCategory = (str) =>
     str.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
+  const addSubItemGroup = () => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: [
+        ...prev.subItems,
+        { groupName: "", type: "single", required: false, options: [] },
+      ],
+    }));
+  };
+
+  const updateSubItemGroup = (index, field, value) => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: prev.subItems.map((group, idx) =>
+        idx === index ? { ...group, [field]: value } : group
+      ),
+    }));
+  };
+
+  const removeSubItemGroup = (index) => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: prev.subItems.filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const addSubItemOption = (groupIndex) => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: prev.subItems.map((group, idx) =>
+        idx === groupIndex
+          ? { ...group, options: [...(group.options || []), { name: "", price: 0 }] }
+          : group
+      ),
+    }));
+  };
+
+  const updateSubItemOption = (groupIndex, optionIndex, field, value) => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: prev.subItems.map((group, idx) =>
+        idx === groupIndex
+          ? {
+              ...group,
+              options: group.options.map((opt, optIdx) =>
+                optIdx === optionIndex ? { ...opt, [field]: value } : opt
+              ),
+            }
+          : group
+      ),
+    }));
+  };
+
+  const removeSubItemOption = (groupIndex, optionIndex) => {
+    setProductForm((prev) => ({
+      ...prev,
+      subItems: prev.subItems.map((group, idx) =>
+        idx === groupIndex
+          ? { ...group, options: group.options.filter((_, optIdx) => optIdx !== optionIndex) }
+          : group
+      ),
+    }));
+  };
+
   const handleAddCategory = async () => {
     const input = newCategoryInput.trim();
     if (!input) {
@@ -104,13 +169,14 @@ export default function AdminProducts() {
         image: productForm.image,
         category: productForm.category,
         type: productForm.type,
+        subItems: productForm.subItems,
         available: true,
       });
       toast.success("Product created successfully!", {
         icon: <CheckCircle size={18} className="text-emerald-500" />,
       });
       setShowAddModal(false);
-      setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg" });
+      setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", subItems: [] });
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to add product");
     } finally {
@@ -120,7 +186,7 @@ export default function AdminProducts() {
 
   const resetAddModal = () => {
     setShowAddModal(false);
-    setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg" });
+    setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", subItems: [] });
     setNewCategoryInput("");
   };
 
@@ -517,6 +583,96 @@ export default function AdminProducts() {
                     </div>
                   </div>
 
+                  {/* Subitem / Variant Groups */}
+                  <div className="border-t border-slate-200 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Subitem Groups</p>
+                      <button
+                        type="button"
+                        onClick={addSubItemGroup}
+                        className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded-lg"
+                      >
+                        + Add Group
+                      </button>
+                    </div>
+
+                    {productForm.subItems.map((group, groupIdx) => (
+                      <div key={`subitem-${groupIdx}`} className="bg-white p-3 rounded-lg border border-slate-200 mb-3">
+                        <div className="grid gap-2 sm:grid-cols-3 items-end">
+                          <input
+                            type="text"
+                            value={group.groupName}
+                            onChange={(e) => updateSubItemGroup(groupIdx, "groupName", e.target.value)}
+                            placeholder="Group name (e.g. Sauce)"
+                            className="border rounded-lg px-3 py-2"
+                          />
+                          <select
+                            value={group.type}
+                            onChange={(e) => updateSubItemGroup(groupIdx, "type", e.target.value)}
+                            className="border rounded-lg px-3 py-2"
+                          >
+                            <option value="single">Single select</option>
+                            <option value="multiple">Multi select</option>
+                          </select>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={group.required}
+                              onChange={(e) => updateSubItemGroup(groupIdx, "required", e.target.checked)}
+                              className="form-checkbox"
+                            />
+                            <span className="text-xs">Required</span>
+                          </label>
+                        </div>
+
+                        {(group.options || []).map((opt, optIdx) => (
+                          <div key={`subitem-${groupIdx}-opt-${optIdx}`} className="mt-2 grid gap-2 sm:grid-cols-3 items-end">
+                            <input
+                              type="text"
+                              value={opt.name}
+                              onChange={(e) => updateSubItemOption(groupIdx, optIdx, "name", e.target.value)}
+                              placeholder="Option name (e.g. Tomato Sauce)"
+                              className="border rounded-lg px-3 py-2"
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={opt.price}
+                              onChange={(e) => updateSubItemOption(groupIdx, optIdx, "price", Number(e.target.value))}
+                              placeholder="Extra price"
+                              className="border rounded-lg px-3 py-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeSubItemOption(groupIdx, optIdx)}
+                              className="text-xs text-rose-600 font-black"
+                            >
+                              Remove option
+                            </button>
+                          </div>
+                        ))}
+
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => addSubItemOption(groupIdx)}
+                            className="text-xs font-black uppercase tracking-wider text-white bg-indigo-600 px-3 py-1 rounded-lg"
+                          >
+                            + Add option
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeSubItemGroup(groupIdx)}
+                            className="text-xs text-rose-500 font-black uppercase tracking-wider"
+                          >
+                            Remove group
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   {/* Image Upload */}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
@@ -639,9 +795,13 @@ function ProductCard({ product, onToggle, onDelete, onEdit }) {
             <h3 className="text-xl font-black text-slate-950 truncate tracking-tight uppercase italic transition-colors group-hover:text-indigo-600">
               {product.name}
             </h3>
-            <div className="flex items-center gap-1.5 text-indigo-600 font-black">
-              <IndianRupee size={16} strokeWidth={3} />
-              <span className="text-2xl tracking-tighter italic">{product.price.toLocaleString()}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span className="font-bold">₹{product.price.toLocaleString()}</span>
+              {Array.isArray(product.subItems) && product.subItems.length > 0 && (
+                <span className="px-2 py-1 rounded-md bg-indigo-50 text-indigo-600">
+                  {product.subItems.length} sub-item group{product.subItems.length > 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           </div>
 

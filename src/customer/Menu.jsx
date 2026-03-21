@@ -519,7 +519,7 @@ export default function Menu() {
                             <ProductCard
                               product={product}
                               initialQty={cart.find(i => (i._id || i.id) === (product._id || product.id) && (addTakeawayMode ? i.isTakeaway : !i.isTakeaway))?.qty || 0}
-                              onAdd={() => product.isAvailable !== false && addToCart(product, addTakeawayMode)}
+                              onAdd={(item) => product.isAvailable !== false && addToCart(item, addTakeawayMode)}
                               onRemove={() => removeFromCart(product._id || product.id)}
                             />
                           </motion.div>

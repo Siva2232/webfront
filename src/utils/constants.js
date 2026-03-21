@@ -3,7 +3,8 @@ export const ORDER_STATUS = {
   PENDING: "Pending",
   PREPARING: "Preparing",
   READY: "Ready",
-  SERVED: "Served"
+  SERVED: "Served",
+  CLOSED: "Closed"
 };
 
 /* Default Categories */

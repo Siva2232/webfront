@@ -50,7 +50,7 @@ export const OrderProvider = ({ children }) => {
     try {
       setIsLoading(true);
       // support optional limit param if needed to reduce payload size
-      const { data } = await API.get("/orders?limit=50&status=Pending,Preparing,Cooking,Ready");
+      const { data } = await API.get("/orders?limit=50&status=Pending,Preparing,Cooking,Ready,Served");
       setOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -284,22 +284,30 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.put(`/orders/${id}/status`, { status });
       setOrders((prev) => prev.map((o) => (o._id === id ? data : o)));
       
-      // If status is "Closed", we also need to remove it from the bills list 
-      // so the invoice grid updates immediately without waiting for fetchBills
+      // If status is "Closed", update the bill's status in place so it stays
+      // visible with a Closed badge instead of being removed from the list.
       if (status === "Closed") {
-        setBills((prev) => prev.filter(b => (b.orderRef || b._id || b.id) !== id));
-        // Clear from cache too
+        setBills((prev) => prev.map(b => {
+          const key = b.orderRef || b._id || b.id;
+          if (key === id) return { ...b, status: "Closed" };
+          return b;
+        }));
         try {
           const cached = localStorage.getItem("cachedBills");
           if (cached) {
             const parsed = JSON.parse(cached);
-            const filtered = parsed.filter(b => (b.orderRef || b._id || b.id) !== id);
-            localStorage.setItem("cachedBills", JSON.stringify(filtered));
+            const updated = parsed.map(b => {
+              const key = b.orderRef || b._id || b.id;
+              if (key === id) return { ...b, status: "Closed" };
+              return b;
+            });
+            localStorage.setItem("cachedBills", JSON.stringify(updated));
           }
         } catch (e) {}
       }
     } catch (error) {
       console.error("Error updating order status:", error);
+      throw error;
     }
   };
 

@@ -57,16 +57,18 @@ export default function OrderBill() {
     }
   };
 
+  // Track which bills have been closed so the button stays disabled permanently
+  const [closedBillIds, setClosedBillIds] = useState(new Set());
+
   const handleCloseBill = async (order) => {
     const orderId = order.orderRef || order._id || order.id;
-    if (!orderId || closingBillId) return;
+    if (!orderId || closingBillId || closedBillIds.has(orderId)) return;
     
     setClosingBillId(orderId);
     try {
       await updateOrderStatus(orderId, "Closed");
-      toast.success("Order closed, table freed and summary will hide.");
-      await fetchBills();
-      // navigate(-1); // Removed to prevent accidental navigation when many bills are visible
+      toast.success("Order closed & table freed!");
+      setClosedBillIds(prev => new Set(prev).add(orderId));
     } catch (err) {
       console.error("close bill error", err);
       toast.error("Failed to close bill");
@@ -419,25 +421,42 @@ export default function OrderBill() {
                 </div>
               </div>
 
+              {/* Closed Badge - shown at the top of the bill when closed */}
+              {(order.status === "Closed" || closedBillIds.has(order.orderRef || order._id || order.id)) && (
+                <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 no-print">
+                  <div className="px-5 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 shadow-xl">
+                    <CheckCircle size={12} />
+                    Closed
+                  </div>
+                </div>
+              )}
+
               {/* Outside Close Button */}
               <div className="mt-4 flex justify-center no-print">
-                <button
-                  onClick={() => handleCloseBill(order)}
-                  disabled={closingBillId === (order.orderRef || order._id || order.id)}
-                  className="px-6 py-2.5 bg-rose-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-rose-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {closingBillId === (order.orderRef || order._id || order.id) ? (
-                    <>
-                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Closing...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={14} />
-                      Close & Free Table
-                    </>
-                  )}
-                </button>
+                {(order.status === "Closed" || closedBillIds.has(order.orderRef || order._id || order.id)) ? (
+                  <div className="px-6 py-2.5 bg-slate-100 text-slate-400 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-slate-200">
+                    <CheckCircle size={14} />
+                    Table Freed
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleCloseBill(order)}
+                    disabled={!!closingBillId}
+                    className="px-6 py-2.5 bg-rose-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-rose-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {closingBillId === (order.orderRef || order._id || order.id) ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Closing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={14} />
+                        Close & Free Table
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           );

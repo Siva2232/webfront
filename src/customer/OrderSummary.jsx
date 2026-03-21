@@ -34,6 +34,15 @@ export default function OrderSummary() {
     if (orders.length === 0) fetchOrders();
   }, []);
 
+  // Poll for order updates every 5s so customer sees status changes
+  // (e.g. admin closing the bill) even if socket misses the event
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Get current table & mode from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
   const mode = searchParams.get("mode");
