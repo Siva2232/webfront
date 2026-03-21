@@ -5,7 +5,8 @@ import StatusBadge from "../components/StatusBadge";
 import OrderProgress from "../components/OrderProgress";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
 import { 
   ChevronLeft, 
@@ -23,9 +24,10 @@ import {
 } from "lucide-react";
 
 export default function OrderSummary() {
-  const { orders, fetchOrders } = useOrders();
+  const { orders, fetchOrders, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [isClosingBill, setIsClosingBill] = useState(false);
 
   // fetch orders if we don't have any yet (e.g. fresh visit)
   useEffect(() => {
@@ -57,16 +59,16 @@ export default function OrderSummary() {
   const isTakeawayOrder = (o) => o.table === TAKEAWAY_TABLE || !o.table;
 
   const tableOrders = mode === "takeaway"
-    ? orders.filter(o => isTakeawayOrder(o) && o.status !== "Served")
+    ? orders.filter(o => isTakeawayOrder(o) && o.status !== "Closed")
     : currentTable
       ? orders.filter(o => 
-          o.status !== "Served" &&
+          o.status !== "Closed" &&
           (o.table === currentTable ||
             (currentTable === TAKEAWAY_TABLE && !o.table))
         )
       : [];
 
-  // Get the most recent active order for this table (served orders are ignored)
+  // Get the most recent order for this table (including Served; only Closed is hidden)
   const order = tableOrders.length > 0 
     ? tableOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
     : null;
@@ -145,6 +147,23 @@ export default function OrderSummary() {
   const cgst = order.billDetails?.cgst || subtotal * 0.025;
   const sgst = order.billDetails?.sgst || subtotal * 0.025;
   const grandTotal = order.billDetails?.grandTotal || (subtotal + cgst + sgst);
+
+  const handleCloseBill = async () => {
+    if (!order?._id || isClosingBill) return;
+    setIsClosingBill(true);
+    try {
+      await updateOrderStatus(order._id, "Closed");
+      toast.success("Bill closed and table released");
+      // Explicitly clear the current order from view by navigating or local state
+      // fetchOrders() will eventually sync, but navigation removes the UI immediateley
+      navigate(backLink);
+    } catch (err) {
+      console.error("close bill error", err);
+      toast.error("Failed to close bill");
+    } finally {
+      setIsClosingBill(false);
+    }
+  };
 
   return (
     <div 
@@ -324,7 +343,14 @@ export default function OrderSummary() {
 
       {/* FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto grid grid-cols-1 gap-3">
+          <button
+            onClick={handleCloseBill}
+            disabled={isClosingBill}
+            className="relative flex items-center justify-center gap-2 w-full bg-rose-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all hover:bg-rose-700 disabled:opacity-50"
+          >
+            {isClosingBill ? "Closing..." : "Close Bill"}
+          </button>
           <motion.div 
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}

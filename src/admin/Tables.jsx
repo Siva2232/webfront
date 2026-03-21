@@ -52,17 +52,16 @@ export default function Tables() {
 
   // keep occupancy in sync with live orders coming from the server
   useEffect(() => {
-    // build map of table -> true for any non-served orders
+    // build map of table -> true for any active orders (not closed)
+    // IMPORTANT: Served orders still count as occupied until explicitly CLOSED.
     const liveMap = {};
     orders.forEach(o => {
-      if (o.status && o.status !== "Served") {
+      if (o.status && o.status !== "Closed") {
         liveMap[`table-${o.table}`] = true;
       }
     });
-    // if the service has any live state, prefer it over the cached map
-    if (Object.keys(liveMap).length > 0) {
-      setActiveOrders(prev => ({ ...prev, ...liveMap }));
-    }
+    // Use the live state from orders to define occupancy
+    setActiveOrders(liveMap);
   }, [orders]);
 
   const goToMenu = (tableId) => {

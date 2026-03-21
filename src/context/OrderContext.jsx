@@ -283,6 +283,21 @@ export const OrderProvider = ({ children }) => {
     try {
       const { data } = await API.put(`/orders/${id}/status`, { status });
       setOrders((prev) => prev.map((o) => (o._id === id ? data : o)));
+      
+      // If status is "Closed", we also need to remove it from the bills list 
+      // so the invoice grid updates immediately without waiting for fetchBills
+      if (status === "Closed") {
+        setBills((prev) => prev.filter(b => (b.orderRef || b._id || b.id) !== id));
+        // Clear from cache too
+        try {
+          const cached = localStorage.getItem("cachedBills");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const filtered = parsed.filter(b => (b.orderRef || b._id || b.id) !== id);
+            localStorage.setItem("cachedBills", JSON.stringify(filtered));
+          }
+        } catch (e) {}
+      }
     } catch (error) {
       console.error("Error updating order status:", error);
     }
