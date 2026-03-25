@@ -353,13 +353,6 @@ export default function OrderSummary() {
       {/* FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
         <div className="max-w-md mx-auto grid grid-cols-1 gap-3">
-          <button
-            onClick={handleCloseBill}
-            disabled={isClosingBill}
-            className="relative flex items-center justify-center gap-2 w-full bg-rose-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all hover:bg-rose-700 disabled:opacity-50"
-          >
-            {isClosingBill ? "Closing..." : "Close Bill"}
-          </button>
           <motion.div 
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
