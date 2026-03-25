@@ -1,93 +1,3 @@
-// Thermal print helpers
-const generateLine = (left, right, width = 32) => {
-  const space = width - (left.length + right.length);
-  return left + " ".repeat(space > 0 ? space : 1) + right;
-};
-
-const generateItemLine = (name, qty, price) => {
-  const nameWidth = 18;
-  const qtyWidth = 4;
-  const priceWidth = 10;
-
-  const itemName = name.length > nameWidth 
-    ? name.substring(0, nameWidth) 
-    : name;
-
-  return (
-    itemName.padEnd(nameWidth) +
-    qty.toString().padStart(qtyWidth) +
-    price.toFixed(2).padStart(priceWidth)
-  );
-};
-
-// Example usage: call this function to print the bill
-export function printThermalBill(order) {
-  const itemsText = order.items.map(item =>
-    generateItemLine(item.name, item.qty, item.price * item.qty)
-  ).join("\n");
-
-  const subtotal = order.items.reduce((a, i) => a + i.price * i.qty, 0);
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
-
-  const html = `
-<html>
-<head>
-  <style>
-    @page { size: 80mm auto; margin: 0; }
-
-    body {
-      font-family: monospace;
-      white-space: pre;
-      font-size: 12px;
-      width: 80mm;
-      padding: 5px;
-    }
-  </style>
-</head>
-
-<body>
-
-        MY CAFE
-Kochi, Kerala
-Phone: 9876543210
-GST: 18AABCT1234H1Z0
-
---------------------------------
-${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
-${generateLine("TABLE", order.table || "TA")}
-${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
-${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
-
---------------------------------
-ITEM              QTY       AMT
---------------------------------
-${itemsText}
-
---------------------------------
-${generateLine("SUBTOTAL", subtotal.toFixed(2))}
-${generateLine("GST (5%)", tax.toFixed(2))}
-
---------------------------------
-${generateLine("TOTAL PAYABLE", total.toFixed(2))}
-(INCLUSIVE OF TAXES)
-
---------------------------------
-PAYMENT SUMMARY
-${generateLine("CASH", "PAID")}
-${generateLine("ONLINE", "PAID")}
-
---------------------------------
-       OFFICIAL RECEIPT
-          THANK YOU
-</body>
-</html>
-`;
-
-  const win = window.open("", "", "width=300,height=600");
-  win.document.write(html);
-  win.document.close();
-}
 import React, { useEffect, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
@@ -193,134 +103,90 @@ export default function OrderBill() {
     const tax = subtotal * 0.05;
     const total = subtotal + tax;
 
-    // Build items HTML separately to avoid nested template literal issues
-    const itemsHtml = order.items
-      .map(
-        (item) =>
-          `<tr><td>${item.name}</td><td>${item.qty}</td><td>${item.price * item.qty}</td></tr>`
-      )
-      .join("");
 
- const html = `
-<html>
-<head>
-  <title>Thermal Bill</title>
+    const generateLine = (left, right, width = 32) => {
+      const space = width - (left.length + right.length);
+      return left + " ".repeat(space > 0 ? space : 1) + right;
+    };
 
-  <style>
-    @page {
-      size: 80mm auto;
-      margin: 0;
-    }
+    const generateItemLine = (name, qty, price) => {
+      const nameWidth = 18;
+      const qtyWidth = 4;
+      const priceWidth = 10;
 
-    body {
-      font-family: monospace;
-      width: 72mm;
-      margin: 0 auto;
-      padding: 5px;
-      font-size: 11px;
-      color: #000;
-    }
+      const itemName = name.length > nameWidth 
+        ? name.substring(0, nameWidth) 
+        : name;
 
-    .center { text-align: center; }
+      return (
+        itemName.padEnd(nameWidth) +
+        qty.toString().padStart(qtyWidth) +
+        price.toFixed(2).padStart(priceWidth)
+      );
+    };
 
-    .line {
-      border-top: 1px dashed #000;
-      margin: 6px 0;
-    }
+    const itemsText = order.items.map(item =>
+      generateItemLine(item.name, item.qty, item.price * item.qty)
+    ).join("\n");
 
-    .row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-    }
+    const html = `
+  <html>
+  <head>
+    <style>
+      @page { size: 80mm auto; margin: 0; }
 
-    /* 🔥 FIXED WIDTH COLUMNS */
-    .item-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-    }
+      body {
+        font-family: monospace;
+        white-space: pre;
+        font-size: 12px;
+        width: 80mm;
+        padding: 5px;
+      }
+    </style>
+  </head>
 
-    .item-name {
-      width: 50%;
-      word-break: break-word;
-    }
+  <body>
 
-    .qty {
-      width: 15%;
-      text-align: center;
-    }
+            MY CAFE
+  01 SKYLINE DRIVE, BUSINESS DISTRICT
+  +91 0000 000 000
 
-    .amt {
-      width: 35%;
-      text-align: right;
-    }
+  --------------------------------
+  ${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
+  ${generateLine("TABLE", order.table || "TA")}
+  ${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
+  ${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
 
-  </style>
-</head>
+  --------------------------------
+  ITEM              QTY       AMT
+  --------------------------------
+  ${itemsText}
 
-<body>
+  --------------------------------
+  ${generateLine("SUBTOTAL", subtotal.toFixed(2))}
+  ${generateLine("GST (5%)", tax.toFixed(2))}
 
-  <!-- HEADER -->
-  <div class="center"><b>MY CAFE</b></div>
-  <div class="center">Kochi, Kerala</div>
-  <div class="center">Phone: 9876543210</div>
-  <div class="center">GST: 18AABCT1234H1Z0</div>
+  --------------------------------
+  ${generateLine("TOTAL PAYABLE", total.toFixed(2))}
+  (INCLUSIVE OF TAXES)
 
-  <div class="line"></div>
+  --------------------------------
+  PAYMENT SUMMARY
+  ${generateLine("CASH", "PAID")}
+  ${generateLine("ONLINE", "PAID")}
 
-  <!-- INFO -->
-  <div class="row"><span>Bill No</span><span>#${(order._id || "").slice(-6)}</span></div>
-  <div class="row"><span>Cashier</span><span>${cashierName}</span></div>
-  <div class="row"><span>Date</span><span>${new Date(order.createdAt).toLocaleString()}</span></div>
-  <div class="row"><span>Table</span><span>${order.table || "Takeaway"}</span></div>
-
-  <div class="line"></div>
-
-  <!-- HEADER -->
-  <div class="item-row">
-    <div class="item-name"><b>ITEM</b></div>
-    <div class="qty"><b>QTY</b></div>
-    <div class="amt"><b>AMT</b></div>
-  </div>
-
-  <div class="line"></div>
-
-  <!-- ITEMS -->
-  ${order.items.map(item => `
-    <div class="item-row">
-      <div class="item-name">${item.name}</div>
-      <div class="qty">${item.quantity}</div>
-      <div class="amt">${item.price * item.quantity}</div>
-    </div>
-  `).join("")}
-
-  <div class="line"></div>
-
-  <!-- TOTAL -->
-  <div class="row"><span>Subtotal</span><span>${subtotal}</span></div>
-  <div class="row"><span>GST (5%)</span><span>${tax.toFixed(2)}</span></div>
-
-  <div class="line"></div>
-
-  <div class="row"><b>Total</b><b>${total.toFixed(2)}</b></div>
-
-  <div class="line"></div>
-
-  <!-- FOOTER -->
-  <div class="center">Thank You</div>
-  <div class="center">Visit Again</div>
+  --------------------------------
+         OFFICIAL RECEIPT
+            THANK YOU
 
   <script>
-    window.onload = function () {
-      window.print();
-      window.onafterprint = () => window.close();
-    };
+    window.print();
+    window.onafterprint = () => window.close();
   </script>
 
-</body>
-</html>
-`;
+  </body>
+  </html>
+  `;
 printWindow.document.write(html);
 printWindow.document.close();
   };
