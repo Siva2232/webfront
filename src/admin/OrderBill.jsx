@@ -112,140 +112,206 @@ export default function OrderBill() {
       .join("");
 
     const html = `
-      <html>
-        <head>
-          <title>Bill</title>
-          <style>
-            body {
-              font-family: monospace;
-              width: 80mm;
-              margin: 0;
-              padding: 10px;
-              color: #000;
-            }
+   <html>
+<head>
+  <title>Thermal Bill</title>
 
-            .center { text-align: center; }
-            .bold { font-weight: bold; }
-            .line {
-              border-top: 1px dashed #000;
-              margin: 6px 0;
-            }
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-            .row {
-              display: flex;
-              justify-content: space-between;
-              font-size: 12px;
-            }
+    body {
+      font-family: monospace;
+      width: 80mm;
+      max-width: 80mm;
+      padding: 8px;
+      color: #000;
+      font-size: 12px;
+      white-space: normal;
+    }
 
-            .small { font-size: 10px; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
 
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 6px;
-            }
+    .small { font-size: 10px; }
+    .xs { font-size: 9px; }
 
-            th, td {
-              font-size: 11px;
-              text-align: left;
-              padding: 2px 0;
-            }
+    .line {
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
 
-            th:last-child, td:last-child {
-              text-align: right;
-            }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin: 2px 0;
+    }
 
-            .total {
-              font-size: 14px;
-              font-weight: bold;
-            }
+    /* TABLE FIX FOR THERMAL */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
 
-            @media print {
-              body { margin: 0; }
-            }
-          </style>
-        </head>
+    th, td {
+      font-size: 11px;
+      padding: 3px 0;
+      word-break: break-word;
+    }
 
-        <body>
+    th {
+      border-bottom: 1px dashed #000;
+      display: table-cell !important;
+    }
 
-          <div class="center bold">MY CAFE</div>
-          <div class="center small">Kochi, Kerala</div>
-          <div class="center small">Phone: 9876543210</div>
-          <div class="center small">GST: 18AABCT1234H1Z0</div>
+    td {
+      vertical-align: top;
+    }
 
-          <div class="line"></div>
+    .qty {
+      text-align: center;
+      width: 15%;
+    }
 
-          <div class="row">
-            <span>Bill No:</span>
-            <span>#${(order._id || "").slice(-6)}</span>
-          </div>
+    .price {
+      text-align: right;
+      width: 35%;
+    }
 
-          <div class="row">
-            <span>Cashier:</span>
-            <span>${cashierName}</span>
-          </div>
+    .item {
+      width: 50%;
+    }
 
-          <div class="row">
-            <span>Date:</span>
-            <span>${new Date(order.createdAt).toLocaleString()}</span>
-          </div>
+    .total {
+      font-size: 14px;
+      font-weight: bold;
+    }
 
-          <div class="row">
-            <span>Table:</span>
-            <span>${order.table || "Takeaway"}</span>
-          </div>
+    .footer {
+      margin-top: 8px;
+    }
 
-          <div class="line"></div>
+    @media print {
+      body {
+        margin: 0;
+        padding: 5px;
+        width: 80mm;
+      }
 
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>Amt</th>
-              </tr>
-            </thead>
+      @page {
+        size: 80mm auto;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
 
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
+<body>
 
-          <div class="line"></div>
+  <!-- HEADER -->
+  <div class="center bold">MY CAFE</div>
+  <div class="center small">Kochi, Kerala</div>
+  <div class="center small">Phone: 9876543210</div>
+  <div class="center small">GST: 18AABCT1234H1Z0</div>
 
-          <div class="row">
-            <span>Subtotal</span>
-            <span>₹${subtotal}</span>
-          </div>
+  <div class="line"></div>
 
-          <div class="row">
-            <span>GST (5%)</span>
-            <span>₹${tax.toFixed(2)}</span>
-          </div>
+  <!-- BILL INFO -->
+  <div class="row">
+    <span>Bill No</span>
+    <span>#${(order._id || "").slice(-6)}</span>
+  </div>
 
-          <div class="line"></div>
+  <div class="row">
+    <span>Cashier</span>
+    <span>${cashierName}</span>
+  </div>
 
-          <div class="row total">
-            <span>Total</span>
-            <span>₹${total.toFixed(2)}</span>
-          </div>
+  <div class="row">
+    <span>Date</span>
+    <span>${new Date(order.createdAt).toLocaleString()}</span>
+  </div>
 
-          <div class="line"></div>
+  <div class="row">
+    <span>Table</span>
+    <span>${order.table || "Takeaway"}</span>
+  </div>
 
-          <div class="center small">Thank You!</div>
-          <div class="center small">Visit Again 🙏</div>
+  <div class="line"></div>
 
-          <script>
-            window.onload = function() {
-              window.print();
-              window.onafterprint = function() {
-                window.close();
-              };
-            }
-          </script>
+  <!-- ITEMS TABLE -->
+  <table>
+    <thead>
+      <tr>
+        <th class="item">Item</th>
+        <th class="qty">Qty</th>
+        <th class="price">Amt</th>
+      </tr>
+    </thead>
 
-        </body>
-      </html>
+    <tbody>
+      ${
+        order.items.map(item => `
+          <tr>
+            <td class="item">${item.name}</td>
+            <td class="qty">${item.qty}</td>
+            <td class="price">₹${(item.price * item.qty).toFixed(2)}</td>
+          </tr>
+        `).join("")
+      }
+    </tbody>
+  </table>
+
+  <div class="line"></div>
+
+  <!-- TOTALS -->
+  <div class="row">
+    <span>Subtotal</span>
+    <span>₹${subtotal}</span>
+  </div>
+
+  <div class="row">
+    <span>GST (5%)</span>
+    <span>₹${tax.toFixed(2)}</span>
+  </div>
+
+  <div class="line"></div>
+
+  <div class="row total">
+    <span>Total</span>
+    <span>₹${total.toFixed(2)}</span>
+  </div>
+
+  <div class="line"></div>
+
+  <!-- FOOTER -->
+  <div class="center small footer">Thank You!</div>
+  <div class="center xs">Visit Again 🙏</div>
+
+  <div class="center xs" style="margin-top:4px;">
+    ${new Date().toLocaleString()}
+  </div>
+
+  <!-- AUTO PRINT -->
+  <script>
+    window.onload = function () {
+      setTimeout(() => {
+        window.print();
+        window.onafterprint = function () {
+          window.close();
+        };
+      }, 300);
+    };
+  </script>
+
+</body>
+</html>
     `;
 
     printWindow.document.write(html);
