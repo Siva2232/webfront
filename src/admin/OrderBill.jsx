@@ -135,13 +135,18 @@ export default function OrderBill() {
     <style>
       @page { size: 80mm auto; margin: 0; }
 
+      html {
+        display: flex;
+        justify-content: center;
+      }
+
       body {
         font-family: monospace;
         white-space: pre;
         font-size: 12px;
-        width: 90mm;
-        padding: 5px;
-        margin-left:50px
+        width: 72mm;
+        margin: 0 auto;
+        padding: 5px 0;
       }
     </style>
   </head>
