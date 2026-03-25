@@ -311,20 +311,35 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
           <div className="w-full md:w-56 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center italic">Move Status</p>
             <div className="flex flex-col gap-2">
-              {["New", "Preparing", "Ready", "Served"].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => {
-                    if (s !== status) {
-                      setSelectedStatus(s);
-                      setIsModalOpen(true);
-                    }
-                  }}
-                  className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${s === status ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-900 hover:text-white border border-slate-100'}`}
-                >
-                  {s}
-                </button>
-              ))}
+              {["New", "Preparing", "Ready", "Served"].map((s) => {
+                const statusOrder = { "New": 0, "Preparing": 1, "Ready": 2, "Served": 3 };
+                const currentStatusLevel = statusOrder[status] ?? -1;
+                const buttonStatusLevel = statusOrder[s] ?? -1;
+                const isCurrentStatus = s === status;
+                const canclick = buttonStatusLevel > currentStatusLevel;
+                
+                return (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      if (canclick) {
+                        setSelectedStatus(s);
+                        setIsModalOpen(true);
+                      }
+                    }}
+                    disabled={!canclick}
+                    className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
+                      isCurrentStatus 
+                        ? 'bg-slate-900 text-white shadow-lg cursor-default' 
+                        : canclick
+                        ? 'bg-white text-slate-500 hover:bg-slate-900 hover:text-white border border-slate-100 cursor-pointer'
+                        : 'bg-slate-200 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
