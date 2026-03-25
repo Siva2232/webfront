@@ -1,3 +1,93 @@
+// Thermal print helpers
+const generateLine = (left, right, width = 32) => {
+  const space = width - (left.length + right.length);
+  return left + " ".repeat(space > 0 ? space : 1) + right;
+};
+
+const generateItemLine = (name, qty, price) => {
+  const nameWidth = 18;
+  const qtyWidth = 4;
+  const priceWidth = 10;
+
+  const itemName = name.length > nameWidth 
+    ? name.substring(0, nameWidth) 
+    : name;
+
+  return (
+    itemName.padEnd(nameWidth) +
+    qty.toString().padStart(qtyWidth) +
+    price.toFixed(2).padStart(priceWidth)
+  );
+};
+
+// Example usage: call this function to print the bill
+export function printThermalBill(order) {
+  const itemsText = order.items.map(item =>
+    generateItemLine(item.name, item.qty, item.price * item.qty)
+  ).join("\n");
+
+  const subtotal = order.items.reduce((a, i) => a + i.price * i.qty, 0);
+  const tax = subtotal * 0.05;
+  const total = subtotal + tax;
+
+  const html = `
+<html>
+<head>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+
+    body {
+      font-family: monospace;
+      white-space: pre;
+      font-size: 12px;
+      width: 80mm;
+      padding: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+        MY CAFE
+Kochi, Kerala
+Phone: 9876543210
+GST: 18AABCT1234H1Z0
+
+--------------------------------
+${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
+${generateLine("TABLE", order.table || "TA")}
+${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
+${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
+
+--------------------------------
+ITEM              QTY       AMT
+--------------------------------
+${itemsText}
+
+--------------------------------
+${generateLine("SUBTOTAL", subtotal.toFixed(2))}
+${generateLine("GST (5%)", tax.toFixed(2))}
+
+--------------------------------
+${generateLine("TOTAL PAYABLE", total.toFixed(2))}
+(INCLUSIVE OF TAXES)
+
+--------------------------------
+PAYMENT SUMMARY
+${generateLine("CASH", "PAID")}
+${generateLine("ONLINE", "PAID")}
+
+--------------------------------
+       OFFICIAL RECEIPT
+          THANK YOU
+</body>
+</html>
+`;
+
+  const win = window.open("", "", "width=300,height=600");
+  win.document.write(html);
+  win.document.close();
+}
 import React, { useEffect, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
