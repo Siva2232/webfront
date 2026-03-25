@@ -135,12 +135,18 @@ export default function OrderBill() {
     <style>
       @page { size: 80mm auto; margin: 0; }
 
+      html {
+        display: flex;
+        justify-content: center;
+      }
+
       body {
         font-family: monospace;
         white-space: pre;
         font-size: 12px;
-        width: 80mm;
-        padding: 5px;
+        width: 72mm;
+        margin: 0 auto;
+        padding: 5px 0;
       }
     </style>
   </head>
@@ -148,7 +154,7 @@ export default function OrderBill() {
   <body>
 
             MY CAFE
-  01 SKYLINE DRIVE, BUSINESS DISTRICT
+  01 SKYLINE DRIVE,
   +91 0000 000 000
 
   --------------------------------
