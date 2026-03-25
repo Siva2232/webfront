@@ -7,8 +7,8 @@ import {
 } from "lucide-react";
 
 const steps = [
-  { key: "Preparing", label: "Preparing", icon: ChefHat },
-  { key: "Cooking", label: "Cooking", icon: Flame },
+  { key: "New", label: "New", icon: ChefHat },
+  { key: "Preparing", label: "Preparing", icon: Flame },
   { key: "Ready", label: "Ready", icon: Bell },
   { key: "Served", label: "Served", icon: CheckCircle },
 ];

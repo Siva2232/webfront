@@ -50,7 +50,7 @@ export const OrderProvider = ({ children }) => {
     try {
       setIsLoading(true);
       // support optional limit param if needed to reduce payload size
-      const { data } = await API.get("/orders?limit=50&status=Pending,Preparing,Cooking,Ready,Served");
+      const { data } = await API.get("/orders?limit=50&status=Pending,New,Preparing,Ready,Served");
       setOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);

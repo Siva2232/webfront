@@ -18,9 +18,11 @@ import {
   CreditCard,
   CheckCircle,
   Wallet,
-  AlertCircle
+  AlertCircle,
+  User
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
+import { CASHIERS } from "../constants";
 
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, updateOrderStatus, isLoading } = useOrders();
@@ -30,6 +32,10 @@ export default function OrderBill() {
   // State for mark paid confirmation modal
   const [markPaidModal, setMarkPaidModal] = useState(null); // { billId, amount }
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  // State for print cashier selection modal
+  const [printModalOrder, setPrintModalOrder] = useState(null);
+  const [selectedCashier, setSelectedCashier] = useState(null);
 
   // Fetch bills on mount
   useEffect(() => {
@@ -89,14 +95,179 @@ export default function OrderBill() {
     });
   }, [bills]);
 
-  // Isolated Print Logic
-  const handlePrintSingle = (orderId) => {
-    const printContent = document.getElementById(`bill-${orderId}`);
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent.outerHTML;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload(); 
+  // Isolated Print Logic - Enhanced Receipt Print
+  const handlePrintSingle = (order, cashierName = "N/A") => {
+    const printWindow = window.open("", "_blank");
+
+    const subtotal = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const tax = subtotal * 0.05;
+    const total = subtotal + tax;
+
+    // Build items HTML separately to avoid nested template literal issues
+    const itemsHtml = order.items
+      .map(
+        (item) =>
+          `<tr><td>${item.name}</td><td>${item.qty}</td><td>${item.price * item.qty}</td></tr>`
+      )
+      .join("");
+
+    const html = `
+      <html>
+        <head>
+          <title>Bill</title>
+          <style>
+            body {
+              font-family: monospace;
+              width: 80mm;
+              margin: 0;
+              padding: 10px;
+              color: #000;
+            }
+
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line {
+              border-top: 1px dashed #000;
+              margin: 6px 0;
+            }
+
+            .row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+            }
+
+            .small { font-size: 10px; }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 6px;
+            }
+
+            th, td {
+              font-size: 11px;
+              text-align: left;
+              padding: 2px 0;
+            }
+
+            th:last-child, td:last-child {
+              text-align: right;
+            }
+
+            .total {
+              font-size: 14px;
+              font-weight: bold;
+            }
+
+            @media print {
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+
+        <body>
+
+          <div class="center bold">MY CAFE</div>
+          <div class="center small">Kochi, Kerala</div>
+          <div class="center small">Phone: 9876543210</div>
+          <div class="center small">GST: 18AABCT1234H1Z0</div>
+
+          <div class="line"></div>
+
+          <div class="row">
+            <span>Bill No:</span>
+            <span>#${(order._id || "").slice(-6)}</span>
+          </div>
+
+          <div class="row">
+            <span>Cashier:</span>
+            <span>${cashierName}</span>
+          </div>
+
+          <div class="row">
+            <span>Date:</span>
+            <span>${new Date(order.createdAt).toLocaleString()}</span>
+          </div>
+
+          <div class="row">
+            <span>Table:</span>
+            <span>${order.table || "Takeaway"}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Amt</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <div class="line"></div>
+
+          <div class="row">
+            <span>Subtotal</span>
+            <span>₹${subtotal}</span>
+          </div>
+
+          <div class="row">
+            <span>GST (5%)</span>
+            <span>₹${tax.toFixed(2)}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <div class="row total">
+            <span>Total</span>
+            <span>₹${total.toFixed(2)}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <div class="center small">Thank You!</div>
+          <div class="center small">Visit Again 🙏</div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            }
+          </script>
+
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  // Handle print button - show cashier selection modal
+  const handlePrintClick = (order) => {
+    setPrintModalOrder(order);
+    setSelectedCashier(null);
+  };
+
+  // Handle confirm print
+  const handleConfirmPrint = () => {
+    if (!printModalOrder || !selectedCashier) {
+      toast.error("Please select a cashier");
+      return;
+    }
+    const cashierName = CASHIERS.find(c => c.id === selectedCashier)?.name || "N/A";
+    handlePrintSingle(printModalOrder, cashierName);
+    setPrintModalOrder(null);
+    setSelectedCashier(null);
   };
 
 
@@ -160,7 +331,7 @@ export default function OrderBill() {
             >
               {/* Floating Print Trigger */}
               <button 
-                onClick={() => handlePrintSingle(order._id || order.id || index)}
+                onClick={() => handlePrintClick(order)}
                 className="absolute -top-5 right-6 z-10 no-print bg-white border border-slate-200 shadow-xl px-5 py-2.5 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-300 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
               >
                 <Printer size={12} /> Print Receipt
@@ -183,6 +354,7 @@ export default function OrderBill() {
                   <div className="flex flex-col items-center text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] gap-1">
                     <span className="flex items-center gap-1"><MapPin size={8} /> 01 SKYLINE DRIVE, BUSINESS DISTRICT</span>
                     <span className="flex items-center gap-1"><Phone size={8} /> +91 0000 000 000</span>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.2em] mt-1">GST: 18AABCT1234H1Z0</span>
                   </div>
                   
                   {/* Payment Summary */}
@@ -511,6 +683,65 @@ export default function OrderBill() {
                       Confirm
                     </>
                   )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Print Cashier Selection Modal */}
+        {printModalOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setPrintModalOrder(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-full mx-auto mb-4">
+                <User size={28} className="text-indigo-600" />
+              </div>
+              <h3 className="text-lg font-black text-center text-slate-900 mb-2">Select Cashier</h3>
+              <p className="text-sm text-slate-500 text-center mb-6">
+                Who is handling this bill?
+              </p>
+              
+              <div className="mb-6 max-h-64 overflow-y-auto">
+                <select
+                  value={selectedCashier || ""}
+                  onChange={(e) => setSelectedCashier(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">-- Choose a cashier --</option>
+                  {CASHIERS.map((cashier) => (
+                    <option key={cashier.id} value={cashier.id}>
+                      {cashier.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPrintModalOrder(null)}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmPrint}
+                  disabled={!selectedCashier}
+                  className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Printer size={16} />
+                  Print Bill
                 </button>
               </div>
             </motion.div>

@@ -177,7 +177,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     .filter((o) => {
       const oid = o._id || o.id;
       return (
-        (o.status === "Preparing" || o.status === "Pending") &&
+        (o.status === "New" || o.status === "Pending") &&
         !dismissedIds.includes(oid)
       );
     })

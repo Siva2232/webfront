@@ -14,13 +14,13 @@ export const isTakeawayOrder = (o) =>
 import { motion, AnimatePresence } from "framer-motion";
 
 const gradientMap = {
-  Preparing: "from-amber-400 to-orange-500",
-  Cooking: "from-orange-500 to-rose-500",
+  New: "from-blue-400 to-blue-500",
+  Preparing: "from-orange-400 to-orange-500",
   Ready: "from-indigo-500 to-purple-600",
   Served: "from-emerald-500 to-teal-600",
 };
 
-const statusStep = { Preparing: 1, Cooking: 2, Ready: 3, Served: 4 };
+const statusStep = { New: 1, Preparing: 2, Ready: 3, Served: 4 };
 
 export default function OrdersDashboard({ overrideOrders = null }) {
   const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders } = useOrders();
@@ -311,7 +311,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
           <div className="w-full md:w-56 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center italic">Move Status</p>
             <div className="flex flex-col gap-2">
-              {["Preparing", "Cooking", "Ready", "Served"].map((s) => (
+              {["New", "Preparing", "Ready", "Served"].map((s) => (
                 <button
                   key={s}
                   onClick={() => {
@@ -387,7 +387,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                 <div className={`mx-auto w-24 h-24 rounded-3xl flex items-center justify-center ${
                   confirmedStatus === "Served" ? "bg-emerald-50" :
                   confirmedStatus === "Ready" ? "bg-indigo-50 text-indigo-500" :
-                  confirmedStatus === "Cooking" ? "bg-orange-50 text-orange-500" :
+                confirmedStatus === "Preparing" ? "bg-orange-50 text-orange-500" :
                   "bg-amber-50 text-amber-500"
                 }`}>
                   {confirmedStatus === "Served" ? (
@@ -420,7 +420,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                     </motion.div>
                   ) : confirmedStatus === "Ready" ? (
                     <BellRing size={48} strokeWidth={2.5} className="animate-bounce" />
-                  ) : confirmedStatus === "Cooking" ? (
+                  ) : confirmedStatus === "Preparing" ? (
                     <Flame size={48} strokeWidth={2.5} className="animate-bounce" />
                   ) : (
                     <Clock size={48} strokeWidth={2.5} className="animate-bounce" />
@@ -431,7 +431,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight italic uppercase">
                     {confirmedStatus === "Served" ? "Order Served!" :
                      confirmedStatus === "Ready" ? "Order Ready!" :
-                     confirmedStatus === "Cooking" ? "Now Cooking!" :
+                     confirmedStatus === "Preparing" ? "Now Preparing!" :
                      "Preparing!"}
                   </h3>
                   <p className="text-slate-500 font-bold mt-3 text-sm leading-relaxed">
@@ -439,7 +439,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
                     <span className={`uppercase tracking-wider font-black ${
                       confirmedStatus === "Served" ? "text-emerald-500" :
                       confirmedStatus === "Ready" ? "text-indigo-500" :
-                      confirmedStatus === "Cooking" ? "text-orange-500" :
+                      confirmedStatus === "Preparing" ? "text-orange-500" :
                       "text-amber-500"
                     }`}>{confirmedStatus}</span>
                   </p>
