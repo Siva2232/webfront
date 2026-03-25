@@ -175,6 +175,98 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const sgst = order.billDetails?.sgst || (subtotal * 0.025);
   const grandTotal = order.billDetails?.grandTotal || (subtotal + cgst + sgst);
 
+  // Thermal Print Handler
+  const handlePrint = () => {
+    const itemsHtml = order.items.map(item => `
+      <div class="item-row">
+        <div class="name">${item.name}</div>
+        <div class="qty">${item.qty}</div>
+        <div class="amt">${(item.price * item.qty).toFixed(2)}</div>
+      </div>
+    `).join("");
+
+    const subtotal = order.items.reduce((a, i) => a + i.price * i.qty, 0);
+    const tax = subtotal * 0.05;
+    const total = subtotal + tax;
+
+    const html = `
+    <html>
+    <head>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+
+        body {
+          font-family: monospace;
+          width: 72mm;
+          margin: 0 auto;
+          padding: 5px;
+          font-size: 11px;
+        }
+
+        .center { text-align: center; }
+        .line { border-top: 1px dashed #000; margin: 6px 0; }
+
+        .row {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .item-row {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .name { width: 50%; }
+        .qty { width: 15%; text-align: center; }
+        .amt { width: 35%; text-align: right; }
+
+      </style>
+    </head>
+
+    <body>
+
+      <div class="center"><b>MY CAFE</b></div>
+      <div class="center">Kochi, Kerala</div>
+
+      <div class="line"></div>
+
+      <div class="row"><span>Bill</span><span>#${(order._id || "").slice(-5)}</span></div>
+      <div class="row"><span>Date</span><span>${new Date(order.createdAt).toLocaleString()}</span></div>
+
+      <div class="line"></div>
+
+      <div class="item-row"><b>ITEM</b><b>QTY</b><b>AMT</b></div>
+      <div class="line"></div>
+
+      ${itemsHtml}
+
+      <div class="line"></div>
+
+      <div class="row"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+      <div class="row"><span>GST</span><span>${tax.toFixed(2)}</span></div>
+
+      <div class="line"></div>
+
+      <div class="row"><b>Total</b><b>${total.toFixed(2)}</b></div>
+
+      <div class="line"></div>
+
+      <div class="center">Thank You</div>
+
+      <script>
+        window.print();
+        window.onafterprint = () => window.close();
+      </script>
+
+    </body>
+    </html>
+    `;
+
+    const win = window.open("", "", "width=300,height=600");
+    win.document.write(html);
+    win.document.close();
+  };
+
   const status = order.status;
   const currentStep = statusStep[status] || 1;
   const gradient = gradientMap[status] || "from-slate-400 to-slate-600";
@@ -496,6 +588,15 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
              <span className="text-[10px] font-black uppercase mt-2">Served</span>
           </div>
         )}
+      {/* Print Bill Button */}
+      <div className="flex justify-end w-full">
+        <button
+          onClick={handlePrint}
+          className="mt-4 bg-black text-white px-4 py-2 rounded-xl text-xs"
+        >
+          Print Bill
+        </button>
+      </div>
       </div>
     </div>
   );
