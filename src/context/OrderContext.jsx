@@ -85,8 +85,8 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      // limit to last 500 invoices, server should support pagination too
-      const { data } = await API.get("/bills?limit=500&sort=desc");
+      // server defaults to today-only; limit 200 for speed
+      const { data } = await API.get("/bills?limit=200");
       // remove duplicates by orderRef or _id
       const seen = new Set();
       const unique = data.filter(b => {

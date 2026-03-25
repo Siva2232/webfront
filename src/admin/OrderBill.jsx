@@ -52,7 +52,6 @@ export default function OrderBill() {
         icon: <CheckCircle size={18} className="text-emerald-500" />,
         duration: 3000,
       });
-      fetchBills();
       setMarkPaidModal(null);
     } catch (err) {
       console.error("markBillPaid error", err);
@@ -96,92 +95,100 @@ export default function OrderBill() {
   }, [bills]);
 
   // Isolated Print Logic - Enhanced Receipt Print
-  const handlePrintSingle = (order, cashierName = "N/A") => {
-    const printWindow = window.open("", "_blank");
+ const handlePrintSingle = (order, cashierName = "N/A") => {
+  const printWindow = window.open("", "_blank");
 
-    const subtotal = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const tax = subtotal * 0.05;
-    const total = subtotal + tax;
+  const subtotal = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const tax = subtotal * 0.05;
+  const total = subtotal + tax;
 
+  const generateLine = (left, right, width = 32) => {
+    const space = width - (left.length + right.length);
+    return left + " ".repeat(space > 0 ? space : 1) + right;
+  };
 
-    const generateLine = (left, right, width = 32) => {
-      const space = width - (left.length + right.length);
-      return left + " ".repeat(space > 0 ? space : 1) + right;
-    };
+  const generateItemLine = (name, qty, price) => {
+    const nameWidth = 18;
+    const qtyWidth = 4;
+    const priceWidth = 10;
 
-    const generateItemLine = (name, qty, price) => {
-      const nameWidth = 18;
-      const qtyWidth = 4;
-      const priceWidth = 10;
+    const itemName = name.length > nameWidth 
+      ? name.substring(0, nameWidth) 
+      : name;
 
-      const itemName = name.length > nameWidth 
-        ? name.substring(0, nameWidth) 
-        : name;
+    return (
+      itemName.padEnd(nameWidth) +
+      qty.toString().padStart(qtyWidth) +
+      price.toFixed(2).padStart(priceWidth)
+    );
+  };
 
-      return (
-        itemName.padEnd(nameWidth) +
-        qty.toString().padStart(qtyWidth) +
-        price.toFixed(2).padStart(priceWidth)
-      );
-    };
+  const itemsText = order.items.map(item =>
+    generateItemLine(item.name, item.qty, item.price * item.qty)
+  ).join("\n");
 
-    const itemsText = order.items.map(item =>
-      generateItemLine(item.name, item.qty, item.price * item.qty)
-    ).join("\n");
-
-    const html = `
+  const html = `
   <html>
   <head>
     <style>
-      @page { size: 80mm auto; margin: 0; }
-
-      html {
-        display: flex;
-        justify-content: center;
+      @page { 
+        size: 80mm auto; 
+        margin: 0; 
       }
 
       body {
         font-family: monospace;
         white-space: pre;
         font-size: 12px;
-        width: 72mm;
-        margin: 0 auto;
-        padding: 5px 0;
+        width: 80mm;
+        max-width: 80mm;
+        margin: 0 auto;           /* This centers the receipt */
+        padding: 8mm 5mm;         /* Even padding on all sides */
+        box-sizing: border-box;
+        text-align: center;       /* Helps center short lines */
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .line {
+        text-align: left;
+        margin: 2px 0;
       }
     </style>
   </head>
-
   <body>
 
-            MY CAFE
+MY CAFE
+--------------------------------
+${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
+${generateLine("TABLE", order.table || "TA")}
+${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
+${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
 
-  --------------------------------
-  ${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
-  ${generateLine("TABLE", order.table || "TA")}
-  ${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
-  ${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
+--------------------------------
+ITEM              QTY       AMT
+--------------------------------
+${itemsText}
 
-  --------------------------------
-  ITEM              QTY       AMT
-  --------------------------------
-  ${itemsText}
+--------------------------------
+${generateLine("SUBTOTAL", subtotal.toFixed(2))}
+${generateLine("GST (5%)", tax.toFixed(2))}
 
-  --------------------------------
-  ${generateLine("SUBTOTAL", subtotal.toFixed(2))}
-  ${generateLine("GST (5%)", tax.toFixed(2))}
+--------------------------------
+${generateLine("TOTAL PAYABLE", total.toFixed(2))}
+(INCLUSIVE OF TAXES)
 
-  --------------------------------
-  ${generateLine("TOTAL PAYABLE", total.toFixed(2))}
-  (INCLUSIVE OF TAXES)
+--------------------------------
+PAYMENT SUMMARY
+${generateLine("CASH", "PAID")}
+${generateLine("ONLINE", "PAID")}
 
-  --------------------------------
-  PAYMENT SUMMARY
-  ${generateLine("CASH", "PAID")}
-  ${generateLine("ONLINE", "PAID")}
-
-  --------------------------------
-         OFFICIAL RECEIPT
-            THANK YOU
+--------------------------------
+     OFFICIAL RECEIPT
+        THANK YOU
 
   <script>
     window.print();
@@ -191,10 +198,10 @@ export default function OrderBill() {
   </body>
   </html>
   `;
-printWindow.document.write(html);
-printWindow.document.close();
-  };
 
+  printWindow.document.write(html);
+  printWindow.document.close();
+};
   // Handle print button - show cashier selection modal
   const handlePrintClick = (order) => {
     setPrintModalOrder(order);
@@ -213,6 +220,16 @@ printWindow.document.close();
     setSelectedCashier(null);
   };
 
+
+  // Show loading skeleton while fetching
+  if (isLoading && uniqueBills.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F4F5]">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading invoices...</p>
+      </div>
+    );
+  }
 
   if (!uniqueBills || uniqueBills.length === 0) {
     return (
