@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
+import CashierModal from "../components/CashierModal";
 
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, updateOrderStatus, isLoading } = useOrders();
@@ -30,6 +31,11 @@ export default function OrderBill() {
   // State for mark paid confirmation modal
   const [markPaidModal, setMarkPaidModal] = useState(null); // { billId, amount }
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  // State for cashier selection modal
+  const [cashierModalOpen, setCashierModalOpen] = useState(false);
+  const [pendingPrintOrder, setPendingPrintOrder] = useState(null);
+  const [isPrintingProcessing, setIsPrintingProcessing] = useState(false);
 
   // Fetch bills on mount
   useEffect(() => {
@@ -89,14 +95,186 @@ export default function OrderBill() {
     });
   }, [bills]);
 
-  // Isolated Print Logic
-  const handlePrintSingle = (orderId) => {
-    const printContent = document.getElementById(`bill-${orderId}`);
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent.outerHTML;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload(); 
+  // Isolated Print Logic (new: opens new window with formatted bill)
+  const handlePrintSingle = (order, cashier) => {
+    const printWindow = window.open("", "_blank");
+
+    const subtotal = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const tax = subtotal * 0.05;
+    const total = subtotal + tax;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Bill</title>
+          <style>
+            body {
+              font-family: monospace;
+              width: 80mm;
+              margin: 0;
+              padding: 10px;
+              color: #000;
+            }
+
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .line {
+              border-top: 1px dashed #000;
+              margin: 6px 0;
+            }
+
+            .row {
+              display: flex;
+              justify-content: space-between;
+              font-size: 12px;
+            }
+
+            .small { font-size: 10px; }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 6px;
+            }
+
+            th, td {
+              font-size: 11px;
+              text-align: left;
+              padding: 2px 0;
+            }
+
+            th:last-child, td:last-child {
+              text-align: right;
+            }
+
+            .total {
+              font-size: 14px;
+              font-weight: bold;
+            }
+
+            @media print {
+              body { margin: 0; }
+            }
+          </style>
+        </head>
+
+        <body>
+
+          <div class="center bold">MY CAFE</div>
+          <div class="center small">Kochi, Kerala</div>
+          <div class="center small">Phone: 9876543210</div>
+          <div class="center small">GST No: ${order.gstNo || "GST12AB3456C789"}</div>
+
+          <div class="line"></div>
+
+          <div class="row">
+            <span>Bill No:</span>
+            <span>#${(order._id || "").slice(-6)}</span>
+          </div>
+
+          <div class="row">
+            <span>Date:</span>
+            <span>${new Date(order.createdAt).toLocaleString()}</span>
+          </div>
+
+          <div class="row">
+            <span>Type:</span>
+            <span>${order.table || "Takeaway"}</span>
+          </div>
+
+          <div class="row">
+            <span>Table No:</span>
+            <span>${order.table || "N/A"}</span>
+          </div>
+
+          <div class="row">
+            <span>Cashier:</span>
+            <span>${cashier?.name || "Cashier"}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Amt</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${order.items.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.qty}</td>
+                  <td>${item.price * item.qty}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div class="line"></div>
+
+          <div class="row">
+            <span>Subtotal</span>
+            <span>₹${subtotal}</span>
+          </div>
+
+          <div class="row">
+            <span>GST (5%)</span>
+            <span>₹${tax.toFixed(2)}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <div class="row total">
+            <span>Total</span>
+            <span>₹${total.toFixed(2)}</span>
+          </div>
+
+          <div class="line"></div>
+
+          <div class="center small">Thank You!</div>
+          <div class="center small">Visit Again 🙏</div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            }
+          </script>
+
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+  };
+
+  // Handle print button click - open cashier modal
+  const handlePrintButtonClick = (order) => {
+    setPendingPrintOrder(order);
+    setCashierModalOpen(true);
+  };
+
+  // Handle cashier selection and proceed with print
+  const handleCashierSelected = (cashier) => {
+    if (pendingPrintOrder) {
+      setIsPrintingProcessing(true);
+      setTimeout(() => {
+        handlePrintSingle(pendingPrintOrder, cashier);
+        setIsPrintingProcessing(false);
+        setCashierModalOpen(false);
+        setPendingPrintOrder(null);
+        toast.success("Bill printed successfully!", {
+          icon: <CheckCircle size={18} className="text-emerald-500" />,
+          duration: 2000,
+        });
+      }, 500);
+    }
   };
 
 
@@ -160,7 +338,7 @@ export default function OrderBill() {
             >
               {/* Floating Print Trigger */}
               <button 
-                onClick={() => handlePrintSingle(order._id || order.id || index)}
+                onClick={() => handlePrintButtonClick(order)}
                 className="absolute -top-5 right-6 z-10 no-print bg-white border border-slate-200 shadow-xl px-5 py-2.5 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-300 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
               >
                 <Printer size={12} /> Print Receipt
@@ -183,6 +361,7 @@ export default function OrderBill() {
                   <div className="flex flex-col items-center text-[8px] text-slate-400 font-bold uppercase tracking-[0.2em] gap-1">
                     <span className="flex items-center gap-1"><MapPin size={8} /> 01 SKYLINE DRIVE, BUSINESS DISTRICT</span>
                     <span className="flex items-center gap-1"><Phone size={8} /> +91 0000 000 000</span>
+                    <span className="flex items-center gap-1">GST No: {order.gstNo || "GST12AB3456C789"}</span>
                   </div>
                   
                   {/* Payment Summary */}
@@ -278,13 +457,23 @@ export default function OrderBill() {
                 })()}
 
                 {/* PLACED DATE & TIME (Fixed Bug) */}
-                <div className="px-6 py-3 bg-slate-50/50 flex justify-between items-center border-b border-slate-100">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Calendar size={10} /> Placed At
-                  </span>
-                  <span className="text-[10px] font-black text-slate-800">
-                    {format(orderTimestamp, "dd/MM/yyyy • hh:mm a")}
-                  </span>
+                <div className="px-6 py-3 bg-slate-50/50 grid grid-cols-3 gap-2 items-center border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                      <Calendar size={10} className="inline" /> Placed At
+                    </span>
+                    <span className="text-[9px] font-black text-slate-800">
+                      {format(orderTimestamp, "dd/MM/yyyy • hh:mm a")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Table No</span>
+                    <span className="text-[10px] font-black text-slate-800">{order.table || "N/A"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cashier</span>
+                    <span className="text-[10px] font-black text-slate-800">{order.cashierName || "Cashier"}</span>
+                  </div>
                 </div>
 
                 {/* Delivery Info Section - Only for delivery orders */}
@@ -517,6 +706,17 @@ export default function OrderBill() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Cashier Selection Modal */}
+      <CashierModal
+        isOpen={cashierModalOpen}
+        onClose={() => {
+          setCashierModalOpen(false);
+          setPendingPrintOrder(null);
+        }}
+        onConfirm={handleCashierSelected}
+        isLoading={isPrintingProcessing}
+      />
 
       <style>{`
         @media print {

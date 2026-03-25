@@ -31,30 +31,9 @@ export const CartProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    if (!table?.trim()) {
-      return;
-    }
-
-    try {
-      const safeCart = cart.map((item) => {
-        // reduce potential payload size: don't persist huge base64 images
-        const { image, ...rest } = item;
-        return rest;
-      });
-      localStorage.setItem(getCartKey(table), JSON.stringify(safeCart));
+    if (table?.trim()) {
+      localStorage.setItem(getCartKey(table), JSON.stringify(cart));
       localStorage.setItem("lastUsedTable", table);
-    } catch (error) {
-      // In low quota situations (or if user blocks storage), avoid crash
-      console.warn("CartLocalStorage: could not persist cart due to quota or storage error", error);
-
-      if (error && (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")) {
-        // keep in app state but remove stale storage to free space
-        try {
-          localStorage.removeItem(getCartKey(table));
-        } catch (removeErr) {
-          console.warn("CartLocalStorage: could not clear cart key after quota exceeded", removeErr);
-        }
-      }
     }
   }, [cart, table]);
 
@@ -80,24 +59,17 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = (product, isTakeawayItem = false) => {
     setCart((prev) => {
-      const key = JSON.stringify(product.selectedOptions || []);
+      // For takeaway items, check if the same product exists with same takeaway status
       const exists = prev.find(
-        (i) =>
-          (i._id || i.id) === (product._id || product.id) &&
-          (i.isTakeaway || false) === isTakeawayItem &&
-          JSON.stringify(i.selectedOptions || []) === key
+        (i) => (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
       );
-
       if (exists) {
         return prev.map((i) =>
-          (i._id || i.id) === (product._id || product.id) &&
-          (i.isTakeaway || false) === isTakeawayItem &&
-          JSON.stringify(i.selectedOptions || []) === key
+          (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
             ? { ...i, qty: i.qty + 1 }
             : i
         );
       }
-
       return [...prev, { ...product, qty: 1, isTakeaway: isTakeawayItem }];
     });
   };
@@ -112,33 +84,8 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  const removeFromCart = (idOrItem, selectedOptions = null) => {
-    setCart((prev) => {
-      if (!idOrItem) return prev;
-
-      if (typeof idOrItem === "object") {
-        const id = idOrItem._id || idOrItem.id;
-        const key = JSON.stringify(idOrItem.selectedOptions || []);
-        return prev.filter((i) => {
-          const currentKey = JSON.stringify(i.selectedOptions || []);
-          return !(
-            (i._id || i.id) === id &&
-            (selectedOptions ? JSON.stringify(selectedOptions) === currentKey : key === currentKey)
-          );
-        });
-      }
-
-      const id = idOrItem;
-      if (selectedOptions) {
-        const key = JSON.stringify(selectedOptions || []);
-        return prev.filter((i) => {
-          const currentKey = JSON.stringify(i.selectedOptions || []);
-          return !((i._id || i.id) === id && currentKey === key);
-        });
-      }
-
-      return prev.filter((i) => (i._id || i.id) !== id);
-    });
+  const removeFromCart = (id) => {
+    setCart((prev) => prev.filter((i) => (i._id || i.id) !== id));
   };
 
   const clearCart = () => {

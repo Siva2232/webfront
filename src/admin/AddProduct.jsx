@@ -15,7 +15,6 @@ export default function AddProduct() {
     image: "",
     category: "",
     type: "veg", // ✅ veg | non-veg
-    subItems: [],
   });
 
   const [newCategoryInput, setNewCategoryInput] = useState("");
@@ -63,81 +62,6 @@ export default function AddProduct() {
 
   const normalizeCategory = (str) =>
     str.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-
-  const addSubItemGroup = () => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: [
-        ...prev.subItems,
-        {
-          groupName: "",
-          type: "single",
-          required: false,
-          options: [],
-        },
-      ],
-    }));
-  };
-
-  const updateSubItemGroup = (index, field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: prev.subItems.map((group, idx) =>
-        idx === index ? { ...group, [field]: value } : group
-      ),
-    }));
-  };
-
-  const removeSubItemGroup = (index) => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: prev.subItems.filter((_, idx) => idx !== index),
-    }));
-  };
-
-  const addSubItemOption = (groupIndex) => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: prev.subItems.map((group, idx) =>
-        idx === groupIndex
-          ? {
-              ...group,
-              options: [...(group.options || []), { name: "", price: 0 }],
-            }
-          : group
-      ),
-    }));
-  };
-
-  const updateSubItemOption = (groupIndex, optionIndex, field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: prev.subItems.map((group, idx) =>
-        idx === groupIndex
-          ? {
-              ...group,
-              options: group.options.map((opt, optIdx) =>
-                optIdx === optionIndex ? { ...opt, [field]: value } : opt
-              ),
-            }
-          : group
-      ),
-    }));
-  };
-
-  const removeSubItemOption = (groupIndex, optionIndex) => {
-    setForm((prev) => ({
-      ...prev,
-      subItems: prev.subItems.map((group, idx) =>
-        idx === groupIndex
-          ? {
-              ...group,
-              options: group.options.filter((_, optIdx) => optIdx !== optionIndex),
-            }
-          : group
-      ),
-    }));
-  };
 
   /* ---------- FIXED CATEGORY LOGIC ---------- */
   const handleAddCategory = async () => {
@@ -190,7 +114,6 @@ export default function AddProduct() {
         category: form.category,
         type: form.type,
         available: true,
-        subItems: form.subItems,
       });
       toast.success("Product created successfully");
       navigate("/admin/products");
@@ -293,94 +216,6 @@ export default function AddProduct() {
           {addStatus && (
             <p className="text-[10px] text-emerald-600 font-bold mt-2 uppercase">{addStatus}</p>
           )}
-        </div>
-
-        {/* Subitem/Variant Groups */}
-        <div className="border-t pt-4 space-y-3 bg-slate-50 p-3 rounded-lg">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Subitem Groups (eg: Sauce, Vegetables, Size)</p>
-            <button
-              type="button"
-              onClick={addSubItemGroup}
-              className="text-xs font-black uppercase tracking-wider text-white bg-slate-900 px-3 py-1 rounded-lg"
-            >
-              + Add Group
-            </button>
-          </div>
-
-          {form.subItems.map((group, groupIdx) => (
-            <div key={`subitem-${groupIdx}`} className="bg-white p-3 rounded-lg border border-slate-200">
-              <div className="grid gap-2 sm:grid-cols-3 items-end">
-                <input
-                  type="text"
-                  value={group.groupName}
-                  onChange={(e) => updateSubItemGroup(groupIdx, "groupName", e.target.value)}
-                  placeholder="Group name (e.g. Sauce)"
-                  className="border rounded-lg px-3 py-2"
-                />
-                <select
-                  value={group.type}
-                  onChange={(e) => updateSubItemGroup(groupIdx, "type", e.target.value)}
-                  className="border rounded-lg px-3 py-2"
-                >
-                  <option value="single">Single select</option>
-                  <option value="multiple">Multi select</option>
-                </select>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={group.required}
-                    onChange={(e) => updateSubItemGroup(groupIdx, "required", e.target.checked)}
-                  />
-                  <span className="text-xs">Required</span>
-                </div>
-              </div>
-
-              {group.options.map((opt, optIdx) => (
-                <div key={`subitem-${groupIdx}-opt-${optIdx}`} className="mt-2 grid gap-2 sm:grid-cols-3 items-end">
-                  <input
-                    type="text"
-                    value={opt.name}
-                    onChange={(e) => updateSubItemOption(groupIdx, optIdx, "name", e.target.value)}
-                    placeholder="Option name (e.g. Tomato Sauce)"
-                    className="border rounded-lg px-3 py-2"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={opt.price}
-                    onChange={(e) => updateSubItemOption(groupIdx, optIdx, "price", Number(e.target.value))}
-                    placeholder="Extra price"
-                    className="border rounded-lg px-3 py-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeSubItemOption(groupIdx, optIdx)}
-                    className="text-xs text-rose-600 font-bold"
-                  >
-                    Remove option
-                  </button>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => addSubItemOption(groupIdx)}
-                className="text-xs font-black uppercase tracking-wider text-white bg-indigo-600 px-3 py-1 rounded-lg mt-3"
-              >
-                + Add option
-              </button>
-
-              <button
-                type="button"
-                onClick={() => removeSubItemGroup(groupIdx)}
-                className="text-xs text-rose-500 font-black uppercase tracking-wider mt-2"
-              >
-                Remove group
-              </button>
-            </div>
-          ))}
         </div>
 
         {/* Image Upload Field */}

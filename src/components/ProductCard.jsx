@@ -174,7 +174,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { Plus, Minus, X } from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 
 function FoodTypeIcon({ type }) {
   const isVeg = type === "veg";
@@ -186,263 +186,116 @@ function FoodTypeIcon({ type }) {
 }
 
 export default function ProductCard({ product, onAdd, onRemove, initialQty = 0 }) {
-  const { name, description, price, image, isAvailable = true, type = "veg", subItems = [] } = product;
+  const { name, description, price, image, isAvailable = true, type = "veg" } = product;
+
   const [quantity, setQuantity] = useState(initialQty);
-  const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false);
-  const [selectedOptions, setSelectedOptions] = useState({});
 
-  const hasSubItems = Array.isArray(subItems) && subItems.length > 0;
-
-  const getGroupKey = (group, idx) => group.groupName ? group.groupName : `group-${idx}`;
-
-  const getSubItemsTotal = () => {
-    return subItems.reduce((groupSum, group, groupIdx) => {
-      const key = getGroupKey(group, groupIdx);
-      const selected = selectedOptions[key] || [];
-      const optionSum = (group.options || []).reduce((sum, opt, optIdx) => {
-        if (selected.includes(optIdx)) return sum + Number(opt.price || 0);
-        return sum;
-      }, 0);
-      return groupSum + optionSum;
-    }, 0);
-  };
-
-  const productTotal = price + getSubItemsTotal();
-
-  const toggleOption = (groupIdx, optionIdx, type) => {
-    const key = getGroupKey(subItems[groupIdx], groupIdx);
-    const selectedForGroup = selectedOptions[key] || [];
-
-    if (type === "single") {
-      setSelectedOptions((prev) => ({ ...prev, [key]: [optionIdx] }));
-    } else {
-      const isSelected = selectedForGroup.includes(optionIdx);
-      setSelectedOptions((prev) => ({
-        ...prev,
-        [key]: isSelected
-          ? selectedForGroup.filter((i) => i !== optionIdx)
-          : [...selectedForGroup, optionIdx],
-      }));
-    }
-  };
-
-  const confirmCustomization = () => {
-    const missingRequired = subItems.some((group, groupIdx) => {
-      if (!group.required) return false;
-      const key = getGroupKey(group, groupIdx);
-      return !(selectedOptions[key] && selectedOptions[key].length > 0);
-    });
-    if (missingRequired) {
-      alert("Please select required options before adding to cart.");
-      return;
-    }
-
-    const selectedDetails = subItems
-      .map((group, groupIdx) => {
-        const key = getGroupKey(group, groupIdx);
-        const selected = selectedOptions[key] || [];
-        if (!selected.length) return null;
-        return {
-          groupName: group.groupName,
-          options: selected.map((optIdx) => group.options[optIdx]).filter(Boolean),
-        };
-      })
-      .filter(Boolean);
-
-    const cartItem = {
-      ...product,
-      price: productTotal,
-      selectedOptions: selectedDetails,
-    };
-
-    onAdd(cartItem);
-    setQuantity((prev) => prev + 1);
-    setIsConfiguratorOpen(false);
-  };
-
-  const handleAddClick = () => {
+  const handleIncrement = (e) => {
+    e.stopPropagation();
     if (!isAvailable) return;
-    if (hasSubItems) {
-      setIsConfiguratorOpen(true);
-      return;
-    }
-    setQuantity((prev) => prev + 1);
+    setQuantity(prev => prev + 1);
     onAdd(product);
   };
 
   const handleDecrement = (e) => {
     e.stopPropagation();
     if (quantity > 0) {
-      setQuantity((prev) => prev - 1);
+      setQuantity(prev => prev - 1);
       if (onRemove) onRemove(product._id || product.id);
     }
   };
 
   return (
-    <>
-      <div className="group relative flex flex-col bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:shadow-2xl hover:border-black transition-all duration-500 h-full">
-        <div className="relative aspect-square overflow-hidden shrink-0 bg-gray-50">
-          <img
-            src={image || "https://via.placeholder.com/600x600"}
-            alt={name}
-            className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${!isAvailable ? "grayscale brightness-95" : ""}`}
-          />
-          <div className="absolute top-4 left-4 z-10 bg-white p-1.5 rounded-xl shadow-sm">
-            <FoodTypeIcon type={type} />
-          </div>
-          {!isAvailable && (
-            <div className="absolute inset-0 z-20 bg-white/40 flex items-center justify-center backdrop-blur-[2px]">
-              <div className="bg-rose-600 text-white px-5 py-2 font-black text-[10px] uppercase tracking-widest">
-                Sold Out
-              </div>
-            </div>
-          )}
+    <div className="group relative flex flex-col bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:shadow-2xl hover:border-black transition-all duration-500 h-full">
+      {/* --- IMAGE SECTION --- */}
+      <div className="relative aspect-square overflow-hidden shrink-0 bg-gray-50">
+        <img
+          src={image || "https://via.placeholder.com/600x600"}
+          alt={name}
+          className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${!isAvailable ? "grayscale brightness-95" : ""}`}
+        />
+        <div className="absolute top-4 left-4 z-10 bg-white p-1.5 rounded-xl shadow-sm">
+          <FoodTypeIcon type={type} />
         </div>
-
-        <div className="flex flex-col flex-grow p-5 md:p-6 bg-white">
-          <div className="flex justify-between items-start gap-3 w-full mb-3">
-            <h3 className="text-[14px] md:text-lg font-black leading-tight uppercase tracking-tight text-black break-words flex-1">
-              {name}
-            </h3>
-            <span className="text-black text-base md:text-xl font-black tracking-tighter shrink-0">
-              ₹{productTotal.toFixed(2)}
-            </span>
-          </div>
-
-          {description && (
-            <p className="text-gray-500 text-[11px] md:text-[13px] leading-relaxed font-medium mb-4">
-              {description}
-            </p>
-          )}
-
-          {hasSubItems && (
-            <div className="mb-4 text-[10px] font-bold text-slate-500">
-              {subItems.map((group, idx) => (
-                <div key={`badge-${idx}`} className="inline-block bg-orange-100 text-orange-700 px-2 py-1 rounded-full mr-2 mt-1">
-                  {group.groupName} {group.required ? "*" : ""}
-                </div>
-              ))}
+        {!isAvailable && (
+          <div className="absolute inset-0 z-20 bg-white/40 flex items-center justify-center backdrop-blur-[2px]">
+            <div className="bg-rose-600 text-white px-5 py-2 font-black text-[10px] uppercase tracking-widest">
+              Sold Out
             </div>
-          )}
-
-          <div className="mt-auto pt-4 border-t border-gray-100">
-            {isAvailable ? (
-              <div className="h-11 md:h-12 w-full">
-                <AnimatePresence mode="wait">
-                  {quantity === 0 ? (
-                    <motion.button
-                      key="add-btn"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={handleAddClick}
-                      className="w-full h-full bg-black text-white font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-zinc-800"
-                    >
-                      <Plus size={14} strokeWidth={4} /> {hasSubItems ? "Customize" : "Add"}
-                    </motion.button>
-                  ) : (
-                    <motion.div
-                      key="qty-selector"
-                      initial={{ scale: 0.95, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.95, opacity: 0 }}
-                      className="w-full h-full grid grid-cols-3 border-2 border-black overflow-hidden"
-                    >
-                      <button
-                        onClick={handleDecrement}
-                        className="flex items-center justify-center border-r-2 border-black hover:bg-gray-50 transition-colors"
-                      >
-                        <Minus size={16} strokeWidth={3} />
-                      </button>
-                      <div className="flex items-center justify-center font-black text-xs md:text-sm">
-                        {quantity}
-                      </div>
-                      <button
-                        onClick={handleAddClick}
-                        className="flex items-center justify-center border-l-2 border-black hover:bg-gray-50 transition-colors"
-                      >
-                        <Plus size={16} strokeWidth={3} />
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <div className="h-11 md:h-12 w-full bg-gray-50 flex items-center justify-center text-gray-300 font-black text-[9px] uppercase tracking-widest">
-                Out of Stock
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
-      <AnimatePresence>
-        {isConfiguratorOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase">Customize {name}</h3>
-                <button onClick={() => setIsConfiguratorOpen(false)} className="text-slate-400 hover:text-slate-700">
-                  <X size={18} />
-                </button>
-              </div>
+      {/* --- CONTENT AREA --- */}
+      <div className="flex flex-col flex-grow p-5 md:p-6 bg-white">
+        
+        {/* HEADING & PRICE: Fully Responsive, No Cutoff */}
+        <div className="flex justify-between items-start gap-3 w-full mb-3">
+          <h3 className="text-[14px] md:text-lg font-black leading-tight uppercase tracking-tight text-black break-words flex-1">
+            {name}
+          </h3>
+          <span className="text-black text-base md:text-xl font-black tracking-tighter shrink-0">
+            ₹{price}
+          </span>
+        </div>
 
-              <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-                {subItems.map((group, groupIdx) => {
-                  const groupKey = getGroupKey(group, groupIdx);
-                  const selected = selectedOptions[groupKey] || [];
-                  return (
-                    <div key={groupKey} className="border border-slate-200 p-3 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-black uppercase tracking-wider">{group.groupName}</span>
-                        {group.required && <span className="text-xs font-semibold text-rose-500">Required</span>}
-                      </div>
-                      <div className="grid gap-2">
-                        {(group.options || []).map((opt, optIdx) => {
-                          const checked = selected.includes(optIdx);
-                          return (
-                            <button
-                              key={`${groupKey}-opt-${optIdx}`}
-                              type="button"
-                              onClick={() => toggleOption(groupIdx, optIdx, group.type)}
-                              className={`w-full text-left px-3 py-2 rounded-lg border ${checked ? "bg-indigo-500 text-white border-indigo-500" : "bg-white border-slate-200 text-slate-700"}`}
-                            >
-                              <div className="flex justify-between items-center">
-                                <span>{opt.name}</span>
-                                <span className="text-xs">+₹{opt.price}</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-sm font-black">Total: ₹{productTotal.toFixed(2)}</span>
-                <button
-                  onClick={confirmCustomization}
-                  className="bg-black text-white px-4 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest"
-                >
-                  Add to Cart
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+        {/* DESCRIPTION: Static and fully visible */}
+        {description && (
+          <p className="text-gray-500 text-[11px] md:text-[13px] leading-relaxed font-medium mb-6">
+            {description}
+          </p>
         )}
-      </AnimatePresence>
-    </>
+
+        {/* --- BUTTONS SECTION --- */}
+        <div className="mt-auto pt-4 border-t border-gray-100">
+          {isAvailable ? (
+            <div className="h-11 md:h-12 w-full">
+              <AnimatePresence mode="wait">
+                {quantity === 0 ? (
+                  <motion.button
+                    key="add-btn"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={handleIncrement}
+                    className="w-full h-full bg-black text-white font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-zinc-800"
+                  >
+                    <Plus size={14} strokeWidth={4} /> Add
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="qty-selector"
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="w-full h-full grid grid-cols-3 border-2 border-black overflow-hidden"
+                  >
+                    <button 
+                      onClick={handleDecrement} 
+                      className="flex items-center justify-center border-r-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Minus size={16} strokeWidth={3} />
+                    </button>
+                    <div className="flex items-center justify-center font-black text-xs md:text-sm">
+                      {quantity}
+                    </div>
+                    <button 
+                      onClick={handleIncrement} 
+                      className="flex items-center justify-center border-l-2 border-black hover:bg-gray-50 transition-colors"
+                    >
+                      <Plus size={16} strokeWidth={3} />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="h-11 md:h-12 w-full bg-gray-50 flex items-center justify-center text-gray-300 font-black text-[9px] uppercase tracking-widest">
+              Out of Stock
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
