@@ -257,23 +257,54 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
               // apply special styling only for dine-in orders where some items are takeaway
               const isDineWithTA = !isTakeawayOrder(order) && isTakeawayItem;
               return (
-                <div key={idx} className={`flex justify-between items-center ${isNewlyAdded ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-xl border border-emerald-100' : ''} ${isDineWithTA && !isNewlyAdded ? 'bg-orange-50 -mx-2 px-2 py-1 rounded-xl border border-orange-100' : ''}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="h-7 w-7 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black italic">{item.qty}</span>
-                    <span className="font-bold text-slate-700">{item.name}</span>
-                    {isNewlyAdded && (
-                      <span className="px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full animate-pulse">
-                        NEW
-                      </span>
-                    )}
-                    {/* only mark individual items when the order itself is not a pure takeaway */}
-                    {!isTakeawayOrder(order) && isTakeawayItem && (
-                      <span className="px-2 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full flex items-center gap-1">
-                        <Package size={8} /> TAKEAWAY
-                      </span>
-                    )}
+                <div key={idx} className={`${isNewlyAdded ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-xl border border-emerald-100' : ''} ${isDineWithTA && !isNewlyAdded ? 'bg-orange-50 -mx-2 px-2 py-1 rounded-xl border border-orange-100' : ''}`}>
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-3">
+                      <span className="h-7 w-7 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black italic shrink-0 mt-0.5">{item.qty}</span>
+                      <div>
+                        <span className="font-bold text-slate-700">{item.name}</span>
+                        {item.selectedPortion && (
+                          <span className="ml-1.5 text-[10px] font-bold text-blue-600">({item.selectedPortion})</span>
+                        )}
+                        {isNewlyAdded && (
+                          <span className="ml-1.5 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                        {!isTakeawayOrder(order) && isTakeawayItem && (
+                          <span className="ml-1.5 px-2 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase tracking-wider rounded-full flex items-center gap-1 inline-flex">
+                            <Package size={8} /> TAKEAWAY
+                          </span>
+                        )}
+                        {(() => {
+                          const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                          const basePrice = item.price - addonsTotal;
+                          return (
+                            <span className="block text-[9px] text-slate-400 font-bold italic mt-0.5">{item.qty} × ₹{basePrice}</span>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    {(() => {
+                      const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                      const basePrice = item.price - addonsTotal;
+                      return <span className="text-slate-400 font-bold italic text-sm shrink-0">₹{(basePrice * item.qty).toLocaleString()}</span>;
+                    })()}
                   </div>
-                  <span className="text-slate-400 font-bold italic text-sm">₹{(item.price * item.qty).toLocaleString()}</span>
+                  {item.selectedAddons?.length > 0 && (
+                    <div className="ml-10 mt-1 space-y-0.5 border-l-2 border-emerald-200 pl-2">
+                      {item.selectedAddons.map((a, i) => (
+                        <div key={i} className="flex justify-between items-center">
+                          <span className="text-[9px] font-bold text-emerald-600">+ {a.name}</span>
+                          <span className="text-[9px] font-bold text-slate-400">₹{(a.price || 0) * item.qty}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Item Total</span>
+                        <span className="text-xs font-black italic text-slate-700">₹{(item.price * item.qty).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

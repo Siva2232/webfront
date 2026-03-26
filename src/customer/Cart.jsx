@@ -34,7 +34,6 @@ function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
     try {
       console.log('🔵 [Stripe] Creating payment intent...', { amount, orderDetails });
       
-      // Create payment intent on backend
       const { data } = await api.post('/payment/create-payment-intent', {
         amount: amount,
         currency: 'inr',
@@ -44,11 +43,8 @@ function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
         }
       });
 
-      console.log('🟢 [Stripe] Payment intent created:', data);
       const { clientSecret } = data;
 
-      console.log('🔵 [Stripe] Confirming card payment...');
-      // Confirm payment
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -56,19 +52,12 @@ function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
       });
 
       if (stripeError) {
-        console.error('🔴 [Stripe] Payment error:', stripeError);
         setError(stripeError.message);
         setIsProcessing(false);
       } else if (paymentIntent.status === 'succeeded') {
-        console.log('🟢 [Stripe] Payment succeeded!', paymentIntent);
-        console.log('   Payment ID:', paymentIntent.id);
-        console.log('   Amount:', paymentIntent.amount / 100, paymentIntent.currency.toUpperCase());
-        console.log('   Status:', paymentIntent.status);
         onSuccess(paymentIntent);
       }
     } catch (err) {
-      console.error('🔴 [Stripe] Request error:', err);
-      console.error('   Response:', err.response?.data);
       setError(err.response?.data?.error || 'Payment failed. Please try again.');
       setIsProcessing(false);
     }
@@ -123,9 +112,7 @@ function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
               Processing...
             </>
           ) : (
-            <>
-              Pay ₹{amount.toLocaleString()}
-            </>
+            <>Pay ₹{amount.toLocaleString()}</>
           )}
         </button>
       </div>
@@ -150,24 +137,18 @@ export default function Cart({ hideTable = false }) {
   const { addOrder } = useOrders();
   const navigate = useNavigate();
 
-  // ensure the context table value is the special TAKEAWAY_TABLE when the
-  // `hideTable` prop is true (used only by the takeaway‑specific cart page)
   useEffect(() => {
     if (hideTable && table !== TAKEAWAY_TABLE) {
       setTable(TAKEAWAY_TABLE);
     }
   }, [hideTable, table, setTable]);
 
-  // redirect only when we're in takeaway mode AND not already hiding the header
-  // (i.e. when hideTable=false).  the wrapper page will set hideTable.
   useEffect(() => {
     if (isTakeaway && !hideTable) {
       navigate("/takeaway-cart?mode=takeaway", { replace: true });
     }
   }, [isTakeaway, hideTable, navigate]);
 
-  // display-friendly text for the current table/mode
-  // displayLocation no longer used directly, header hidden when takeaway
   const displayLocation = table === TAKEAWAY_TABLE ? "Takeaway" : (table || "");
 
   const [notes, setNotes] = useState("");
@@ -178,20 +159,17 @@ export default function Cart({ hideTable = false }) {
   const [dragConstraints, setDragConstraints] = useState(0);
   const [tableError, setTableError] = useState("");
   
-  // Payment method state
-  const [paymentMethod, setPaymentMethod] = useState("cod"); // "cod" or "online"
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const [showStripeModal, setShowStripeModal] = useState(false);
 
   const containerRef = useRef(null);
   const x = useMotionValue(0);
   const textOpacity = useTransform(x, [0, 150], [0.4, 0]);
 
-  // Auto-detect & update table from URL
   useEffect(() => {
     const urlTable = searchParams.get("table");
     const urlMode = searchParams.get("mode");
     if (urlMode === "takeaway") {
-      // make sure CartContext is aware of a takeaway order
       setTable(TAKEAWAY_TABLE);
       setTableError("");
       return;
@@ -212,13 +190,11 @@ export default function Cart({ hideTable = false }) {
     }
   }, [cart]);
 
-  // GST
   const cgst = totalAmount * 0.025;
   const sgst = totalAmount * 0.025;
   const grandTotal = totalAmount + cgst + sgst;
 
   const playSynthSound = (type) => {
-    // your existing sound function...
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       const ctx = new AudioContext();
@@ -250,11 +226,6 @@ export default function Cart({ hideTable = false }) {
   };
 
   const placeOrder = async (paymentDetails = null) => {
-    console.log('🔵 [Cart] placeOrder called');
-    console.log('   Payment Details:', paymentDetails);
-    console.log('   Payment Method:', paymentDetails ? 'online' : 'cod');
-    
-    // if there is no table AND this is not a takeaway order we complain
     if (!table?.trim() && !isTakeaway) {
       setTableError("Please enter your table number");
       return;
@@ -269,14 +240,12 @@ export default function Cart({ hideTable = false }) {
 
     const mergeId = searchParams.get("mergeId");
 
-    // Immediately show success UI (Optimistic UI)
     const effectiveTable = isTakeaway ? TAKEAWAY_TABLE : table;
     setPlacedDetails({ orderId: mergeId || orderId, table: effectiveTable, total: grandTotal, paymentMethod: paymentDetails ? 'online' : 'cod' });
     setShowSuccess(true);
     setShowStripeModal(false);
-    clearCart(); // Clear immediately for snappiness
+    clearCart();
 
-    // Trigger confetti immediately
     confetti({
       particleCount: 150,
       spread: 70,
@@ -284,13 +253,9 @@ export default function Cart({ hideTable = false }) {
       colors: ['#10b981', '#fb923c', '#ffffff']
     });
 
-    // Prep details
     const details = { 
       id: orderId, 
       existingOrderId: mergeId, 
-      // make sure we send the effective table value (TAKEAWAY_TABLE when it's a
-      // takeaway order) rather than whatever the context happens to currently
-      // hold (which can lag behind when hideTable is used).
       table: effectiveTable,
       orderItems: [...cart], 
       status: "Pending", 
@@ -299,30 +264,17 @@ export default function Cart({ hideTable = false }) {
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
       totalAmount: grandTotal,
-      // Set hasTakeaway if any items are marked as takeaway
       hasTakeaway: !isTakeaway && cart.some(item => item.isTakeaway),
-      // Payment info
       paymentMethod: paymentDetails ? 'online' : 'cod',
       paymentStatus: paymentDetails ? 'paid' : 'pending',
       paymentId: paymentDetails?.id || null,
     };
 
-    console.log('🟢 [Cart] Order details created:', details);
-    console.log('   Order ID:', details.id);
-    console.log('   Payment Method:', details.paymentMethod);
-    console.log('   Payment Status:', details.paymentStatus);
-    console.log('   Payment ID:', details.paymentId);
-    console.log('   Total:', details.totalAmount);
-
-    // Background process
     addOrder(details).then(created => {
-      console.log('🟢 [Cart] Order saved to backend:', created);
       const effectiveId = created?._id || orderId;
       localStorage.setItem("lastOrderId", effectiveId);
     });
 
-    // Navigate faster; use effectiveTable as above so we don't rely on the
-    // context value having been updated synchronously.
     setTimeout(() => {
       if (effectiveTable === TAKEAWAY_TABLE) {
         navigate(`/order-summary?mode=takeaway`);
@@ -332,7 +284,6 @@ export default function Cart({ hideTable = false }) {
     }, 1000); 
   };
 
-  // Handle swipe action based on payment method
   const handleSwipeComplete = () => {
     if (!table?.trim() && !isTakeaway) {
       setTableError("Please enter your table number");
@@ -341,24 +292,24 @@ export default function Cart({ hideTable = false }) {
     }
     
     if (paymentMethod === 'online') {
-      console.log('🔵 [Cart] Opening Stripe payment modal...');
       setShowStripeModal(true);
       setIsSwiped(false);
     } else {
-      console.log('🔵 [Cart] Processing COD order...');
       placeOrder();
     }
   };
 
-  // Handle successful Stripe payment
   const handlePaymentSuccess = (paymentIntent) => {
-    console.log('🟢 [Cart] Payment successful! Creating order...');
-    console.log('   Payment Intent:', paymentIntent);
-    console.log('   Payment ID:', paymentIntent.id);
-    console.log('   Amount:', paymentIntent.amount / 100, paymentIntent.currency?.toUpperCase());
-    console.log('   Status:', paymentIntent.status);
     placeOrder(paymentIntent);
   };
+
+  // Group items by portion
+  const groupedItems = cart.reduce((groups, item) => {
+    const portion = item.selectedPortion || "Regular";
+    if (!groups[portion]) groups[portion] = [];
+    groups[portion].push(item);
+    return groups;
+  }, {});
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
@@ -372,18 +323,17 @@ export default function Cart({ hideTable = false }) {
             <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500">Checkout</h1>
             <p className="text-sm font-black text-slate-900 uppercase leading-none mt-1">Review Items</p>
           </div>
-         <div className="flex justify-end">
-      {cart.length > 0 && (
-        <button 
-          onClick={clearCart} 
-          className="flex items-center justify-center h-9 w-9 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 active:scale-95 transition-all"
-          aria-label="Clear Cart"
-        >
-          <Trash2 size={18} strokeWidth={2.2} />
-        </button>
-      )}
-    </div>
-
+          <div className="flex justify-end">
+            {cart.length > 0 && (
+              <button 
+                onClick={clearCart} 
+                className="flex items-center justify-center h-9 w-9 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 active:scale-95 transition-all"
+                aria-label="Clear Cart"
+              >
+                <Trash2 size={18} strokeWidth={2.2} />
+              </button>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -396,7 +346,7 @@ export default function Cart({ hideTable = false }) {
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
               
-              {/* Table selection - kept your original beautiful style */}
+              {/* Table selection */}
               {!isTakeaway ? (
                 <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl">
                   <div className="flex items-center justify-between gap-4">
@@ -406,7 +356,7 @@ export default function Cart({ hideTable = false }) {
                       </div>
                       <div>
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
-                          {table === TAKEAWAY_TABLE ? "Order Type" : "Serving At"}
+                          Serving At
                         </p>
                         <p className="text-lg font-black uppercase">
                           {displayLocation || '??'}
@@ -418,89 +368,122 @@ export default function Cart({ hideTable = false }) {
                       <input 
                         type="text"
                         value={table}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
-                        setTable(val);
-                        if (val.trim()) setTableError("");
-                      }}
-                      placeholder="?"
-                      maxLength={3}
-                      className={`w-20 bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${
-                        tableError 
-                          ? "border-rose-500 focus:border-rose-500" 
-                          : "border-white/20 focus:border-orange-500"
-                      }`}
-                    />
-                    {tableError && (
-                      <div className="mt-2 text-rose-400 text-[11px] font-medium flex items-center gap-1">
-                        <AlertCircle size={14} />
-                        {tableError}
-                      </div>
-                    )}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setTable(val);
+                          if (val.trim()) setTableError("");
+                        }}
+                        placeholder="?"
+                        maxLength={3}
+                        className={`w-20 bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${
+                          tableError 
+                            ? "border-rose-500 focus:border-rose-500" 
+                            : "border-white/20 focus:border-orange-500"
+                        }`}
+                      />
+                      {tableError && (
+                        <div className="mt-2 text-rose-400 text-[11px] font-medium flex items-center gap-1">
+                          <AlertCircle size={14} />
+                          {tableError}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                
-                {/* Add Takeaway Items button - navigates to menu to select takeaway items */}
-                {table?.trim() && (
-                  <button 
-                    onClick={() => navigate(`/menu?table=${table}&addTakeaway=true&from=chooser`)}
-                    className={`w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs uppercase transition-all ${
-                      cart.some(item => item.isTakeaway) 
-                        ? 'bg-orange-500 text-white' 
-                        : 'bg-white/10 text-white/60 hover:bg-white/20'
-                    }`}
-                  >
-                    <Package size={16} /> 
-                    {cart.some(item => item.isTakeaway) ? '✓ Takeaway Items Added' : 'Also Want Takeaway? Tap to Add'}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">
-                Takeaway Order
-              </div>
-            )}
+              ) : (
+                <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">
+                  Takeaway Order
+                </div>
+              )}
 
-              {/* Rest of your UI - Order items, Notes, Bill - unchanged */}
-              <div className="space-y-4">
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">Order Summary</h2>
-                {cart.map((item) => (
-                  <motion.div layout key={`${item.id}-${item.isTakeaway ? 'ta' : 'di'}`} className={`flex gap-4 bg-white p-4 rounded-[2rem] border shadow-sm ${item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'}`}>
-                    <div className="relative w-20 h-20 shrink-0">
-                        <img src={item.image} className="w-full h-full rounded-2xl object-cover" alt="" />
-                        {item.isTakeaway && (
-                          <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-1.5 rounded-full">
-                            <Package size={12} />
+              {/* Grouped Order Items with Portion Highlight */}
+              <div className="space-y-8">
+                {Object.entries(groupedItems).map(([portion, items]) => (
+                  <div key={portion}>
+                    {/* Portion Group Header */}
+                    <div className="flex items-center gap-3 mb-4 px-1">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                      <div className="bg-white shadow px-5 py-1.5 rounded-full border border-slate-100 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                        <span className="font-black text-slate-700 uppercase tracking-widest text-xs">
+                          {portion} PORTION
+                        </span>
+                      </div>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                    </div>
+
+                    {/* Items in this group */}
+                    <div className="space-y-4">
+                      {items.map((item) => (
+                        <motion.div 
+                          layout 
+                          key={`${item.cartKey || item.id || item._id}-${item.isTakeaway ? 'ta' : 'di'}`} 
+                          className={`flex gap-4 bg-white p-5 rounded-[2rem] border shadow-sm ${item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'}`}
+                        >
+                          <div className="relative w-20 h-20 shrink-0">
+                            <img src={item.image} className="w-full h-full rounded-2xl object-cover" alt="" />
+                            {item.isTakeaway && (
+                              <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-1.5 rounded-full">
+                                <Package size={12} />
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-black text-slate-900 text-base">{item.name}</h3>
+                              <p className="font-black text-slate-900 text-lg">
+                                ₹{(item.price * item.qty).toLocaleString()}
+                              </p>
+                            </div>
+
+                            {item.selectedPortion && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="p-0.5 bg-blue-50 rounded">
+                                  <ArrowRight size={8} className="text-blue-500" />
+                                </span>
+                                <p className="text-[10px] font-black text-blue-600 uppercase italic">
+                                  {item.selectedPortion}
+                                </p>
+                              </div>
+                            )}
+
+                            {item.selectedAddons?.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2 border-l-2 border-emerald-100 pl-2 py-0.5">
+                                {item.selectedAddons.map((a, i) => (
+                                  <div key={i} className="flex items-center gap-1">
+                                    <span className="text-[9px] font-bold text-emerald-600">+ {a.name}</span>
+                                    <span className="text-[8px] font-black text-slate-400">(₹{a.price})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between mt-4">
+                              <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
+                                <button onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center">
+                                  <Minus size={12}/>
+                                </button>
+                                <span className="w-8 text-center text-xs font-black">{item.qty}</span>
+                                <button onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center">
+                                  <Plus size={12}/>
+                                </button>
+                              </div>
+                              <p className="text-slate-400 font-bold text-xs">₹{item.price} each</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                    <div className="flex-1 flex flex-col justify-center">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-black text-slate-900 text-sm uppercase">{item.name}</h3>
-                        {item.isTakeaway && (
-                          <span className="px-2 py-0.5 bg-orange-500 text-white text-[8px] font-black uppercase rounded-full">
-                            Takeaway
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-slate-400 font-bold text-[11px] mb-2 uppercase">₹{item.price}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
-                          <button onClick={() => updateQuantity(item._id || item.id, item.qty - 1)} className="w-8 h-8 flex items-center justify-center"><Minus size={12}/></button>
-                          <span className="w-8 text-center text-xs font-black">{item.qty}</span>
-                          <button onClick={() => updateQuantity(item._id || item.id, item.qty + 1)} className="w-8 h-8 flex items-center justify-center"><Plus size={12}/></button>
-                        </div>
-                        <p className="font-black text-slate-900 text-sm">₹{(item.price * item.qty).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
+              {/* Customer Name */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-2 text-slate-400">
-                    <UtensilsCrossed size={14} />
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Customer Name (Optional)</h2>
+                  <UtensilsCrossed size={14} />
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Customer Name (Optional)</h2>
                 </div>
                 <input 
                   type="text"
@@ -511,10 +494,11 @@ export default function Cart({ hideTable = false }) {
                 />
               </div>
 
+              {/* Kitchen Notes */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-2 text-slate-400">
-                    <MessageSquare size={14} />
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Kitchen Notes</h2>
+                  <MessageSquare size={14} />
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Kitchen Notes</h2>
                 </div>
                 <textarea 
                   value={notes} 
@@ -524,6 +508,7 @@ export default function Cart({ hideTable = false }) {
                 />
               </div>
 
+              {/* Bill Summary */}
               <div className="bg-white border border-dashed border-slate-200 rounded-[2rem] p-6 space-y-3">
                 <div className="flex justify-between text-xs font-bold text-slate-500 uppercase">
                   <span>Subtotal</span>
@@ -539,11 +524,11 @@ export default function Cart({ hideTable = false }) {
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-xs font-black text-slate-900 uppercase">Grand Total</span>
-                  <span className="text-lg font-black text-slate-900 ">₹{grandTotal.toLocaleString()}</span>
+                  <span className="text-lg font-black text-slate-900">₹{grandTotal.toLocaleString()}</span>
                 </div>
               </div>
 
-              {/* Payment Method Selection */}
+              {/* Payment Method */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-2 text-slate-400">
                   <CreditCard size={14} />
@@ -718,7 +703,6 @@ const SuccessView = ({ details, navigate, table }) => (
     <div className="space-y-4 max-w-xs mx-auto">
         <button 
           onClick={() => {
-            // details.table already holds the effectiveTable value
             if (details.table === TAKEAWAY_TABLE) {
               navigate(`/order-summary?mode=takeaway`);
             } else {

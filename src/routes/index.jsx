@@ -16,6 +16,7 @@ import Tables from "../admin/Tables";
 import QrGenerator from "../admin/QrGenerator";
 import AddProduct from "../admin/AddProduct";
 import EditForm from "../admin/EditForm";
+import SubItemLibrary from "../admin/Subitem";
 import OfferPanel from "../admin/OfferPanel";
 import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
@@ -92,6 +93,7 @@ export default function AppRoutes() {
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditForm />} />
+          <Route path="sub-items" element={<SubItemLibrary />} />
           <Route path="orders" element={<Orders />} />
           <Route path="manual-order" element={<ManualOrder />} />
           <Route path="tables" element={<Tables />} />

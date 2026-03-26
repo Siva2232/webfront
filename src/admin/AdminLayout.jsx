@@ -31,6 +31,7 @@ import {
   UtensilsCrossed,
   QrCode,
   Ticket,
+  Layers,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
@@ -60,6 +61,7 @@ export default function AdminLayout() {
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
     { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Products", icon: Package, path: "products" },
+    { name: "Sub Items", icon: Layers, path: "sub-items" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
     { name: "Bill", icon: Receipt, path: "bill" },

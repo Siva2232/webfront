@@ -123,9 +123,24 @@ export default function OrderBill() {
     );
   };
 
-  const itemsText = order.items.map(item =>
-    generateItemLine(item.name, item.qty, item.price * item.qty)
-  ).join("\n");
+  const itemsText = order.items.map(item => {
+    const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+    const basePrice = item.price - addonsTotal;
+    let line = generateItemLine(item.name, item.qty, basePrice * item.qty);
+    if (item.selectedPortion) {
+      line += "\n  Portion: " + item.selectedPortion;
+    }
+    if (item.selectedAddons?.length > 0) {
+      item.selectedAddons.forEach(a => {
+        const addonLine = "  + " + a.name;
+        const addonPrice = "Rs." + ((a.price || 0) * item.qty).toFixed(2);
+        line += "\n" + addonLine.padEnd(22) + addonPrice.padStart(10);
+      });
+      line += "\n  " + "-".repeat(28);
+      line += "\n  " + "Item Total".padEnd(18) + ("Rs." + (item.price * item.qty).toFixed(2)).padStart(12);
+    }
+    return line;
+  }).join("\n");
 
   const html = `
   <html>
@@ -137,58 +152,80 @@ export default function OrderBill() {
       }
 
       body {
-        font-family: monospace;
+        font-family: 'Courier New', Courier, monospace;
         white-space: pre;
-        font-size: 12px;
+        font-size: 13px;
         width: 80mm;
-        max-width: 80mm;
-        margin: 0 auto;           /* This centers the receipt */
-        padding: 8mm 5mm;         /* Even padding on all sides */
+        margin: 0;
+        padding: 5mm;
         box-sizing: border-box;
-        text-align: center;       /* Helps center short lines */
       }
 
       .header {
         text-align: center;
-        margin-bottom: 8px;
+        font-weight: bold;
+        margin-bottom: 2mm;
       }
 
       .line {
-        text-align: left;
-        margin: 2px 0;
+        border-bottom: 1px dashed #000;
+        margin: 2mm 0;
       }
+
+      .text-center { text-align: center; }
+      .text-right { text-align: right; }
+      .bold { font-weight: bold; }
     </style>
   </head>
   <body>
 
+<div class="header">
 MY CAFE
---------------------------------
-${generateLine("ORDER REF", "#" + (order._id || "").slice(-6))}
-${generateLine("TABLE", order.table || "TA")}
-${generateLine("DATE", new Date(order.createdAt).toLocaleDateString())}
-${generateLine("TIME", new Date(order.createdAt).toLocaleTimeString())}
+01 SKYLINE DRIVE, BUSINESS DISTRICT
++91 0000 000 000
+GST: 18AABCT1234H1Z0
+</div>
 
---------------------------------
-ITEM              QTY       AMT
---------------------------------
+<div class="text-center bold">${order.paymentStatus === 'paid' ? "PAID" : "Collect Cash"}</div>
+<div class="text-center">Cashier: ${cashierName}</div>
+<div class="line"></div>
+
+${generateLine("Order Ref", "#" + (order._id || "").slice(-6))}
+${generateLine("Location", order.table === TAKEAWAY_TABLE ? "TAKEAWAY" : "TBL-" + order.table)}
+${generateLine("Placed At", format(new Date(order.createdAt), "dd/MM/yyyy • hh:mm a"))}
+
+<div class="line"></div>
+<div class="bold">Itemized Manifest</div>
+<div class="line"></div>
 ${itemsText}
 
---------------------------------
-${generateLine("SUBTOTAL", subtotal.toFixed(2))}
-${generateLine("GST (5%)", tax.toFixed(2))}
+<div class="line"></div>
+${generateLine("Subtotal", "Rs." + subtotal.toFixed(2))}
+${generateLine("Tax (GST 5%)", "Rs." + tax.toFixed(2))}
 
---------------------------------
-${generateLine("TOTAL PAYABLE", total.toFixed(2))}
-(INCLUSIVE OF TAXES)
+<div class="line"></div>
+<div class="bold">Total Summary</div>
+${generateLine("Method", order.paymentMethod?.toUpperCase() || "COD")}
+<div class="bold text-center">${order.paymentStatus === 'paid' ? "✔ COMPLETED" : "⚠️ DUE"}</div>
+${generateLine("Total", "Rs." + total.toFixed(2))}
+<div class="line"></div>
 
---------------------------------
-PAYMENT SUMMARY
-${generateLine("CASH", "PAID")}
-${generateLine("ONLINE", "PAID")}
+${order.paymentStatus === 'paid' ? `
+<div class="text-center bold">
+PAID IN FULL
+Rs.${total.toFixed(2)}
+</div>
+` : `
+<div class="text-center bold">
+Total Unpaid (Collect Cash)
+Rs.${total.toFixed(2)}
+</div>
+`}
 
---------------------------------
-     OFFICIAL RECEIPT
-        THANK YOU
+<div class="line"></div>
+<div class="text-center bold">${order.paymentStatus === 'paid' ? "Payment Confirmed" : "Mark Paid"}</div>
+<div class="text-center">Official Receipt</div>
+<div class="text-center">THANK YOU</div>
 
   <script>
     window.print();
@@ -446,22 +483,47 @@ ${generateLine("ONLINE", "PAID")}
                 {/* Items Manifest */}
                 <div className="p-8 space-y-6">
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em] text-center mb-2 underline underline-offset-8 decoration-slate-100">Itemized Manifest</p>
-                  {order.items?.map((item, idx) => (
-                    <div key={idx} className={`flex justify-between items-start group ${item.isTakeaway ? 'bg-orange-50 -mx-2 px-2 py-2 rounded-lg border border-orange-100' : ''}`}>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black uppercase tracking-tight text-slate-800 group-hover:text-indigo-600 transition-colors">{item.name}</span>
-                          {item.isTakeaway && (
-                            <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded flex items-center gap-0.5">
-                              <Package size={8} /> T/A
-                            </span>
+                  {order.items?.map((item, idx) => {
+                    const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                    const basePrice = item.price - addonsTotal;
+                    return (
+                    <div key={idx} className={`group ${item.isTakeaway ? 'bg-orange-50 -mx-2 px-2 py-2 rounded-lg border border-orange-100' : ''}`}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-tight text-slate-800 group-hover:text-indigo-600 transition-colors">{item.name}</span>
+                            {item.isTakeaway && (
+                              <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded flex items-center gap-0.5">
+                                <Package size={8} /> T/A
+                              </span>
+                            )}
+                          </div>
+                          {item.selectedPortion && (
+                            <span className="text-[9px] font-bold text-blue-600 mt-0.5">Portion: {item.selectedPortion}</span>
                           )}
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter italic mt-0.5">{item.qty} × ₹{basePrice}</span>
                         </div>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter italic">{item.qty} units @ ₹{item.price}</span>
+                        <span className="text-xs font-black italic text-slate-600">₹{(basePrice * item.qty).toLocaleString()}</span>
                       </div>
-                      <span className="text-xs font-black italic text-slate-900">₹{(item.price * item.qty).toLocaleString()}</span>
+                      {item.selectedAddons?.length > 0 && (
+                        <div className="mt-1.5 ml-2 space-y-1 border-l-2 border-emerald-200 pl-3">
+                          {item.selectedAddons.map((a, i) => (
+                            <div key={i} className="flex justify-between items-center">
+                              <span className="text-[9px] font-bold text-emerald-700">+ {a.name}</span>
+                              <span className="text-[9px] font-bold text-slate-500">₹{(a.price || 0) * item.qty}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {addonsTotal > 0 && (
+                        <div className="flex justify-between items-center mt-1.5 pt-1.5 border-t border-dashed border-slate-100">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Item Total</span>
+                          <span className="text-xs font-black italic text-slate-900">₹{(item.price * item.qty).toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Financial Summary - Dark Premium Card */}

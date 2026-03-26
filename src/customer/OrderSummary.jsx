@@ -263,7 +263,7 @@ export default function OrderSummary() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={item.id || idx} 
-                  className={`flex items-center gap-4 group p-3 rounded-2xl transition-all ${
+                  className={`flex items-start gap-4 group p-3 rounded-2xl transition-all ${
                     !isTakeawayOrder(order) && item.isTakeaway 
                       ? "bg-orange-50 border border-orange-100/50" 
                       : ""
@@ -279,17 +279,30 @@ export default function OrderSummary() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-black text-slate-900 truncate">{item.name}</p>
+                      {item.selectedPortion && (
+                        <span className="text-[9px] font-bold text-blue-600">({item.selectedPortion})</span>
+                      )}
                       {!isTakeawayOrder(order) && item.isTakeaway && (
                         <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase tracking-wider rounded-md flex items-center gap-0.5">
                           <Package size={7} /> TA
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
-                      {item.qty} × ₹{item.price.toLocaleString()}
+                    {item.selectedAddons?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mb-1 bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100/50">
+                        {item.selectedAddons.map((a, i) => (
+                          <div key={i} className="flex items-center gap-1">
+                            <span className="text-[8px] font-bold text-emerald-600">+ {a.name}</span>
+                            <span className="text-[7px] font-black text-slate-400">₹{a.price}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">
+                      {item.qty} × <span className="text-slate-400">₹{item.price.toLocaleString()}</span>
                     </p>
                   </div>
-                  <p className="text-sm font-black text-slate-900 font-mono">
+                  <p className="text-sm font-black text-slate-900 font-mono shrink-0">
                     ₹{(item.price * item.qty).toLocaleString()}
                   </p>
                 </motion.div>

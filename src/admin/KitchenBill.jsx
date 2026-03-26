@@ -202,29 +202,52 @@ export default function KitchenBill() {
                   <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] text-center underline underline-offset-4 decoration-slate-100">
                     Items to Prepare
                   </p>
-                  {kb.items?.map((item, idx) => (
+                  {kb.items?.map((item, idx) => {
+                    const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                    const basePrice = item.price - addonsTotal;
+                    return (
                     <div 
                       key={idx} 
-                      className={`flex justify-between items-center p-3 rounded-xl ${
+                      className={`p-3 rounded-xl ${
                         item.isTakeaway ? 'bg-orange-50 border border-orange-100' : 'bg-slate-50'
                       }`}
                     >
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black uppercase tracking-tight text-slate-800">
-                            {item.name}
-                          </span>
-                          {item.isTakeaway && (
-                            <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded">
-                              T/A
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black uppercase tracking-tight text-slate-800">
+                              {item.name}
                             </span>
-                          )}
+                            {item.selectedPortion && (
+                              <span className="text-[9px] font-bold text-blue-600">({item.selectedPortion})</span>
+                            )}
+                            {item.isTakeaway && (
+                              <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded">
+                                T/A
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[9px] text-slate-400 font-bold">₹{basePrice} × {item.qty}</span>
                         </div>
-                        <span className="text-[9px] text-slate-400 font-bold">₹{item.price} × {item.qty}</span>
+                        <span className="text-xl font-black text-slate-900 shrink-0">×{item.qty}</span>
                       </div>
-                      <span className="text-xl font-black text-slate-900">×{item.qty}</span>
+                      {item.selectedAddons?.length > 0 && (
+                        <div className="mt-1.5 ml-1 space-y-0.5 border-l-2 border-emerald-200 pl-2">
+                          {item.selectedAddons.map((a, i) => (
+                            <div key={i} className="flex justify-between items-center">
+                              <span className="text-[9px] font-bold text-emerald-700">+ {a.name}</span>
+                              <span className="text-[9px] font-bold text-slate-400">₹{(a.price || 0) * item.qty}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
+                            <span className="text-[8px] font-black text-slate-500 uppercase">Item Total</span>
+                            <span className="text-[10px] font-black text-slate-700">₹{(item.price * item.qty).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Notes */}

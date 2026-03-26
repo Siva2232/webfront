@@ -59,13 +59,29 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = (product, isTakeawayItem = false) => {
     setCart((prev) => {
+      // If the product has a cartKey (configured with portions/addons), use it for matching
+      const cartKey = product.cartKey;
+      if (cartKey) {
+        const exists = prev.find(
+          (i) => i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
+        );
+        if (exists) {
+          return prev.map((i) =>
+            i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
+              ? { ...i, qty: i.qty + (product.qty || 1) }
+              : i
+          );
+        }
+        return [...prev, { ...product, qty: product.qty || 1, isTakeaway: isTakeawayItem }];
+      }
+
       // For takeaway items, check if the same product exists with same takeaway status
       const exists = prev.find(
-        (i) => (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
+        (i) => (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
       );
       if (exists) {
         return prev.map((i) =>
-          (i._id || i.id) === (product._id || product.id) && (i.isTakeaway || false) === isTakeawayItem
+          (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
             ? { ...i, qty: i.qty + 1 }
             : i
         );
@@ -74,18 +90,26 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  const updateQuantity = (id, newQty) => {
+  const updateQuantity = (id, newQty, cartKey = null) => {
     if (newQty < 1) {
-      removeFromCart(id);
+      removeFromCart(id, cartKey);
       return;
     }
     setCart((prev) =>
-      prev.map((item) => ((item._id || item.id) === id ? { ...item, qty: newQty } : item))
+      prev.map((item) => {
+        if (cartKey) return item.cartKey === cartKey ? { ...item, qty: newQty } : item;
+        return (item._id || item.id) === id && !item.cartKey ? { ...item, qty: newQty } : item;
+      })
     );
   };
 
-  const removeFromCart = (id) => {
-    setCart((prev) => prev.filter((i) => (i._id || i.id) !== id));
+  const removeFromCart = (id, cartKey = null) => {
+    setCart((prev) =>
+      prev.filter((i) => {
+        if (cartKey) return i.cartKey !== cartKey;
+        return !((i._id || i.id) === id && !i.cartKey);
+      })
+    );
   };
 
   const clearCart = () => {

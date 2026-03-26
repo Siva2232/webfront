@@ -175,6 +175,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Plus, Minus } from "lucide-react";
+import SubItemModal from "./SubItemModal";
 
 function FoodTypeIcon({ type }) {
   const isVeg = type === "veg";
@@ -185,14 +186,28 @@ function FoodTypeIcon({ type }) {
   );
 }
 
-export default function ProductCard({ product, onAdd, onRemove, initialQty = 0 }) {
+// Does this product need the customisation modal?
+const hasCustomisation = (product) =>
+  (product.hasPortions && product.portions?.length > 0) ||
+  (product.addonGroups?.length > 0);
+
+export default function ProductCard({ product, onAdd, onRemove, initialQty = 0, onAddConfigured }) {
   const { name, description, price, image, isAvailable = true, type = "veg" } = product;
 
   const [quantity, setQuantity] = useState(initialQty);
+  const [showSubItem, setShowSubItem] = useState(false);
+
+  const needsModal = hasCustomisation(product);
 
   const handleIncrement = (e) => {
     e.stopPropagation();
     if (!isAvailable) return;
+
+    if (needsModal) {
+      setShowSubItem(true);
+      return;
+    }
+
     setQuantity(prev => prev + 1);
     onAdd(product);
   };
@@ -202,6 +217,19 @@ export default function ProductCard({ product, onAdd, onRemove, initialQty = 0 }
     if (quantity > 0) {
       setQuantity(prev => prev - 1);
       if (onRemove) onRemove(product._id || product.id);
+    }
+  };
+
+  // Called from SubItem modal after user configures portions/addons
+  const handleConfiguredAdd = (configuredItem) => {
+    setQuantity(prev => prev + configuredItem.qty);
+    if (onAddConfigured) {
+      onAddConfigured(configuredItem);
+    } else {
+      // fallback: add configured qty times via the plain onAdd
+      for (let i = 0; i < configuredItem.qty; i++) {
+        onAdd(product);
+      }
     }
   };
 
@@ -294,8 +322,19 @@ export default function ProductCard({ product, onAdd, onRemove, initialQty = 0 }
               Out of Stock
             </div>
           )}
+          {needsModal && isAvailable && (
+            <p className="text-center text-[9px] font-bold text-slate-400 mt-1.5 uppercase tracking-wider">customisable</p>
+          )}
         </div>
       </div>
+
+      {/* SubItem Modal for customisation */}
+      <SubItemModal
+        product={product}
+        isOpen={showSubItem}
+        onClose={() => setShowSubItem(false)}
+        onAddToCart={handleConfiguredAdd}
+      />
     </div>
   );
 }

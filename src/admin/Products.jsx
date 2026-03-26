@@ -5,11 +5,13 @@ import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   Plus, Package, CheckCircle2, AlertCircle, Edit3, Trash2, 
-  IndianRupee, Search, Sparkles, XCircle, RefreshCw, X, CheckCircle, AlertTriangle, Upload, Image
+  IndianRupee, Search, Sparkles, XCircle, RefreshCw, X, CheckCircle, AlertTriangle, Upload, Image,
+  ChevronDown, ChevronUp
 } from "lucide-react";
+import API from "../api/axios";
 
 export default function AdminProducts() {
-  const { products, toggleAvailability, deleteProduct, addProduct, orderedCategories = [], addCategory } = useProducts();
+  const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("");
   const navigate = useNavigate();
@@ -29,9 +31,78 @@ export default function AdminProducts() {
     image: "",
     category: "",
     type: "veg",
+    hasPortions: false,
+    portions: [],
+    addonGroups: [],
   });
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [isCompressing, setIsCompressing] = useState(false);
+
+  // ── Sub-item library (portions + addon groups from master list) ──
+  const [libraryPortions, setLibraryPortions] = useState([]);
+  const [libraryAddonGroups, setLibraryAddonGroups] = useState([]);
+
+  useEffect(() => {
+    const fetchLibrary = async () => {
+      try {
+        const { data } = await API.get("/sub-items");
+        setLibraryPortions(data.filter((s) => s.type === "portion"));
+        setLibraryAddonGroups(data.filter((s) => s.type === "addonGroup"));
+      } catch {
+        // silent
+      }
+    };
+    fetchLibrary();
+  }, []);
+
+  // --- Portion helpers ---
+  const addPortion = () => setProductForm(prev => ({ ...prev, portions: [...prev.portions, { name: "", price: "" }] }));
+  const updatePortion = (idx, field, value) => {
+    setProductForm(prev => {
+      const newPortions = [...prev.portions];
+      newPortions[idx] = { ...newPortions[idx], [field]: value };
+      return { ...prev, portions: newPortions };
+    });
+  };
+  const removePortion = (idx) => setProductForm(prev => ({ ...prev, portions: prev.portions.filter((_, i) => i !== idx) }));
+
+  // --- Addon Group helpers ---
+  const addAddonGroup = () => setProductForm(prev => ({ ...prev, addonGroups: [...prev.addonGroups, { name: "", maxSelections: 0, addons: [] }] }));
+  const updateAddonGroup = (gIdx, field, value) => {
+    setProductForm(prev => {
+      const newGroups = [...prev.addonGroups];
+      newGroups[gIdx] = { ...newGroups[gIdx], [field]: value };
+      return { ...prev, addonGroups: newGroups };
+    });
+  };
+  const removeAddonGroup = (gIdx) => setProductForm(prev => ({ ...prev, addonGroups: prev.addonGroups.filter((_, i) => i !== gIdx) }));
+
+  const addAddon = (gIdx) => {
+    setProductForm(prev => {
+      const newGroups = [...prev.addonGroups];
+      newGroups[gIdx].addons = [...newGroups[gIdx].addons, { name: "", price: "" }];
+      return { ...prev, addonGroups: newGroups };
+    });
+  };
+  const updateAddon = (gIdx, aIdx, field, value) => {
+    setProductForm(prev => {
+      const newGroups = [...prev.addonGroups];
+      const newAddons = [...newGroups[gIdx].addons];
+      newAddons[aIdx] = { ...newAddons[aIdx], [field]: value };
+      newGroups[gIdx].addons = newAddons;
+      return { ...prev, addonGroups: newGroups };
+    });
+  };
+  const removeAddon = (gIdx, aIdx) => {
+    setProductForm(prev => {
+      const newGroups = [...prev.addonGroups];
+      newGroups[gIdx].addons = newGroups[gIdx].addons.filter((_, j) => j !== aIdx);
+      return { ...prev, addonGroups: newGroups };
+    });
+  };
+
+  const [collapsedGroups, setCollapsedGroups] = useState({});
+  const toggleGroupCollapse = (idx) => setCollapsedGroups(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   // Image compression helper
   const compressImage = (file) => {
@@ -95,6 +166,35 @@ export default function AdminProducts() {
       toast.error("Please fill all required fields");
       return;
     }
+
+    // Validation for portions
+    if (productForm.hasPortions) {
+      if (productForm.portions.length === 0) {
+        toast.error("Add at least one portion when portions are enabled");
+        return;
+      }
+      for (const p of productForm.portions) {
+        if (!p.name?.trim()) { toast.error("Portion name cannot be empty"); return; }
+        if (!p.price || Number(p.price) <= 0) { toast.error(`Price must be > 0 for portion "${p.name}"`); return; }
+      }
+      const names = productForm.portions.map(p => p.name.trim().toLowerCase());
+      if (new Set(names).size !== names.length) { toast.error("Duplicate portion names are not allowed"); return; }
+    }
+
+    const cleanPortions = productForm.hasPortions
+      ? productForm.portions.map(p => ({ name: p.name.trim(), price: Number(p.price) }))
+      : [];
+
+    const cleanAddonGroups = productForm.addonGroups
+      .filter(g => g.name?.trim() && g.addons.length > 0)
+      .map(g => ({
+        name: g.name.trim(),
+        maxSelections: Number(g.maxSelections) || 0,
+        addons: g.addons
+          .filter(a => a.name?.trim())
+          .map(a => ({ name: a.name.trim(), price: Number(a.price) || 0 })),
+      }));
+
     setIsAdding(true);
     try {
       await addProduct({
@@ -105,12 +205,15 @@ export default function AdminProducts() {
         category: productForm.category,
         type: productForm.type,
         available: true,
+        hasPortions: productForm.hasPortions,
+        portions: cleanPortions,
+        addonGroups: cleanAddonGroups,
       });
       toast.success("Product created successfully!", {
         icon: <CheckCircle size={18} className="text-emerald-500" />,
       });
       setShowAddModal(false);
-      setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg" });
+      setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", hasPortions: false, portions: [], addonGroups: [] });
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to add product");
     } finally {
@@ -120,7 +223,7 @@ export default function AdminProducts() {
 
   const resetAddModal = () => {
     setShowAddModal(false);
-    setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg" });
+    setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", hasPortions: false, portions: [], addonGroups: [] });
     setNewCategoryInput("");
   };
 
@@ -271,6 +374,43 @@ export default function AdminProducts() {
                   onToggle={handleToggleAvailability} 
                   onDelete={() => handleDeleteClick(p)}
                   onEdit={(id) => navigate(`/admin/products/edit/${id}`)}
+                  libraryPortions={libraryPortions}
+                  libraryAddonGroups={libraryAddonGroups}
+                  onQuickAdd={async (productId, type, libId) => {
+                    const prod = products.find(px => px._id === productId);
+                    if (!prod) return;
+
+                    if (type === 'portion') {
+                      const lib = libraryPortions.find(l => l._id === libId);
+                      if (!lib) return;
+                      const exists = prod.portions?.some(po => po.name.toLowerCase() === lib.name.toLowerCase());
+                      if (exists) { toast.error(`"${lib.name}" is already on this product`); return; }
+                      
+                      const newPortions = [...(prod.portions || []), { name: lib.name, price: lib.price || 0 }];
+                      const id = toast.loading("Adding portion...");
+                      try {
+                        await updateProduct(productId, { ...prod, hasPortions: true, portions: newPortions });
+                        toast.success("Portion added!", { id });
+                      } catch(e) { toast.error("Failed to add portion", { id }); }
+                    } else {
+                      const lib = libraryAddonGroups.find(l => l._id === libId);
+                      if (!lib) return;
+                      const exists = prod.addonGroups?.some(g => g.name.toLowerCase() === lib.name.toLowerCase());
+                      if (exists) { toast.error(`"${lib.name}" is already on this product`); return; }
+                      
+                      const newGroup = {
+                        name: lib.name,
+                        maxSelections: lib.maxSelections || 0,
+                        addons: (lib.addons || []).map(a => ({ name: a.name, price: a.price || 0 }))
+                      };
+                      const newGroups = [...(prod.addonGroups || []), newGroup];
+                      const id = toast.loading("Adding group...");
+                      try {
+                        await updateProduct(productId, { ...prod, addonGroups: newGroups });
+                        toast.success("Add-on Group added!", { id });
+                      } catch(e) { toast.error("Failed to add group", { id }); }
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -567,6 +707,214 @@ export default function AdminProducts() {
                       </button>
                     </div>
                   )}
+
+                  {/* ============ PORTIONS SECTION ============ */}
+                  <div className="border-t border-slate-100 pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Enable Portions</label>
+                      <button
+                        type="button"
+                        onClick={() => setProductForm(prev => ({ ...prev, hasPortions: !prev.hasPortions }))}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                          productForm.hasPortions ? "bg-indigo-600" : "bg-slate-200"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
+                            productForm.hasPortions ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {productForm.hasPortions && (
+                      <div className="space-y-3 pl-2">
+                        <p className="text-[10px] text-slate-400 font-medium">E.g. Half, Full, Family Pack. Each portion has its own price.</p>
+                        {productForm.portions.map((p, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <input
+                              placeholder="Portion name"
+                              value={p.name}
+                              onChange={(e) => updatePortion(idx, "name", e.target.value)}
+                              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
+                            />
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">₹</span>
+                              <input
+                                type="number"
+                                placeholder="Price"
+                                value={p.price}
+                                onChange={(e) => updatePortion(idx, "price", e.target.value)}
+                                className="w-28 pl-7 pr-3 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-black outline-none focus:border-indigo-500"
+                              />
+                            </div>
+                            <button type="button" onClick={() => removePortion(idx)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={addPortion}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+                          >
+                            <Plus size={14} /> Add Portion
+                          </button>
+                          {libraryPortions.length > 0 && (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const lib = libraryPortions.find((l) => l._id === e.target.value);
+                                if (lib) {
+                                  const exists = productForm.portions.some(
+                                    (p) => p.name.toLowerCase() === lib.name.toLowerCase()
+                                  );
+                                  if (exists) {
+                                    toast.error(`"${lib.name}" already added`);
+                                    return;
+                                  }
+                                  setProductForm((prev) => ({
+                                    ...prev,
+                                    portions: [...prev.portions, { name: lib.name, price: lib.price || "" }],
+                                  }));
+                                }
+                              }}
+                              className="px-3 py-2.5 bg-violet-50 text-violet-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-200 outline-none cursor-pointer"
+                            >
+                              <option value="">Pick from Library</option>
+                              {libraryPortions
+                                .filter((lp) => lp.isAvailable !== false)
+                                .map((lp) => (
+                                  <option key={lp._id} value={lp._id}>
+                                    {lp.name} — ₹{lp.price}
+                                  </option>
+                                ))}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ============ ADDON GROUPS SECTION ============ */}
+                  <div className="border-t border-slate-100 pt-6 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Add-on Groups</label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={addAddonGroup}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors"
+                        >
+                          <Plus size={12} /> New Group
+                        </button>
+                        {libraryAddonGroups.length > 0 && (
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const lib = libraryAddonGroups.find((l) => l._id === e.target.value);
+                              if (lib) {
+                                const exists = productForm.addonGroups.some(
+                                  (g) => g.name.toLowerCase() === lib.name.toLowerCase()
+                                );
+                                if (exists) {
+                                  toast.error(`"${lib.name}" already added`);
+                                  return;
+                                }
+                                setProductForm((prev) => ({
+                                  ...prev,
+                                  addonGroups: [
+                                    ...prev.addonGroups,
+                                    {
+                                      name: lib.name,
+                                      maxSelections: lib.maxSelections || 0,
+                                      addons: (lib.addons || []).map((a) => ({ name: a.name, price: a.price || 0 })),
+                                    },
+                                  ],
+                                }));
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-violet-200 outline-none cursor-pointer"
+                          >
+                            <option value="">Pick from Library</option>
+                            {libraryAddonGroups
+                              .filter((lg) => lg.isAvailable !== false)
+                              .map((lg) => (
+                                <option key={lg._id} value={lg._id}>
+                                  {lg.name} ({lg.addons?.length || 0} items)
+                                </option>
+                              ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium">Create groups like "Dips & Sauces", "Extra Toppings".</p>
+
+                    {productForm.addonGroups.map((group, gIdx) => (
+                      <div key={gIdx} className="bg-slate-50 rounded-2xl p-5 space-y-4 border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <input
+                            placeholder="Group name"
+                            value={group.name}
+                            onChange={(e) => updateAddonGroup(gIdx, "name", e.target.value)}
+                            className="flex-1 px-4 py-3 bg-white border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Max"
+                            title="Maximum selections (0 = unlimited)"
+                            value={group.maxSelections || ""}
+                            onChange={(e) => updateAddonGroup(gIdx, "maxSelections", e.target.value)}
+                            className="w-20 px-3 py-3 bg-white border border-slate-100 rounded-xl text-sm font-bold text-center outline-none focus:border-indigo-500"
+                          />
+                          <button type="button" onClick={() => toggleGroupCollapse(gIdx)} className="p-2 text-slate-400 hover:text-slate-700 transition-colors">
+                            {collapsedGroups[gIdx] ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                          </button>
+                          <button type="button" onClick={() => removeAddonGroup(gIdx)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {!collapsedGroups[gIdx] && (
+                          <div className="space-y-2 pl-2">
+                            {group.addons.map((addon, aIdx) => (
+                              <div key={aIdx} className="flex items-center gap-3">
+                                <input
+                                  placeholder="Addon name"
+                                  value={addon.name}
+                                  onChange={(e) => updateAddon(gIdx, aIdx, "name", e.target.value)}
+                                  className="flex-1 px-4 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-medium outline-none focus:border-indigo-500"
+                                />
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    value={addon.price}
+                                    onChange={(e) => updateAddon(gIdx, aIdx, "price", e.target.value)}
+                                    className="w-24 pl-7 pr-3 py-2.5 bg-white border border-slate-100 rounded-xl text-sm font-bold text-center outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <button type="button" onClick={() => removeAddon(gIdx, aIdx)} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addAddon(gIdx)}
+                              className="flex items-center gap-1.5 px-3 py-2 text-emerald-600 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-50 rounded-lg transition-colors"
+                            >
+                              <Plus size={12} /> Add Item
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
                 </div>
 
                 {/* Modal Footer */}
@@ -605,15 +953,15 @@ export default function AdminProducts() {
   );
 }
 
-function ProductCard({ product, onToggle, onDelete, onEdit }) {
+function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = [], libraryAddonGroups = [], onQuickAdd }) {
   return (
     <div className="group relative">
-      <div className={`relative bg-white rounded-[3rem] overflow-hidden border transition-shadow duration-150 hover:shadow-lg 
+      <div className={`relative bg-white rounded-[3rem] overflow-hidden border transition-shadow duration-150 hover:shadow-lg flex flex-col h-full
         ${product.isAvailable ? 'border-slate-100 shadow-sm' : 'border-rose-100 shadow-none opacity-90'}
       `}>
         
         {/* IMAGE SECTION */}
-        <div className="relative aspect-[11/13] overflow-hidden bg-slate-100">
+        <div className="relative aspect-[11/13] overflow-hidden bg-slate-100 shrink-0">
           <img
             src={product.image || "https://images.unsplash.com/photo-1546213271-73fca27ad291"}
             alt={product.name}
@@ -634,49 +982,122 @@ function ProductCard({ product, onToggle, onDelete, onEdit }) {
         </div>
 
         {/* CONTENT SECTION */}
-        <div className="p-8 space-y-6">
-          <div className="space-y-1">
-            <h3 className="text-xl font-black text-slate-950 truncate tracking-tight uppercase italic transition-colors group-hover:text-indigo-600">
-              {product.name}
-            </h3>
-            <div className="flex items-center gap-1.5 text-indigo-600 font-black">
-              <IndianRupee size={16} strokeWidth={3} />
-              <span className="text-2xl tracking-tighter italic">{product.price.toLocaleString()}</span>
+        <div className="p-8 space-y-6 flex-1 flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-slate-950 truncate tracking-tight uppercase italic transition-colors group-hover:text-indigo-600">
+                {product.name}
+              </h3>
+              <div className="flex items-center gap-1.5 text-indigo-600 font-black">
+                <IndianRupee size={16} strokeWidth={3} />
+                <span className="text-2xl tracking-tighter italic">{product.price.toLocaleString()}</span>
+              </div>
             </div>
+
+            {/* Portions & Add-on badges */}
+            {((product.hasPortions && product.portions?.length > 0) || product.addonGroups?.length > 0) && (
+              <div className="space-y-2">
+                {product.hasPortions && product.portions?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.portions.map((p, i) => (
+                      <span key={i} className="px-2.5 py-1 bg-blue-50 text-blue-600 text-[9px] font-bold rounded-lg">
+                        {p.name} — ₹{p.price}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {product.addonGroups?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.addonGroups.map((g, i) => (
+                      <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-lg">
+                        {g.name} ({g.addons?.length || 0})
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* CLEAR AVAILABILITY TOGGLE (The Primary Action) */}
-          <button 
-            onClick={() => onToggle(product._id)}
-            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 flex items-center justify-center gap-2
-              ${product.isAvailable 
-                ? "bg-white border-slate-100 text-slate-400 hover:border-rose-200 hover:text-rose-600 hover:bg-rose-50" 
-                : "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white"
-              }`}
-          >
-            {product.isAvailable ? (
-              <><XCircle size={14} /> Stop Selling</>
-            ) : (
-              <><RefreshCw size={14} /> Restore to Menu</>
-            )}
-          </button>
+          <div className="space-y-4">
+            {/* QUICK ADD BUTTONS */}
+            {(libraryPortions.length > 0 || libraryAddonGroups.length > 0) && (
+              <div className="flex gap-2 border-t border-slate-50 pt-4">
+                {libraryPortions.length > 0 && (
+                  <div className="flex-1 relative">
+                    <select 
+                      value=""
+                      onChange={(e) => {
+                        if(e.target.value) onQuickAdd(product._id, 'portion', e.target.value);
+                      }}
+                      className="w-full appearance-none bg-blue-50/50 text-blue-700 font-bold text-[9px] uppercase tracking-wider py-2.5 pl-3 pr-6 rounded-xl border border-blue-100 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                    >
+                      <option value="" disabled>+ Portion</option>
+                      {libraryPortions
+                        .filter(lp => lp.isAvailable !== false)
+                        .map(lp => (
+                          <option key={lp._id} value={lp._id}>{lp.name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+                  </div>
+                )}
 
-          {/* SECONDARY ACTIONS (Edit & Delete) */}
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
+                {libraryAddonGroups.length > 0 && (
+                  <div className="flex-1 relative">
+                    <select 
+                      value=""
+                      onChange={(e) => {
+                        if(e.target.value) onQuickAdd(product._id, 'group', e.target.value);
+                      }}
+                      className="w-full appearance-none bg-emerald-50/50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider py-2.5 pl-3 pr-6 rounded-xl border border-emerald-100 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
+                    >
+                      <option value="" disabled>+ Group</option>
+                      {libraryAddonGroups
+                        .filter(lg => lg.isAvailable !== false)
+                        .map(lg => (
+                          <option key={lg._id} value={lg._id}>{lg.name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CLEAR AVAILABILITY TOGGLE (The Primary Action) */}
             <button 
-              onClick={() => onEdit(product._id)}
-              className="flex items-center justify-center gap-2 py-4 bg-slate-950 text-white rounded-2xl transition-all duration-300 hover:bg-indigo-600 shadow-lg shadow-slate-100"
+              onClick={() => onToggle(product._id)}
+              className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 flex items-center justify-center gap-2
+                ${product.isAvailable 
+                  ? "bg-white border-slate-100 text-slate-400 hover:border-rose-200 hover:text-rose-600 hover:bg-rose-50" 
+                  : "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white"
+                }`}
             >
-              <Edit3 size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+              {product.isAvailable ? (
+                <><XCircle size={14} /> Stop Selling</>
+              ) : (
+                <><RefreshCw size={14} /> Restore to Menu</>
+              )}
             </button>
-            <button 
-              onClick={() => onDelete()}
-              className="flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white rounded-2xl transition-all duration-300"
-            >
-              <Trash2 size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Trash</span>
-            </button>
+
+            {/* SECONDARY ACTIONS (Edit & Delete) */}
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
+              <button 
+                onClick={() => onEdit(product._id)}
+                className="flex items-center justify-center gap-2 py-4 bg-slate-950 text-white rounded-2xl transition-all duration-300 hover:bg-indigo-600 shadow-lg shadow-slate-100"
+              >
+                <Edit3 size={14} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+              </button>
+              <button 
+                onClick={() => onDelete()}
+                className="flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white rounded-2xl transition-all duration-300"
+              >
+                <Trash2 size={14} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Trash</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

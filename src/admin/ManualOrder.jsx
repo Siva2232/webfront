@@ -6,10 +6,12 @@ import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 import { Plus, Minus, ShoppingCart, MapPin, ClipboardList, Package, PlusCircle, User, Clock, Search, X, CheckCircle, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
+import SubItemModal from "../components/SubItemModal";
 
 // Memoized Product Card for better performance
-const ProductCard = memo(function ProductCard({ product, qty, isTakeawayItem, onAdjustQty, onToggleTakeaway }) {
+const ProductCard = memo(function ProductCard({ product, qty, isTakeawayItem, onAdjustQty, onToggleTakeaway, onOpenCustomise }) {
   const prodId = product._id || product.id;
+  const hasCustomisation = (product.hasPortions && product.portions?.length > 0) || (product.addonGroups?.length > 0);
   
   return (
     <div className={`relative p-4 border-2 transition-all flex flex-col justify-between 
@@ -28,6 +30,9 @@ const ProductCard = memo(function ProductCard({ product, qty, isTakeawayItem, on
         <div className="flex-1">
           <p className="font-bold text-lg leading-tight uppercase tracking-tight line-clamp-2">{product.name}</p>
           <p className="text-sm font-medium text-gray-500 italic">₹{product.price}</p>
+          {hasCustomisation && (
+            <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-wider mt-0.5">Customisable</p>
+          )}
         </div>
         {product.image && (
           <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 shrink-0 bg-white">
@@ -41,7 +46,13 @@ const ProductCard = memo(function ProductCard({ product, qty, isTakeawayItem, on
           <Minus size={14} />
         </button>
         <span className="text-lg font-black w-6 text-center">{qty}</span>
-        <button onClick={() => onAdjustQty(product, 1)} className="w-8 h-8 flex items-center justify-center border border-black hover:bg-black hover:text-white transition-colors">
+        <button onClick={() => {
+          if (hasCustomisation) {
+            onOpenCustomise(product);
+          } else {
+            onAdjustQty(product, 1);
+          }
+        }} className="w-8 h-8 flex items-center justify-center border border-black hover:bg-black hover:text-white transition-colors">
           <Plus size={14} />
         </button>
       </div>
@@ -69,6 +80,10 @@ export default function ManualOrder() {
 
   // Search filter for products
   const [searchQuery, setSearchQuery] = useState("");
+
+  // SubItem modal state
+  const [subItemProduct, setSubItemProduct] = useState(null);
+  const [showSubItemModal, setShowSubItemModal] = useState(false);
 
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
@@ -141,10 +156,17 @@ export default function ManualOrder() {
   }, [products, searchQuery]);
 
   // Create a map of item quantities for O(1) lookup
+  // For products with cartKey (configured items), aggregate qty by product ID
   const itemsMap = useMemo(() => {
     const map = new Map();
     items.forEach(item => {
-      map.set(item._id || item.id, item);
+      const id = item._id || item.id;
+      if (map.has(id)) {
+        const existing = map.get(id);
+        map.set(id, { ...existing, qty: existing.qty + item.qty });
+      } else {
+        map.set(id, item);
+      }
     });
     return map;
   }, [items]);
@@ -176,6 +198,28 @@ export default function ManualOrder() {
         (i._id || i.id) === prodId ? { ...i, isTakeaway: !i.isTakeaway } : i
       )
     );
+  }, []);
+
+  // Open SubItem customisation modal
+  const openCustomise = useCallback((product) => {
+    setSubItemProduct(product);
+    setShowSubItemModal(true);
+  }, []);
+
+  // Handle configured item from SubItem modal
+  const handleConfiguredAdd = useCallback((configuredItem) => {
+    setItems((prev) => {
+      const cartKey = configuredItem.cartKey;
+      if (cartKey) {
+        const idx = prev.findIndex((i) => i.cartKey === cartKey);
+        if (idx !== -1) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], qty: copy[idx].qty + configuredItem.qty };
+          return copy;
+        }
+      }
+      return [...prev, { ...configuredItem, isTakeaway: false }];
+    });
   }, []);
 
   // Modal state
@@ -330,6 +374,7 @@ export default function ManualOrder() {
                     isTakeawayItem={isTakeawayItem}
                     onAdjustQty={adjustQty}
                     onToggleTakeaway={toggleItemTakeaway}
+                    onOpenCustomise={openCustomise}
                   />
                 );
               })}
@@ -612,12 +657,31 @@ export default function ManualOrder() {
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-xs text-gray-400 uppercase font-bold mb-2">Items ({items.length})</p>
                   <div className="max-h-32 overflow-y-auto space-y-1">
-                    {items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span className="font-medium">{item.name} × {item.qty}</span>
-                        <span className="text-gray-500">₹{(item.price * item.qty).toFixed(0)}</span>
-                      </div>
-                    ))}
+                    {items.map((item, idx) => {
+                      const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                      const basePrice = item.price - addonsTotal;
+                      return (
+                        <div key={idx} className="text-sm">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{item.name} × {item.qty}</span>
+                            <span className="text-gray-500">₹{(item.price * item.qty).toFixed(0)}</span>
+                          </div>
+                          {item.selectedPortion && (
+                            <span className="text-[10px] text-blue-600 font-bold ml-2">Portion: {item.selectedPortion}</span>
+                          )}
+                          {item.selectedAddons?.length > 0 && (
+                            <div className="ml-2 space-y-0.5">
+                              {item.selectedAddons.map((a, i) => (
+                                <div key={i} className="flex justify-between text-[10px] text-emerald-600">
+                                  <span>+ {a.name}</span>
+                                  <span className="text-gray-400">₹{a.price}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -668,6 +732,14 @@ export default function ManualOrder() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* SubItem Customisation Modal */}
+      <SubItemModal
+        product={subItemProduct}
+        isOpen={showSubItemModal}
+        onClose={() => { setShowSubItemModal(false); setSubItemProduct(null); }}
+        onAddToCart={handleConfiguredAdd}
+      />
     </div>
   );
 }

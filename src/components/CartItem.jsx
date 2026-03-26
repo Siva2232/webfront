@@ -35,6 +35,17 @@ export default function CartItem({ item, onUpdateQty, onRemove }) {
         <h4 className="font-black text-slate-900 text-base uppercase tracking-tight leading-tight">
           {item.name}
         </h4>
+
+        {item.selectedPortion && (
+          <span className="inline-block text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1">
+            {item.selectedPortion}
+          </span>
+        )}
+        {item.selectedAddons?.length > 0 && (
+          <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">
+            + {item.selectedAddons.map((a) => a.name).join(", ")}
+          </p>
+        )}
         
         <p className="text-xs font-bold text-slate-400 mt-1">
           ₹{item.price.toLocaleString('en-IN')} per unit
