@@ -49,10 +49,10 @@ export default function OrderSummary() {
     fetchCurrentOrders();
   }, [currentTable, mode]);
 
-  // Lightweight fallback poll every 10s in case socket misses an event.
-  // Socket events handle the real-time updates; this is just a safety net.
+  // Use a longer interval for background refresh (30s instead of 10s)
+  // real-time updates are already handled by sockets in OrderContext.
   useEffect(() => {
-    const interval = setInterval(fetchCurrentOrders, 10000);
+    const interval = setInterval(fetchCurrentOrders, 30000);
     return () => clearInterval(interval);
   }, [currentTable, mode]);
 
