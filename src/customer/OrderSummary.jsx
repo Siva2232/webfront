@@ -24,24 +24,33 @@ import {
 } from "lucide-react";
 
 export default function OrderSummary() {
-  const { orders, fetchOrders, updateOrderStatus } = useOrders();
+  const { orders, fetchOrders, fetchTableOrders, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isClosingBill, setIsClosingBill] = useState(false);
 
-  // fetch orders if we don't have any yet (e.g. fresh visit)
-  useEffect(() => {
-    if (orders.length === 0) fetchOrders();
-  }, []);
+  // Fetch orders for this table via public endpoint (no auth token needed).
+  // Falls back to fetchOrders (admin) if no table context is available.
+  const fetchCurrentOrders = () => {
+    const table = currentTable || (mode === "takeaway" ? TAKEAWAY_TABLE : null);
+    if (table) {
+      fetchTableOrders(table);
+    } else {
+      fetchOrders();
+    }
+  };
 
-  // Lightweight fallback poll every 15s in case socket misses an event.
+  // fetch orders on mount
+  useEffect(() => {
+    fetchCurrentOrders();
+  }, [currentTable, mode]);
+
+  // Lightweight fallback poll every 10s in case socket misses an event.
   // Socket events handle the real-time updates; this is just a safety net.
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchOrders();
-    }, 15000);
+    const interval = setInterval(fetchCurrentOrders, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentTable, mode]);
 
   // Get current table & mode from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;

@@ -82,7 +82,15 @@ export const OrderProvider = ({ children }) => {
   const fetchTableOrders = async (tableNum) => {
     try {
       const { data } = await API.get(`/orders/table/${tableNum}`);
-      setOrders(data);
+      // merge instead of replacing so we don't clobber orders for other tables
+      setOrders((prev) => {
+        const incoming = new Map(data.map((o) => [o._id, o]));
+        const merged = prev.map((o) => incoming.get(o._id) || o);
+        // add any new orders that weren't in prev
+        data.forEach((o) => { if (!prev.find((p) => p._id === o._id)) merged.push(o); });
+        try { localStorage.setItem("cachedOrders", JSON.stringify(merged)); } catch {}
+        return merged;
+      });
     } catch (error) {
       console.error("Error fetching table orders:", error);
     }
@@ -110,7 +118,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      const { data } = await API.get("/bills?limit=200");
+      const { data } = await API.get("/bills?today=true&limit=200");
       if (!Array.isArray(data)) {
         console.error("fetchBills: unexpected response", data);
         return;
@@ -140,20 +148,37 @@ export const OrderProvider = ({ children }) => {
 
   // mark a bill as paid on the server and update local cache
   const markBillPaid = async (id) => {
-    // Optimistic update — UI reflects change instantly
+    // Optimistic update — mark all COD sessions as paid so the button
+    // disappears immediately instead of waiting for the server round-trip.
     let prevBills;
     setBills((prev) => {
       prevBills = prev;
-      return prev.map((b) => b._id === id ? { ...b, paymentStatus: "paid" } : b);
+      const next = prev.map((b) => {
+        if (b._id !== id) return b;
+        const updatedSessions = (b.paymentSessions || []).map((s) =>
+          s.method === "cod" ? { ...s, status: "paid" } : s
+        );
+        return { ...b, paymentStatus: "paid", paymentSessions: updatedSessions };
+      });
+      // persist optimistic state to localStorage so a refresh keeps it
+      try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+      return next;
     });
     try {
       const { data } = await API.put(`/bills/${id}/pay`);
       // Reconcile with actual server data
-      setBills((prev) => prev.map((b) => (b._id === id ? data : b)));
+      setBills((prev) => {
+        const next = prev.map((b) => (b._id === id ? data : b));
+        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        return next;
+      });
       return data;
     } catch (err) {
       // Revert on failure
-      if (prevBills) setBills(prevBills);
+      if (prevBills) {
+        setBills(prevBills);
+        try { localStorage.setItem("cachedBills", JSON.stringify(prevBills)); } catch (_) {}
+      }
       console.error("Error marking bill paid", err);
       throw err;
     }
@@ -386,7 +411,10 @@ export const OrderProvider = ({ children }) => {
     });
     socket.on("orderUpdated", (order) => {
       setOrders((prev) => {
-        const next = prev.map((o) => (o._id === order._id ? order : o));
+        const exists = prev.find((o) => o._id === order._id);
+        const next = exists
+          ? prev.map((o) => (o._id === order._id ? order : o))
+          : [order, ...prev];
         try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
         return next;
       });
