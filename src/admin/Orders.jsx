@@ -1,4 +1,4 @@
-import React, { useState, useEffect, } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useOrders } from "../context/OrderContext";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
 import {
@@ -53,37 +53,46 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   }, []);
 
   // DASHBOARD CALCULATIONS
-  const activeOrders = orders
-    .filter((o) => o.status !== "Served" || servedPendingIds.has(o._id))
-    .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const servedOrders = orders.filter((o) => o.status === "Served").sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-  
-  // Updated to include GST in Revenue stats if available
-  const totalRevenue = orders.reduce((acc, order) => {
-    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const tax = order.billDetails?.cgst ? (order.billDetails.cgst + order.billDetails.sgst) : (subtotal * 0.05);
-    return acc + subtotal + tax;
-  }, 0);
+  const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = useMemo(() => {
+    const active = orders
+      .filter((o) => o.status !== "Served" || servedPendingIds.has(o._id))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const served = orders
+      .filter((o) => o.status === "Served")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  const totalItemsSold = orders.reduce((acc, order) => {
-    return acc + order.items.reduce((sum, item) => sum + item.qty, 0);
-  }, 0);
+    const revenue = orders.reduce((acc, order) => {
+      const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const tax = order.billDetails?.cgst ? (order.billDetails.cgst + order.billDetails.sgst) : (subtotal * 0.05);
+      return acc + subtotal + tax;
+    }, 0);
 
-  // 6 STATS DATA
+    const itemsSold = orders.reduce((acc, order) => {
+      return acc + order.items.reduce((sum, item) => sum + item.qty, 0);
+    }, 0);
 
-  // how many unique table numbers currently have active (non-served) orders
-  const liveTablesCount = new Set(
-    activeOrders
-      .map(o => o.table)
-      .filter(t => t && t !== TAKEAWAY_TABLE)
-  ).size;
+    const tablesCount = new Set(
+      active
+        .map(o => o.table)
+        .filter(t => t && t !== TAKEAWAY_TABLE)
+    ).size;
 
-  // count of takeaways (include blank/table-less ones for backwards
-  // compatibility)
-  const activeTakeawayCount = activeOrders.filter(isTakeawayOrder).length;
-  const servedTakeawayCount = servedOrders.filter(isTakeawayOrder).length;
+    const activeTA = active.filter(isTakeawayOrder).length;
+    const servedTA = served.filter(isTakeawayOrder).length;
 
-  const stats = [
+    return { 
+      activeOrders: active, 
+      servedOrders: served, 
+      totalRevenue: revenue, 
+      totalItemsSold: itemsSold, 
+      liveTablesCount: tablesCount, 
+      activeTakeawayCount: activeTA, 
+      servedTakeawayCount: servedTA 
+    };
+  }, [orders, servedPendingIds]);
+
+  const stats = useMemo(() => [
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Live Tables", value: liveTablesCount, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
     { label: "Active Takeaways/Delivery", value: activeTakeawayCount, icon: ShoppingBag, color: "text-pink-600", bg: "bg-pink-50" },
@@ -92,7 +101,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     { label: "Takeaways/Delivery Served", value: servedTakeawayCount, icon: PackageCheck, color: "text-pink-600", bg: "bg-pink-50" },
     { label: "Items Sold", value: totalItemsSold, icon: UtensilsCrossed, color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Kitchen Load", value: activeOrders.length > 5 ? "High" : "Normal", icon: Activity, color: "text-slate-600", bg: "bg-slate-50" },
-  ];
+  ], [totalRevenue, liveTablesCount, activeTakeawayCount, orders, servedOrders.length, servedTakeawayCount, totalItemsSold, activeOrders.length]);
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-10 font-sans text-slate-900">

@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import API from "../api/axios";
+import { useUI } from "../context/UIContext";
 
 export default function OfferModal({ offerData }) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [slideProgress, setSlideProgress] = useState(0);
-  const [offers, setOffers] = useState([]);
+  const { offers } = useUI();
   const [isFlying, setIsFlying] = useState(false);
 
   const modalRef = useRef(null);
@@ -25,86 +26,6 @@ export default function OfferModal({ offerData }) {
     setSlideProgress(0);
     setCurrentIndex((prev) => (prev - 1 + offers.length) % offers.length);
   }, [offers.length]);
-
-  // Default mock data
-  const defaultOffers = [
-    {
-      id: 101,
-      title: "Art of Dining",
-      description: "Discover Flavors Beyond Boundaries",
-      imageUrl:
-        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80",
-      tag: "Seasonal Menu",
-    },
-    {
-      id: 102,
-      title: "Purely Organic",
-      description: "Farm to Fork, Every Single Day",
-      imageUrl:
-        "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600",
-      tag: "Freshly Picked",
-    },
-    {
-      id: 103,
-      title: "Chef's Special",
-      description: "Handcrafted Culinary Masterpieces",
-      imageUrl:
-        "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80",
-      tag: "Must Try",
-    },
-  ];
-
-  // Load offers
-  useEffect(() => {
-    const loadOffers = async () => {
-      try {
-        const { data } = await API.get("/offers");
-        if (Array.isArray(data) && data.length > 0) {
-          const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
-          if (valid.length > 0) {
-            setOffers(valid);
-            return;
-          }
-        }
-        // fallback to localStorage if API returned nothing useful
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const validLoc = parsed.filter(
-            (p) => (p.isPublished ?? true) && p.imageUrl && p.title?.trim()
-          );
-          setOffers(validLoc.length > 0 ? validLoc : defaultOffers);
-        } else {
-          setOffers(defaultOffers);
-        }
-      } catch (e) {
-        console.error("Failed to fetch offers", e);
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            const validLoc = parsed.filter(
-              (p) => (p.isPublished ?? true) && p.imageUrl && p.title?.trim()
-            );
-            setOffers(validLoc.length > 0 ? validLoc : defaultOffers);
-          } catch (err) {
-            console.error("Failed to parse promo data", err);
-            setOffers(defaultOffers);
-          }
-        } else {
-          setOffers(defaultOffers);
-        }
-      }
-    };
-
-    if (offerData && offerData.length > 0) {
-      setOffers(offerData);
-    } else {
-      loadOffers();
-      window.addEventListener("promosUpdated", loadOffers);
-      return () => window.removeEventListener("promosUpdated", loadOffers);
-    }
-  }, [offerData]);
 
   // Reset when offers change
   useEffect(() => {

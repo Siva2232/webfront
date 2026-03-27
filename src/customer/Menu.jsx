@@ -1,5 +1,6 @@
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useProducts } from "../context/ProductContext";
+import { useUI } from "../context/UIContext";
 import ProductCard from "../components/ProductCard";
 import RestaurantLoader from "../components/RestaurantLoader";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
@@ -26,6 +27,7 @@ import fal from "../assets/images/fal.png";
 export default function Menu() {
   const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
   const { products, orderedCategories } = useProducts();
+  const { banners: activeSlides } = useUI();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const mode = searchParams.get("mode");
@@ -89,68 +91,6 @@ export default function Menu() {
       // the QR chooser page; we no longer display an overlay here.
     }
   }, [searchParams, setTable, table, navigate]);
-
-
-  const [activeSlides, setActiveSlides] = useState([]);
-
-  const defaultSlides = [
-    { id: 1, title: "Art of Dining", description: "Discover Flavors Beyond Boundaries", imageUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80", tag: "Seasonal Menu" },
-    { id: 2, title: "Purely Organic", description: "Farm to Fork, Every Single Day", imageUrl: "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600", tag: "Fresh" },
-    { id: 3, title: "Chef's Special", description: "Handcrafted Culinary Masterpieces", imageUrl: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80", tag: "Must Try" },
-    { id: 4, title: "Midnight Feast", description: "The best flavors for the night owl", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80", tag: "Late Night" },
-    { id: 5, title: "Dessert Heaven", description: "Sweet endings to beautiful stories", imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1600&q=80", tag: "Sweet" }
-  ];
-
-  useEffect(() => {
-    const syncBanners = async () => {
-      try {
-        const { data } = await API.get("/banners");
-        if (Array.isArray(data) && data.length > 0) {
-          setActiveSlides(data);
-        } else {
-          const saved = localStorage.getItem("bannerSlides");
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            const valid = parsed.filter(s => s.imageUrl && s.imageUrl.trim().length > 0);
-            setActiveSlides(valid.length > 0 ? valid : defaultSlides);
-          } else {
-            setActiveSlides(defaultSlides);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching banners, falling back to localStorage", err);
-        const saved = localStorage.getItem("bannerSlides");
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            const valid = parsed.filter(s => s.imageUrl && s.imageUrl.trim().length > 0);
-            setActiveSlides(valid.length > 0 ? valid : defaultSlides);
-          } catch (e) {
-            setActiveSlides(defaultSlides);
-          }
-        } else {
-          setActiveSlides(defaultSlides);
-        }
-      }
-    };
-
-    syncBanners();
-    window.addEventListener("bannersUpdated", syncBanners);
-    window.addEventListener("storage", syncBanners);
-
-    return () => {
-      window.removeEventListener("bannersUpdated", syncBanners);
-      window.removeEventListener("storage", syncBanners);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (activeSlides.length <= 1) return;
-    const interval = setInterval(() => {
-      setSlide((prev) => (prev + 1) % activeSlides.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [activeSlides]);
 
   const totalItems = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
 
@@ -508,14 +448,8 @@ export default function Menu() {
                         <span className="text-xs font-black text-slate-300">{filtered.length} Dishes</span>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-10">
-                        {filtered.map((product, idx) => (
-                          <motion.div
-                            key={product._id || product.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: idx * 0.05 }}
-                          >
+                        {filtered.map((product) => (
+                          <div key={product._id || product.id}>
                             <ProductCard
                               product={product}
                               initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id) && (addTakeawayMode ? i.isTakeaway : !i.isTakeaway)).reduce((s, i) => s + i.qty, 0)}
@@ -523,7 +457,7 @@ export default function Menu() {
                               onRemove={() => removeFromCart(product._id || product.id)}
                               onAddConfigured={(configuredItem) => product.isAvailable !== false && addToCart({ ...configuredItem, isTakeaway: addTakeawayMode }, addTakeawayMode)}
                             />
-                          </motion.div>
+                          </div>
                         ))}
                       </div>
                     </section>

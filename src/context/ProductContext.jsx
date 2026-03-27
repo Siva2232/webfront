@@ -4,37 +4,85 @@ import API from "../api/axios";
 const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Hydrate instantly from localStorage so the menu renders without waiting for API
+  const [products, setProducts] = useState(() => {
+    try {
+      const stored = localStorage.getItem("products");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [categories, setCategories] = useState(() => {
+    try {
+      const stored = localStorage.getItem("categories");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [subitems, setSubitems] = useState([]);
+  // If we have cached products, mark as not-loading so UI renders immediately
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const stored = localStorage.getItem("products");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch {}
+    return true;
+  });
 
   const fetchCategories = async () => {
     try {
       const { data } = await API.get("/categories");
       if (Array.isArray(data) && data.length > 0) {
-        setCategories(data.map(c => c.name));
+        setCategories(data);
       } else {
         // Default categories if none exist in DB
-        setCategories(["Starters", "Main Courses", "Desserts", "Beverages"]);
+        setCategories([
+          { _id: '1', name: "Starters" },
+          { _id: '2', name: "Main Courses" },
+          { _id: '3', name: "Desserts" },
+          { _id: '4', name: "Beverages" }
+        ]);
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
-      setCategories(["Starters", "Main Courses", "Desserts", "Beverages"]);
+      setCategories([
+        { _id: '1', name: "Starters" },
+        { _id: '2', name: "Main Courses" },
+        { _id: '3', name: "Desserts" },
+        { _id: '4', name: "Beverages" }
+      ]);
+    }
+  };
+
+  const fetchSubitems = async () => {
+    try {
+      const { data } = await API.get("/sub-items");
+      setSubitems(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching subitems:", error);
     }
   };
 
   const fetchProducts = async () => {
     try {
-      setIsLoading(true);
-      await fetchCategories();
+      // Only show loading spinner if there's no cached data
+      if (products.length === 0) setIsLoading(true);
+      await Promise.all([fetchCategories(), fetchSubitems()]);
       const { data } = await API.get("/products");
       const list = Array.isArray(data) ? data : [];
       setProducts(list);
-      localStorage.setItem("products", JSON.stringify(list));
+      try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
     } catch (error) {
       console.error("Error fetching products:", error);
-      // fallback to stored copy
-      setProducts(initializeProducts());
     } finally {
       setIsLoading(false);
     }
@@ -44,34 +92,15 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, []);
 
-  // Sync with localStorage for categories (or you could move categories to backend too)
-  const initializeCategories = () => {
-    const stored = localStorage.getItem("categories");
-    if (!stored) {
-      return ["Starters", "Main Courses", "Desserts", "Beverages"];
-    }
-    return JSON.parse(stored);
-  };
-
-  // helper to restore products from localStorage if needed
-  const initializeProducts = () => {
-    try {
-      const stored = localStorage.getItem("products");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (e) {
-      console.error("Failed to parse stored products", e);
-    }
-    return [];
-  };
 
 
-  // Ordered categories with preferred order
+  // Ordered categories with preferred order — always returns name strings
   const orderedCategories = useMemo(() => {
     const preferredOrder = ["Starters", "Main Courses", "Desserts", "Beverages", "Others"];
-    const sorted = [...categories].sort((a, b) => {
+    // Normalize to name strings regardless of whether entries are objects or strings
+    const names = categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+    const unique = [...new Set(names)];
+    unique.sort((a, b) => {
       const ia = preferredOrder.indexOf(a);
       const ib = preferredOrder.indexOf(b);
       if (ia === -1 && ib === -1) return a.localeCompare(b);
@@ -79,17 +108,23 @@ export const ProductProvider = ({ children }) => {
       if (ib === -1) return -1;
       return ia - ib;
     });
-    return sorted;
+    return unique;
   }, [categories]);
 
   // Sync when localStorage changes (from other tabs/windows)
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "products") {
-        setProducts(initializeProducts());
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setProducts(parsed);
+        } catch {}
       }
       if (e.key === "categories") {
-        setCategories(initializeCategories());
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setCategories(parsed);
+        } catch {}
       }
     };
 
@@ -173,12 +208,14 @@ export const ProductProvider = ({ children }) => {
   const value = {
     products,
     categories,
+    subitems,
     orderedCategories,
     addProduct,
     addCategory,
     updateProduct,
     deleteProduct,
     toggleAvailability,
+    fetchProducts,
   };
 
   return (

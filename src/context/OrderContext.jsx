@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
@@ -20,7 +20,12 @@ const socket = io(SOCKET_URL, {
 const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cachedOrders");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [bills, setBills] = useState(() => {
     try {
       const cached = localStorage.getItem("cachedBills");
@@ -41,20 +46,35 @@ export const OrderProvider = ({ children }) => {
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [billsReady, setBillsReady] = useState(false);
+  const _billsFetchInFlight = useRef(false);
+  const _ordersFetchInFlight = useRef(false);
+  const _kitchenBillsFetchInFlight = useRef(false);
 
   const fetchOrders = async () => {
-    // only fetch if we have a token (admin or logged in user)
     const token = localStorage.getItem("token");
     if (!token) return;
+    if (_ordersFetchInFlight.current) return;
+    _ordersFetchInFlight.current = true;
+
+    // hydrate from cache immediately for instant UI
+    try {
+      const cached = localStorage.getItem("cachedOrders");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) setOrders(parsed);
+      }
+    } catch {}
 
     try {
       setIsLoading(true);
-      // support optional limit param if needed to reduce payload size
-      const { data } = await API.get("/orders?limit=50&status=Pending,Preparing,Cooking,Ready,Served");
+      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served");
       setOrders(data);
+      try { localStorage.setItem("cachedOrders", JSON.stringify(data)); } catch {}
     } catch (error) {
       console.error("Error fetching orders:", error);
     } finally {
+      _ordersFetchInFlight.current = false;
       setIsLoading(false);
     }
   };
@@ -72,12 +92,17 @@ export const OrderProvider = ({ children }) => {
   const fetchBills = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
+    if (_billsFetchInFlight.current) return; // prevent duplicate concurrent requests
+    _billsFetchInFlight.current = true;
 
     // try to hydrate immediately from cache for instant UI
     try {
       const cached = localStorage.getItem("cachedBills");
       if (cached) {
-        setBills(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setBills(parsed);
+        }
       }
     } catch (e) {
       console.warn("failed to read cached bills", e);
@@ -85,8 +110,11 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      // server defaults to today-only; limit 200 for speed
       const { data } = await API.get("/bills?limit=200");
+      if (!Array.isArray(data)) {
+        console.error("fetchBills: unexpected response", data);
+        return;
+      }
       // remove duplicates by orderRef or _id
       const seen = new Set();
       const unique = data.filter(b => {
@@ -101,18 +129,31 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     } catch (error) {
       console.error("Error fetching bills:", error);
+      // If it's a 401, the axios interceptor handles redirect.
+      // For other errors, keep cached data but don't clear it.
     } finally {
+      _billsFetchInFlight.current = false;
+      setBillsReady(true);
       setIsLoading(false);
     }
   };
 
   // mark a bill as paid on the server and update local cache
   const markBillPaid = async (id) => {
+    // Optimistic update — UI reflects change instantly
+    let prevBills;
+    setBills((prev) => {
+      prevBills = prev;
+      return prev.map((b) => b._id === id ? { ...b, paymentStatus: "paid" } : b);
+    });
     try {
       const { data } = await API.put(`/bills/${id}/pay`);
+      // Reconcile with actual server data
       setBills((prev) => prev.map((b) => (b._id === id ? data : b)));
       return data;
     } catch (err) {
+      // Revert on failure
+      if (prevBills) setBills(prevBills);
       console.error("Error marking bill paid", err);
       throw err;
     }
@@ -149,6 +190,8 @@ export const OrderProvider = ({ children }) => {
 
   // Fetch active (non-served) kitchen bills only
   const fetchActiveKitchenBills = async () => {
+    if (_kitchenBillsFetchInFlight.current) return;
+    _kitchenBillsFetchInFlight.current = true;
     try {
       const { data } = await API.get("/kitchen-bills/active");
       setKitchenBills(data);
@@ -157,6 +200,8 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     } catch (error) {
       console.error("Error fetching active kitchen bills:", error);
+    } finally {
+      _kitchenBillsFetchInFlight.current = false;
     }
   };
 
@@ -280,32 +325,38 @@ export const OrderProvider = ({ children }) => {
 
 
   const updateOrderStatus = async (id, status) => {
-    try {
-      const { data } = await API.put(`/orders/${id}/status`, { status });
-      setOrders((prev) => prev.map((o) => (o._id === id ? data : o)));
-      
-      // If status is "Closed", update the bill's status in place so it stays
-      // visible with a Closed badge instead of being removed from the list.
-      if (status === "Closed") {
-        setBills((prev) => prev.map(b => {
+    // Optimistic update before API call
+    let prevOrders, prevBills;
+    setOrders((prev) => { prevOrders = prev; return prev.map((o) => o._id === id ? { ...o, status } : o); });
+    if (status === "Closed") {
+      setBills((prev) => {
+        prevBills = prev;
+        return prev.map(b => {
           const key = b.orderRef || b._id || b.id;
           if (key === id) return { ...b, status: "Closed" };
           return b;
-        }));
-        try {
-          const cached = localStorage.getItem("cachedBills");
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            const updated = parsed.map(b => {
-              const key = b.orderRef || b._id || b.id;
-              if (key === id) return { ...b, status: "Closed" };
-              return b;
-            });
-            localStorage.setItem("cachedBills", JSON.stringify(updated));
-          }
-        } catch (e) {}
-      }
+        });
+      });
+      try {
+        const cached = localStorage.getItem("cachedBills");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const updated = parsed.map(b => {
+            const key = b.orderRef || b._id || b.id;
+            if (key === id) return { ...b, status: "Closed" };
+            return b;
+          });
+          localStorage.setItem("cachedBills", JSON.stringify(updated));
+        }
+      } catch (e) {}
+    }
+    try {
+      const { data } = await API.put(`/orders/${id}/status`, { status });
+      setOrders((prev) => prev.map((o) => (o._id === id ? data : o)));
     } catch (error) {
+      // Revert on failure
+      if (prevOrders) setOrders(prevOrders);
+      if (prevBills) setBills(prevBills);
       console.error("Error updating order status:", error);
       throw error;
     }
@@ -315,6 +366,7 @@ export const OrderProvider = ({ children }) => {
     setOrders([]);
     setBills([]);
     localStorage.removeItem("orders");
+    localStorage.removeItem("cachedOrders");
   };
 
   useEffect(() => {
@@ -322,10 +374,22 @@ export const OrderProvider = ({ children }) => {
     socket.connect();
 
     socket.on("orderCreated", (order) => {
-      setOrders((prev) => [order, ...prev]);
+      setOrders((prev) => {
+        // avoid duplicates if snapshot already included this order
+        const exists = prev.find((o) => o._id === order._id);
+        const next = exists
+          ? prev.map((o) => (o._id === order._id ? order : o))
+          : [order, ...prev];
+        try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+        return next;
+      });
     });
     socket.on("orderUpdated", (order) => {
-      setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
+      setOrders((prev) => {
+        const next = prev.map((o) => (o._id === order._id ? order : o));
+        try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+        return next;
+      });
     });
 
     // listen for bills added so billing page updates automatically
@@ -396,9 +460,24 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     });
 
-    // if the server sends full snapshot (future enhancement)
+    // if the server sends full snapshot on (re)connect, merge instead of replace
+    // so we don't lose richer data already received via orderCreated/orderUpdated
     socket.on("ordersSnapshot", (list) => {
-      setOrders(list);
+      if (!Array.isArray(list)) return;
+      setOrders((prev) => {
+        // build lookup of existing (richer) orders
+        const existing = new Map(prev.map((o) => [o._id, o]));
+        // merge: keep existing entry if we already have it (it has full fields),
+        // otherwise take the snapshot entry
+        const merged = list.map((o) => existing.get(o._id) || o);
+        // also keep any orders in prev that aren't in the snapshot
+        // (e.g. an order just created but not yet in the snapshot query)
+        const snapshotIds = new Set(list.map((o) => o._id));
+        prev.forEach((o) => {
+          if (!snapshotIds.has(o._id)) merged.push(o);
+        });
+        return merged;
+      });
     });
 
     return () => {
@@ -414,59 +493,23 @@ export const OrderProvider = ({ children }) => {
     };
   }, []);
 
-  // persist to localstorage so reloads have instant data
+  // Single hydrate + fetch on mount. Cache was already loaded via useState
+  // initialisers above, so we only need to fire the network requests once.
   useEffect(() => {
-    try {
-      localStorage.setItem("orders", JSON.stringify(orders));
-    } catch (_) {}
-  }, [orders]);
-
-  // hydrate from cache on first render
-  useEffect(() => {
-    const cached = localStorage.getItem("orders");
-    if (cached) {
-      try {
-        setOrders(JSON.parse(cached));
-      } catch (_) {}
-    }
-    // always fetch fresh data regardless of cache if token exists
     const token = localStorage.getItem("token");
     if (token) {
       fetchOrders();
-    }
-
-    // ensure bills are hydrated as well
-    const billsCache = localStorage.getItem("cachedBills");
-    if (billsCache) {
-      try {
-        setBills(JSON.parse(billsCache));
-      } catch (_) {}
-    }
-    if (token) {
       fetchBills();
     }
+
+    // re-fetch only when the tab regains focus (user switched back)
+    const onFocus = () => {
+      const t = localStorage.getItem("token");
+      if (t) fetchOrders();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
-
-  // watch for login status changes to fetch data
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem("token");
-      if (token && orders.length === 0 && !isLoading) {
-        fetchOrders();
-      }
-    };
-
-    // check on mount and when window gains focus
-    checkAuth();
-    window.addEventListener("focus", checkAuth);
-    // also check periodically or when custom event fires
-    const interval = setInterval(checkAuth, 5000); 
-
-    return () => {
-      window.removeEventListener("focus", checkAuth);
-      clearInterval(interval);
-    };
-  }, [orders.length, isLoading]);
 
   return (
     <OrderContext.Provider
@@ -486,6 +529,7 @@ export const OrderProvider = ({ children }) => {
         fetchActiveKitchenBills,
         markBillPaid,
         isLoading,
+        billsReady,
       }}
     >
       {children}

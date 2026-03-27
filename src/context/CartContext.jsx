@@ -8,6 +8,30 @@ export const TAKEAWAY_TABLE = "TAKEAWAY";
 export const DELIVERY_TABLE = "DELIVERY";
 
 const getCartKey = (table) => `cart_${table?.trim() || 'guest'}`;
+const MAX_CART_ITEMS = 120;
+
+const safeSetLocalStorage = (key, value) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (err) {
+    if (err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22 || err.code === 1014)) {
+      console.warn("localStorage quota exceeded, clearing non-critical caches", err);
+      try {
+        // Remove caches to free some space, keep cart data in memory for now.
+        localStorage.removeItem("cachedOrders");
+        localStorage.removeItem("cachedBills");
+        localStorage.removeItem("cachedKitchenBills");
+        localStorage.removeItem("lastViewedProduct");
+        // Retry once with reduced data if possible
+        window.localStorage.setItem(key, value);
+      } catch (inner) {
+        console.warn("localStorage retry failed, dropping persistence for key", key, inner);
+      }
+    } else {
+      throw err;
+    }
+  }
+};
 
 export const CartProvider = ({ children }) => {
   const [table, setTableState] = useState(() => {
@@ -32,8 +56,9 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     if (table?.trim()) {
-      localStorage.setItem(getCartKey(table), JSON.stringify(cart));
-      localStorage.setItem("lastUsedTable", table);
+      const cartData = JSON.stringify(cart);
+      safeSetLocalStorage(getCartKey(table), cartData);
+      safeSetLocalStorage("lastUsedTable", table);
     }
   }, [cart, table]);
 
@@ -61,18 +86,19 @@ export const CartProvider = ({ children }) => {
     setCart((prev) => {
       // If the product has a cartKey (configured with portions/addons), use it for matching
       const cartKey = product.cartKey;
+      const ensureMax = (items) => (items.length > MAX_CART_ITEMS ? items.slice(-MAX_CART_ITEMS) : items);
       if (cartKey) {
         const exists = prev.find(
           (i) => i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
         );
         if (exists) {
-          return prev.map((i) =>
+          return ensureMax(prev.map((i) =>
             i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
               ? { ...i, qty: i.qty + (product.qty || 1) }
               : i
-          );
+          ));
         }
-        return [...prev, { ...product, qty: product.qty || 1, isTakeaway: isTakeawayItem }];
+        return ensureMax([...prev, { ...product, qty: product.qty || 1, isTakeaway: isTakeawayItem }]);
       }
 
       // For takeaway items, check if the same product exists with same takeaway status
@@ -80,13 +106,14 @@ export const CartProvider = ({ children }) => {
         (i) => (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
       );
       if (exists) {
-        return prev.map((i) =>
+        return ensureMax(prev.map((i) =>
           (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
             ? { ...i, qty: i.qty + 1 }
             : i
-        );
+        ));
       }
-      return [...prev, { ...product, qty: 1, isTakeaway: isTakeawayItem }];
+      const next = [...prev, { ...product, qty: 1, isTakeaway: isTakeawayItem }];
+      return ensureMax(next);
     });
   };
 

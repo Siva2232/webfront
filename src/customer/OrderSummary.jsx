@@ -34,12 +34,12 @@ export default function OrderSummary() {
     if (orders.length === 0) fetchOrders();
   }, []);
 
-  // Poll for order updates every 5s so customer sees status changes
-  // (e.g. admin closing the bill) even if socket misses the event
+  // Lightweight fallback poll every 15s in case socket misses an event.
+  // Socket events handle the real-time updates; this is just a safety net.
   useEffect(() => {
     const interval = setInterval(() => {
       fetchOrders();
-    }, 5000);
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 

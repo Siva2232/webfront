@@ -34,12 +34,10 @@ import {
   Layers,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
-import { useOrders } from "../context/OrderContext";
 import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { products = [] } = useProducts();
-  const { fetchOrders, fetchBills } = useOrders();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -140,9 +138,7 @@ export default function AdminLayout() {
       localStorage.removeItem("showWelcomeMessage");
       setTimeout(() => setShowWelcome(false), 4000);
     }
-    // Refresh core admin data on mount
-    fetchOrders();
-    fetchBills();
+    // OrderContext already fetches on mount — no duplicate calls needed
   }, []);
 
   // Close profile dropdown & stock alert when clicking outside

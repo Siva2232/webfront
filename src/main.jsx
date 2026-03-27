@@ -9,18 +9,21 @@ import { ProductProvider } from "./context/ProductContext";
 import { OrderProvider } from "./context/OrderContext";
 import { CartProvider } from "./context/CartContext";
 import { SalesProvider } from "./context/SalesContext";
+import { UIProvider } from "./context/UIContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
     <SalesProvider>
-      <ProductProvider>
-        <OrderProvider>
-          <CartProvider>
-            <App />
-          </CartProvider>
-        </OrderProvider>
-      </ProductProvider>
+      <UIProvider>
+        <ProductProvider>
+          <OrderProvider>
+            <CartProvider>
+              <App />
+            </CartProvider>
+          </OrderProvider>
+        </ProductProvider>
+      </UIProvider>
       </SalesProvider>
     </BrowserRouter>
   </React.StrictMode>

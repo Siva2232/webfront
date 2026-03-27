@@ -85,9 +85,51 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const socketRef = useRef(null);
   
   /* 🔊 SOUND LOGIC */
-  const audioRef = useRef(
-    new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3")
-  );
+  const audioRef = useRef(null);
+  const audioUnlocked = useRef(false);
+
+  // Create and preload audio
+  useEffect(() => {
+    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3");
+    audio.preload = "auto";
+    audio.load();
+    audioRef.current = audio;
+  }, []);
+
+  // Unlock audio on first user interaction (required by browser autoplay policy)
+  useEffect(() => {
+    const unlock = () => {
+      if (audioUnlocked.current || !audioRef.current) return;
+      // Play and immediately pause to unlock the audio context
+      const p = audioRef.current.play();
+      if (p && p.then) {
+        p.then(() => {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+          audioUnlocked.current = true;
+        }).catch(() => {});
+      }
+    };
+    const events = ["click", "touchstart", "keydown"];
+    events.forEach(e => document.addEventListener(e, unlock, { once: false, capture: true }));
+    return () => events.forEach(e => document.removeEventListener(e, unlock, { capture: true }));
+  }, []);
+
+  // Reliable play helper
+  const playSound = () => {
+    if (!audioRef.current) return;
+    try {
+      audioRef.current.currentTime = 0;
+      const p = audioRef.current.play();
+      if (p && p.then) {
+        p.catch(() => {
+          // If play fails, clone the audio node and try again (handles edge cases)
+          const clone = audioRef.current.cloneNode();
+          clone.play().catch(() => {});
+        });
+      }
+    } catch {}
+  };
 
   // Helper to trigger notification alert
   const triggerAlert = () => {
@@ -98,8 +140,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     }, 10000);
     
     // Play sound
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
+    playSound();
   };
 
   // Helper to handle Add More Items notification
@@ -199,8 +240,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
     if (hasNew) {
       // play sound & shake bell
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
+      playSound();
 
       setIsNewOrder(true);
 
