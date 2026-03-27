@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import API from "../api/axios";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
@@ -10,6 +11,7 @@ import {
   Save,
   Search,
   Layers,
+  AlertTriangle,
   IndianRupee,
   CheckCircle,
   XCircle,
@@ -33,6 +35,10 @@ export default function SubItemLibrary() {
   });
   const [saving, setSaving] = useState(false);
 
+  const [stockModal, setStockModal] = useState({ show: false, item: null, target: "" });
+  const [deleteModal, setDeleteModal] = useState({ show: false, item: null });
+  const [outOfStockOnly, setOutOfStockOnly] = useState(false);
+  const [searchParams] = useSearchParams();
   // ── Fetch ──
   const fetchItems = async () => {
     try {
@@ -49,13 +55,27 @@ export default function SubItemLibrary() {
     fetchItems();
   }, []);
 
+  useEffect(() => {
+    const filter = searchParams.get("filter");
+    const outLow = filter === "out-of-stock";
+    setOutOfStockOnly(outLow);
+    if (outLow) {
+      setSearch("");
+      toast("Showing only sold-out sub-items");
+    }
+  }, [searchParams]);
+
   // ── Filtered list ──
   const filtered = useMemo(() => {
     const term = search.toLowerCase();
-    return items
+    let list = items;
+    if (outOfStockOnly) {
+      list = list.filter((i) => i.isAvailable === false);
+    }
+    return list
       .filter((i) => i.type === tab)
       .filter((i) => (term ? i.name.toLowerCase().includes(term) : true));
-  }, [items, tab, search]);
+  }, [items, tab, search, outOfStockOnly]);
 
   // ── Open modal ──
   const openCreate = () => {
@@ -113,16 +133,15 @@ export default function SubItemLibrary() {
   };
 
   // ── Toggle Availability ──
-  const toggleAvailability = async (item) => {
+  const confirmToggleAvailability = async () => {
+    const item = stockModal.item;
+    if (!item) return;
     try {
       const newStatus = item.isAvailable === false ? true : false;
-      const { data } = await API.put(`/sub-items/${item._id}`, {
-        isAvailable: newStatus,
-      });
-      setItems((prev) =>
-        prev.map((it) => (it._id === item._id ? data : it))
-      );
+      const { data } = await API.put(`/sub-items/${item._id}`, { isAvailable: newStatus });
+      setItems((prev) => prev.map((it) => (it._id === item._id ? data : it)));
       toast.success(newStatus ? "Stock In!" : "Stock Out!");
+      setStockModal({ show: false, item: null, target: "" });
     } catch (err) {
       console.error("Toggle error:", err);
       toast.error("Failed to update status");
@@ -130,12 +149,16 @@ export default function SubItemLibrary() {
   };
 
   // ── Delete ──
-  const handleDelete = async (id) => {
+  const confirmDelete = async () => {
+    const item = deleteModal.item;
+    if (!item) return;
     try {
-      await API.delete(`/sub-items/${id}`);
-      setItems((prev) => prev.filter((i) => i._id !== id));
+      await API.delete(`/sub-items/${item._id}`);
+      setItems((prev) => prev.filter((i) => i._id !== item._id));
       toast.success("Deleted!");
-    } catch {
+      setDeleteModal({ show: false, item: null });
+    } catch (err) {
+      console.error("Delete error:", err);
       toast.error("Failed to delete");
     }
   };
@@ -220,6 +243,12 @@ export default function SubItemLibrary() {
           ))}
         </div>
 
+        {outOfStockOnly && (
+          <div className="mt-4 mb-2 inline-flex items-center gap-2 px-4 py-2 rounded-full text-white bg-rose-500 text-xs font-bold">
+            <AlertTriangle size={14} /> Showing only sold-out sub-items
+          </div>
+        )}
+
         {/* ── Grid ── */}
         {loading ? (
           <div className="py-20 flex justify-center">
@@ -273,7 +302,7 @@ export default function SubItemLibrary() {
                   </div>
                   <div className="flex gap-1.5 shrink-0">
                     <button
-                      onClick={() => toggleAvailability(item)}
+                      onClick={() => setStockModal({ show: true, item, target: item.isAvailable !== false ? "out" : "in" })}
                       title={item.isAvailable !== false ? "Mark Stock Out" : "Mark Stock In"}
                       className={`p-2.5 rounded-xl transition-all shadow-sm ${
                         item.isAvailable !== false 
@@ -290,7 +319,7 @@ export default function SubItemLibrary() {
                       <Edit3 size={14} className="text-slate-500" />
                     </button>
                     <button
-                      onClick={() => handleDelete(item._id)}
+                      onClick={() => setDeleteModal({ show: true, item })}
                       className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100"
                     >
                       <Trash2 size={14} className="text-rose-500" />
@@ -337,6 +366,86 @@ export default function SubItemLibrary() {
 
       {/* ══════════ Create / Edit Modal ══════════ */}
       <AnimatePresence>
+        {stockModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setStockModal({ show: false, item: null, target: "" })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-black mb-2">{stockModal.target === "out" ? "Stock Out" : "Stock In"}</h3>
+                <p className="text-sm text-slate-600 mb-5">
+                  {stockModal.target === "out"
+                    ? "Mark this item as unavailable in the menu?"
+                    : "Mark this item as available in the menu?"}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStockModal({ show: false, item: null, target: "" })}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmToggleAvailability}
+                    className={`flex-1 px-4 py-2 rounded-xl font-bold text-white ${stockModal.target === "out" ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {deleteModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setDeleteModal({ show: false, item: null })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-black mb-2">Delete Item</h3>
+                <p className="text-sm text-slate-600 mb-5">
+                  Are you sure you want to delete "{deleteModal.item?.name}"? This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setDeleteModal({ show: false, item: null })}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="flex-1 px-4 py-2 rounded-xl font-bold text-white bg-rose-500 hover:bg-rose-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showModal && (
           <motion.div
             initial={{ opacity: 0 }}

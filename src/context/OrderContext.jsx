@@ -184,6 +184,37 @@ export const OrderProvider = ({ children }) => {
     }
   };
 
+  // close a bill on the server and update local cache
+  const closeBill = async (id) => {
+    // Optimistic update
+    let prevBills;
+    setBills((prev) => {
+      prevBills = prev;
+      const next = prev.map((b) => (b._id === id ? { ...b, status: "Closed" } : b));
+      try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+
+    try {
+      const { data } = await API.put(`/bills/${id}/close`);
+      // Reconcile with actual server data
+      setBills((prev) => {
+        const next = prev.map((b) => (b._id === id ? data : b));
+        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        return next;
+      });
+      return data;
+    } catch (err) {
+      // Revert on failure
+      if (prevBills) {
+        setBills(prevBills);
+        try { localStorage.setItem("cachedBills", JSON.stringify(prevBills)); } catch (_) {}
+      }
+      console.error("Error closing bill", err);
+      throw err;
+    }
+  };
+
   // Fetch kitchen bills - separate batches for kitchen/waiter display
   const fetchKitchenBills = async () => {
     const token = localStorage.getItem("token");
@@ -556,6 +587,7 @@ export const OrderProvider = ({ children }) => {
         fetchKitchenBills,
         fetchActiveKitchenBills,
         markBillPaid,
+        closeBill,
         isLoading,
         billsReady,
       }}

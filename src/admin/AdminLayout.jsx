@@ -37,7 +37,7 @@ import { useProducts } from "../context/ProductContext";
 import toast from "react-hot-toast";
 
 export default function AdminLayout() {
-  const { products = [] } = useProducts();
+  const { products = [], subitems = [] } = useProducts();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -99,11 +99,18 @@ export default function AdminLayout() {
     },
   ];
 
-  // Count out-of-stock products, excluding any cleared by user
+  // Count out-of-stock products and subitems, excluding any cleared by user
   const outOfStockProducts = products.filter(
     (p) => p && !p.isAvailable && !clearedIds.includes(p._id || p.id)
   );
-  const lowStockCount = outOfStockProducts.length;
+  const outOfStockSubitems = subitems.filter(
+    (s) => s && s.isAvailable === false && !clearedIds.includes(s._id || s.id)
+  );
+  const lowStockCount = outOfStockProducts.length + outOfStockSubitems.length;
+  const outOfStockAlertItems = [
+    ...outOfStockProducts.map((item) => ({ ...item, _alertType: "product" })),
+    ...outOfStockSubitems.map((item) => ({ ...item, _alertType: "subitem" })),
+  ];
 
   const handleLogout = () => {
     // custom confirmation using toast so browser dialog is avoided
@@ -206,8 +213,11 @@ const handleClearAllStockAlerts = () => {
         <button
           onClick={() => {
             toast.dismiss(toastId);
-            const ids = outOfStockProducts.map(p => p._id || p.id);
-            setClearedIds(prev => [...prev, ...ids]);
+            const ids = [
+              ...outOfStockProducts.map((p) => p._id || p.id),
+              ...outOfStockSubitems.map((s) => s._id || s.id),
+            ];
+            setClearedIds((prev) => [...prev, ...ids]);
             setShowStockAlert(false);
             toast.success("Stock alerts cleared");
           }}
@@ -541,13 +551,14 @@ const handleClearAllStockAlerts = () => {
 
           {/* List */}
           <div className="max-h-[60vh] sm:max-h-[420px] overflow-y-auto divide-y divide-slate-50">
-            {outOfStockProducts.length > 0 ? (
-              outOfStockProducts.map((product) => (
+            {lowStockCount > 0 ? (
+              outOfStockAlertItems.map((item) => (
                 <div
-                  key={product._id || product.id}
+                  key={item._id || item.id}
                   onClick={() => {
-                    // go to product list filtered for sold-out items
-                    navigate(`/admin/products?filter=out-of-stock`);
+                    // navigate to the appropriate archive page for this item type
+                    const target = item._alertType === "subitem" ? "/admin/sub-items?filter=out-of-stock" : "/admin/products?filter=out-of-stock";
+                    navigate(target);
                     setShowStockAlert(false);
                   }}
                   className="px-5 sm:px-6 py-4 hover:bg-slate-50 active:bg-slate-100 cursor-pointer transition-colors flex items-center gap-4 group"
@@ -560,19 +571,25 @@ const handleClearAllStockAlerts = () => {
                     }
                   }}
                 >
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
-                    <img
-                      src={product.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
+                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 flex items-center justify-center">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                        <Layers className="text-slate-400" size={30} />
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{product.name}</p>
+                    <p className="font-medium text-slate-900 truncate">{item.name}</p>
                     <p className="text-sm text-slate-600 mt-0.5">
-                      ₹{product.price?.toLocaleString() || "—"}
+                      ₹{item.price?.toLocaleString() || "—"}
                     </p>
                   </div>
 
@@ -593,17 +610,30 @@ const handleClearAllStockAlerts = () => {
           </div>
 
           {/* Footer Action */}
-          {outOfStockProducts.length > 0 && (
-            <div className="px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  navigate("/admin/products?filter=out-of-stock");
-                  setShowStockAlert(false);
-                }}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-950 active:bg-black text-white rounded-xl font-medium transition-all text-sm shadow-sm"
-              >
-                View & Manage Low Stock →
-              </button>
+          {(outOfStockProducts.length > 0 || outOfStockSubitems.length > 0) && (
+            <div className="px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100 space-y-2">
+              {outOfStockProducts.length > 0 && (
+                <button
+                  onClick={() => {
+                    navigate("/admin/products?filter=out-of-stock");
+                    setShowStockAlert(false);
+                  }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-950 active:bg-black text-white rounded-xl font-medium transition-all text-sm shadow-sm"
+                >
+                  View Product Low Stock →
+                </button>
+              )}
+              {outOfStockSubitems.length > 0 && (
+                <button
+                  onClick={() => {
+                    navigate("/admin/sub-items?filter=out-of-stock");
+                    setShowStockAlert(false);
+                  }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-950 active:bg-black text-white rounded-xl font-medium transition-all text-sm shadow-sm"
+                >
+                  View Sub-item Low Stock →
+                </button>
+              )}
             </div>
           )}
         </motion.div>

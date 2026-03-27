@@ -150,7 +150,7 @@ ${
 /* ─── component ───────────────────────────────────────────── */
 
 export default function OrderBill() {
-  const { bills, fetchBills, markBillPaid, updateOrderStatus, isLoading, billsReady } = useOrders();
+  const { bills, fetchBills, markBillPaid, closeBill, updateOrderStatus, isLoading, billsReady } = useOrders();
   const navigate = useNavigate();
 
   const [closedBillIds, setClosedBillIds] = useState(new Set());
@@ -205,18 +205,20 @@ export default function OrderBill() {
   const handleConfirmCloseBill = useCallback(async () => {
     if (!closeBillModal) return;
     const order = closeBillModal.order;
-    const orderId = order.orderRef || order._id || order.id;
+    const billId = order._id || order.id;
+    const orderId = order.orderRef; // Correctly reference the order ID if needed, but closeBill uses billId
     setCloseBillModal(null);
-    setClosedBillIds((prev) => new Set(prev).add(orderId));
+    setClosedBillIds((prev) => new Set(prev).add(billId));
     toast.success("Order closed & table freed!");
     try {
-      await updateOrderStatus(orderId, "Closed");
-    } catch {
+      await closeBill(billId);
+    } catch (err) {
       // Revert optimistic close on failure
-      setClosedBillIds((prev) => { const next = new Set(prev); next.delete(orderId); return next; });
-      toast.error("Failed to close bill");
+      setClosedBillIds((prev) => { const next = new Set(prev); next.delete(billId); return next; });
+      const msg = err?.response?.data?.message || err?.message || "Failed to close bill";
+      toast.error(msg);
     }
-  }, [closeBillModal, updateOrderStatus]);
+  }, [closeBillModal, closeBill]);
 
   /* print */
   const handleConfirmPrint = useCallback(() => {

@@ -21,6 +21,10 @@ export default function AdminProducts() {
   const [deleteModal, setDeleteModal] = useState({ show: false, product: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Modal state for stock out/restore confirmation
+  const [stockModal, setStockModal] = useState({ show: false, product: null, type: "" }); // type: "out" | "restore"
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+
   // Modal state for adding product
   const [showAddModal, setShowAddModal] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -230,19 +234,37 @@ export default function AdminProducts() {
   // Handle toggle availability with toast
   const handleToggleAvailability = async (productId) => {
     const product = products.find(p => p._id === productId);
+    if (!product) return;
+    
+    // Open specialized modal instead of instant toggle
+    setStockModal({
+      show: true,
+      product,
+      type: product.isAvailable ? "out" : "restore"
+    });
+  };
+
+  const confirmStockChange = async () => {
+    if (!stockModal.product) return;
+    setIsUpdatingStock(true);
+    const { product, type } = stockModal;
+    
     try {
-      await toggleAvailability(productId);
-      if (product?.isAvailable) {
+      await toggleAvailability(product._id);
+      if (type === "out") {
         toast.success(`${product.name} marked as sold out`, {
           icon: <XCircle size={18} className="text-rose-500" />,
         });
       } else {
-        toast.success(`${product.name} is now available`, {
+        toast.success(`${product.name} restored to menu`, {
           icon: <CheckCircle size={18} className="text-emerald-500" />,
         });
       }
+      setStockModal({ show: false, product: null, type: "" });
     } catch (error) {
-      toast.error("Failed to update availability");
+      toast.error("Failed to update status");
+    } finally {
+      setIsUpdatingStock(false);
     }
   };
 
@@ -497,6 +519,85 @@ export default function AdminProducts() {
                         <Trash2 size={16} />
                         Delete Product
                       </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Stock Status Change Modal */}
+        <AnimatePresence>
+          {stockModal.show && stockModal.product && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => !isUpdatingStock && setStockModal({ show: false, product: null, type: "" })}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className={`p-6 text-white ${stockModal.type === "out" ? "bg-rose-500" : "bg-emerald-500"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {stockModal.type === "out" ? <XCircle size={24} /> : <RefreshCw size={24} />}
+                      <h3 className="text-lg font-black uppercase tracking-tight">
+                        {stockModal.type === "out" ? "Stock Out" : "Restore Menu"}
+                      </h3>
+                    </div>
+                    <button 
+                      onClick={() => setStockModal({ show: false, product: null, type: "" })}
+                      disabled={isUpdatingStock}
+                      className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-8 text-center space-y-4">
+                  <div className="w-20 h-20 mx-auto rounded-3xl overflow-hidden shadow-lg mb-4">
+                    <img src={stockModal.product.image} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">
+                    {stockModal.product.name}
+                  </h4>
+                  <p className="text-slate-500 text-sm font-medium">
+                    {stockModal.type === "out" 
+                      ? "Mark this item as sold out for customers?" 
+                      : "Restore this item to the active menu?"}
+                  </p>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-6 bg-slate-50 flex gap-3">
+                  <button
+                    onClick={() => setStockModal({ show: false, product: null, type: "" })}
+                    disabled={isUpdatingStock}
+                    className="flex-1 px-4 py-4 border-2 border-slate-200 font-bold uppercase text-[10px] tracking-widest rounded-xl hover:border-slate-300 transition-colors disabled:opacity-50"
+                  >
+                    Wait
+                  </button>
+                  <button
+                    onClick={confirmStockChange}
+                    disabled={isUpdatingStock}
+                    className={`flex-1 px-4 py-4 text-white font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                      stockModal.type === "out" ? "bg-rose-500 hover:bg-rose-600 shadow-rose-100" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-100"
+                    } shadow-lg`}
+                  >
+                    {isUpdatingStock ? (
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      stockModal.type === "out" ? "Stock Out" : "Restore"
                     )}
                   </button>
                 </div>

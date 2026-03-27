@@ -224,7 +224,8 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  /* 🔔 NEW ORDER DETECTION — SAME LOGIC + SHAKE DURATION FIX */
+  const unreadCount = pendingOrders.length + addMoreNotifications.length;
+
   useEffect(() => {
     let hasNew = false;
     const newOrders = [];
@@ -288,16 +289,16 @@ export default function Notification({ targetPath = "/admin/orders" }) {
           }
           transition={{
             duration: 0.6,
-            repeat: isNewOrder ? Infinity : 0, // ✅ CONTINUOUS SHAKE
+            repeat: isNewOrder ? 16 : 0,
+            repeatType: 'loop',
           }}
         >
           <Bell className="w-6 h-6" />
         </motion.div>
 
-        {(pendingOrders.length > 0 || addMoreNotifications.length > 0) && (
-          <span className="absolute top-2 right-2 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-orange-500 border-2 border-white text-[10px] font-black text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>

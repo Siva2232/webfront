@@ -158,6 +158,7 @@ export default function Cart({ hideTable = false }) {
   const [isSwiped, setIsSwiped] = useState(false);
   const [dragConstraints, setDragConstraints] = useState(0);
   const [tableError, setTableError] = useState("");
+  const [showClearCartModal, setShowClearCartModal] = useState(false);
   
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [showStripeModal, setShowStripeModal] = useState(false);
@@ -326,7 +327,7 @@ export default function Cart({ hideTable = false }) {
           <div className="flex justify-end">
             {cart.length > 0 && (
               <button 
-                onClick={clearCart} 
+                onClick={() => setShowClearCartModal(true)} 
                 className="flex items-center justify-center h-9 w-9 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 active:scale-95 transition-all"
                 aria-label="Clear Cart"
               >
@@ -399,81 +400,122 @@ export default function Cart({ hideTable = false }) {
               {/* Grouped Order Items with Portion Highlight */}
               <div className="space-y-8">
                 {Object.entries(groupedItems).map(([portion, items]) => (
-                  <div key={portion}>
-                    {/* Portion Group Header */}
-                    <div className="flex items-center gap-3 mb-4 px-1">
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-                      <div className="bg-white shadow px-5 py-1.5 rounded-full border border-slate-100 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                        <span className="font-black text-slate-700 uppercase tracking-widest text-xs">
-                          {portion} PORTION
+                  <div key={portion} className="space-y-4">
+                    {/* Portion Group Header - Styled like KitchenBill batch/header */}
+                    <div className="flex items-center gap-3 px-1">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+                      <div className="bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg border border-slate-800 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                        <span className="font-black text-[10px] uppercase tracking-[0.2em]">
+                          {portion} Portion Group
                         </span>
                       </div>
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
                     </div>
 
-                    {/* Items in this group */}
+                    {/* Items in this segment */}
                     <div className="space-y-4">
-                      {items.map((item) => (
-                        <motion.div 
-                          layout 
-                          key={`${item.cartKey || item.id || item._id}-${item.isTakeaway ? 'ta' : 'di'}`} 
-                          className={`flex gap-4 bg-white p-5 rounded-[2rem] border shadow-sm ${item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'}`}
-                        >
-                          <div className="relative w-20 h-20 shrink-0">
-                            <img src={item.image} className="w-full h-full rounded-2xl object-cover" alt="" />
-                            {item.isTakeaway && (
-                              <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-1.5 rounded-full">
-                                <Package size={12} />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 flex flex-col justify-center">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-black text-slate-900 text-base">{item.name}</h3>
-                              <p className="font-black text-slate-900 text-lg">
-                                ₹{(item.price * item.qty).toLocaleString()}
-                              </p>
-                            </div>
-
-                            {item.selectedPortion && (
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className="p-0.5 bg-blue-50 rounded">
-                                  <ArrowRight size={8} className="text-blue-500" />
-                                </span>
-                                <p className="text-[10px] font-black text-blue-600 uppercase italic">
-                                  {item.selectedPortion}
-                                </p>
-                              </div>
-                            )}
-
-                            {item.selectedAddons?.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 mt-2 border-l-2 border-emerald-100 pl-2 py-0.5">
-                                {item.selectedAddons.map((a, i) => (
-                                  <div key={i} className="flex items-center gap-1">
-                                    <span className="text-[9px] font-bold text-emerald-600">+ {a.name}</span>
-                                    <span className="text-[8px] font-black text-slate-400">(₹{a.price})</span>
+                      {items.map((item) => {
+                        const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                        const basePrice = item.price - addonsTotal;
+                        
+                        return (
+                          <motion.div 
+                            layout 
+                            key={`${item.cartKey || item.id || item._id}-${item.isTakeaway ? 'ta' : 'di'}`} 
+                            className={`relative overflow-hidden bg-white p-5 rounded-[2.5rem] border shadow-sm transition-all hover:shadow-md ${
+                              item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'
+                            }`}
+                          >
+                            <div className="flex gap-5">
+                              {/* Left: Image with Badge */}
+                              <div className="relative w-24 h-24 shrink-0">
+                                <img src={item.image} className="w-full h-full rounded-[2rem] object-cover shadow-sm bg-slate-50" alt="" />
+                                {item.isTakeaway && (
+                                  <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-2 rounded-full shadow-lg border-4 border-white">
+                                    <Package size={12} strokeWidth={3} />
                                   </div>
-                                ))}
+                                )}
                               </div>
-                            )}
 
-                            <div className="flex items-center justify-between mt-4">
-                              <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
-                                <button onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center">
-                                  <Minus size={12}/>
-                                </button>
-                                <span className="w-8 text-center text-xs font-black">{item.qty}</span>
-                                <button onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center">
-                                  <Plus size={12}/>
-                                </button>
+                              {/* Right: Info & Logic */}
+                              <div className="flex-1 flex flex-col">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight leading-none mb-1">
+                                      {item.name}
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                      {item.selectedPortion && (
+                                        <div className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full border border-blue-100">
+                                          <ArrowRight size={10} strokeWidth={3} />
+                                          <span className="text-[9px] font-black uppercase italic tracking-widest">{item.selectedPortion}</span>
+                                        </div>
+                                      )}
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                        ₹{basePrice.toLocaleString()} × {item.qty}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-black text-slate-900 text-2xl tracking-tighter italic">
+                                      ₹{(basePrice * item.qty).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Addons Section - Separated like KitchenBill */}
+                                {item.selectedAddons?.length > 0 && (
+                                  <div className="mt-4 p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 space-y-1.5">
+                                    <p className="text-[8px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Selected Extras</p>
+                                    {item.selectedAddons.map((a, i) => (
+                                      <div key={i} className="flex justify-between items-center px-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <Plus size={8} className="text-emerald-500" />
+                                          <span className="text-[10px] font-bold text-emerald-800">{a.name}</span>
+                                        </div>
+                                        <span className="text-[9px] font-black text-slate-400">₹{(a.price || 0) * item.qty}</span>
+                                      </div>
+                                    ))}
+                                    <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-dashed border-emerald-200">
+                                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Item Total</span>
+                                      <span className="text-[14px] font-extrabold text-emerald-800">₹{(item.price * item.qty).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Quantity Adjuster */}
+                                <div className="flex items-center justify-between mt-auto pt-4">
+                                  <div className="flex items-center bg-slate-900 text-white rounded-2xl p-1 shadow-lg shadow-slate-200">
+                                    <button 
+                                      onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)} 
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
+                                    >
+                                      <Minus size={14} strokeWidth={3} />
+                                    </button>
+                                    <span className="w-8 text-center text-sm font-black italic">{item.qty}</span>
+                                    <button 
+                                      onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)} 
+                                      className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
+                                    >
+                                      <Plus size={14} strokeWidth={3} />
+                                    </button>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-3">
+                                    <button 
+                                      onClick={() => removeFromCart(item._id || item.id, item.cartKey)}
+                                      className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-slate-400 font-bold text-xs">₹{item.price} each</p>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -613,6 +655,46 @@ export default function Cart({ hideTable = false }) {
           </div>
         </div>
       )}
+
+      {/* Clear Cart Confirmation Modal */}
+      <AnimatePresence>
+        {showClearCartModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowClearCartModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-black text-slate-900 mb-3">Clear Cart?</h3>
+                <p className="text-sm text-slate-600 mb-5">This will remove all items from your cart. Are you sure?</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowClearCartModal(false)}
+                    className="flex-1 px-4 py-3 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { clearCart(); setShowClearCartModal(false); }}
+                    className="flex-1 px-4 py-3 bg-rose-500 text-white rounded-xl font-bold hover:bg-rose-600"
+                  >
+                    Confirm Clear
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stripe Payment Modal */}
       <AnimatePresence>

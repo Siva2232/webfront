@@ -27,12 +27,14 @@ import "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 export default function Dashboard() {
-  const { products = [] } = useProducts();
+  const { products = [], subitems = [] } = useProducts();
   const { orders = [] } = useOrders();
 
   // --- ANALYTICS LOGIC ---
   const activeOrders = orders.filter((o) => o.status !== "Served").length;
   const unavailableProducts = products.filter((p) => !p.isAvailable);
+  const unavailableSubitems = subitems.filter((s) => s.isAvailable === false);
+  const totalUnavailableCount = unavailableProducts.length + unavailableSubitems.length;
   
   // Calculate Actual Total Revenue from Order History
   const totalRevenue = useMemo(() => {
@@ -56,28 +58,42 @@ export default function Dashboard() {
 
   // Pie chart data for inventory status
   const pieData = useMemo(() => {
-    const liveCount = products.filter(p => p.isAvailable).length;
-    const outCount = products.length - liveCount;
+    const liveProdCount = products.filter(p => p.isAvailable).length;
+    const liveSubCount = subitems.filter(s => s.isAvailable !== false).length;
+    const outProdCount = unavailableProducts.length;
+    const outSubCount = unavailableSubitems.length;
+    const liveCount = liveProdCount + liveSubCount;
+    const outCount = outProdCount + outSubCount;
     return [
       { name: 'Active Stock', value: liveCount, color: '#6366f1' },
       { name: 'Out of Stock', value: outCount, color: '#f43f5e' }
     ];
-  }, [products]);
+  }, [products, subitems, unavailableProducts.length, unavailableSubitems.length]);
 
-  // Critical products alert
+  // Critical products + subitems alert
   const criticalProducts = useMemo(() => {
-    return products
+    const prodAlerts = products
       .filter(p => {
         const cost = p.costPrice || p.price * 0.6;
         const margin = p.price ? ((p.price - cost) / p.price) * 100 : 0;
         return !p.isAvailable || margin < 30;
       })
       .map(p => ({
-        ...p,
+        id: p._id,
+        name: p.name,
         issue: !p.isAvailable ? "Out of Stock" : "Low Margin"
-      }))
-      .slice(0, 5);
-  }, [products]);
+      }));
+
+    const subAlerts = subitems
+      .filter(s => s.isAvailable === false)
+      .map(s => ({
+        id: s._id,
+        name: s.name,
+        issue: "Out of Stock"
+      }));
+
+    return [...prodAlerts, ...subAlerts].slice(0, 5);
+  }, [products, subitems]);
 
   // Export functionality
   const handleExport = (format) => {
@@ -162,11 +178,11 @@ export default function Dashboard() {
           />
           <StatCard 
             label="Stock Alerts" 
-            value={unavailableProducts.length} 
+            value={totalUnavailableCount} 
             icon={AlertTriangle} 
             color="rose" 
-            trend="Critical" 
-            isAlert={unavailableProducts.length > 0}
+            trend={totalUnavailableCount > 0 ? "Critical" : "All Good"} 
+            isAlert={totalUnavailableCount > 0}
           />
         </div>
 

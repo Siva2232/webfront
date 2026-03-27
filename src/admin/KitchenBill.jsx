@@ -40,14 +40,74 @@ export default function KitchenBill() {
     fetchActiveKitchenBills();
   }, []);
 
-  // Isolated Print Logic
+  // Isolated Print Logic (OrderBill-style window popup)
   const handlePrintSingle = (billId) => {
-    const printContent = document.getElementById(`kitchen-bill-${billId}`);
-    const originalContent = document.body.innerHTML;
-    document.body.innerHTML = printContent.outerHTML;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload(); 
+    const kb = kitchenBills.find((bill) => (bill._id || bill.id) === billId);
+    if (!kb) return;
+
+    const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
+    const subtotal = kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
+    const tax = subtotal * 0.05;
+    const total = subtotal + tax;
+
+    const formatMoney = (value) => `₹${(value || 0).toLocaleString('en-IN')}`;
+
+    const padLine = (left, right, width = 40) => {
+      const pad = width - String(left).length - String(right).length;
+      return `${left}${' '.repeat(pad > 0 ? pad : 1)}${right}`;
+    };
+
+    const itemsText = kb.items?.map((item) => {
+      const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+      const basePrice = item.price - addonsTotal;
+      const baseLine = item.name + (item.selectedPortion ? ` (${item.selectedPortion})` : '');
+      const qtyLine = padLine(`Qty: ${item.qty} × ₹${basePrice.toLocaleString('en-IN')}`, `₹${(basePrice * item.qty).toLocaleString('en-IN')}`);
+      const addonLines = item.selectedAddons?.map((addon) => padLine(`+ ${addon.name}`, `₹${((addon.price || 0) * item.qty).toLocaleString('en-IN')}`)) || [];
+      return [baseLine, qtyLine, ...addonLines].join('\n');
+    }).join('\n');
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+
+    const html = `<html><head><style>
+@page{size:80mm auto;margin:0}
+body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;width:80mm;margin:0;padding:5mm;box-sizing:border-box}
+.header{text-align:center;font-weight:bold;margin-bottom:2mm}
+.line{border-bottom:1px dashed #000;margin:2mm 0}
+.text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}
+</style></head><body>
+<div class="header">
+MY CAFE
+01 SKYLINE DRIVE, BUSINESS DISTRICT
++91 0000 000 000
+GST: 18AABCT1234H1Z0
+</div>
+<div class="text-center">Kitchen</div>
+<div class="line"></div>
+
+${padLine('Order Ref', '#' + (kb.orderRef || kb._id || '').toString().slice(-8))}
+${padLine('Table', isTakeawayOrder(kb) ? 'TAKEAWAY' : 'TBL-' + kb.table)}
+${padLine('Placed At', format(billTimestamp, 'dd/MM/yyyy • hh:mm a'))}
+
+<div class="line"></div>
+<div class="bold">Itemized Manifest</div>
+<div class="line"></div>
+${itemsText}
+
+
+<div class="line"></div>
+${padLine('Method', 'KITCHEN')}
+${kb.notes ? `<div class="line"></div><div class="bold">Notes:</div>\n${kb.notes}\n` : ''}
+<div class="line"></div>
+
+<div class="text-center">Official Receipt</div>
+<div class="text-center">THANK YOU</div>
+
+<script>window.print();window.onafterprint=()=>window.close();</script>
+</body></html>`;
+
+    w.document.write(html);
+    w.document.close();
   };
 
   // Sort: active first, then by date
@@ -93,7 +153,7 @@ export default function KitchenBill() {
         <div className="flex gap-4 overflow-x-auto pb-2">
           <StatBadge label="Pending" count={kitchenBills.filter(kb => kb.status === "Pending").length} icon={Clock} color="slate" />
           <StatBadge label="Preparing" count={kitchenBills.filter(kb => kb.status === "Preparing").length} icon={Flame} color="amber" />
-          <StatBadge label="Cooking" count={kitchenBills.filter(kb => kb.status === "Cooking").length} icon={Coffee} color="orange" />
+          {/* <StatBadge label="Cooking" count={kitchenBills.filter(kb => kb.status === "Cooking").length} icon={Coffee} color="orange" /> */}
           <StatBadge label="Ready" count={kitchenBills.filter(kb => kb.status === "Ready").length} icon={BellRing} color="indigo" />
         </div>
       </div>
@@ -170,7 +230,7 @@ export default function KitchenBill() {
                       {isTakeawayOrder(kb) ? (
                         <>
                           <Package size={18} className="text-rose-500" />
-                          <span className="text-rose-600">T/A</span>
+                          <span className="text-rose-600">{kb.table && kb.table.toUpperCase() === 'DELIVERY' ? 'H/D' : 'T/A'}</span>
                         </>
                       ) : (
                         <>TBL-{kb.table}</>
@@ -266,13 +326,6 @@ export default function KitchenBill() {
                   </div>
                 </div>
 
-                {/* Action Buttons - No Print */}
-                {!isServed && (
-                  <div className="p-4 border-t border-slate-100 no-print">
-                    <StatusButtons kb={kb} updateStatus={updateKitchenBillStatus} />
-                  </div>
-                )}
-
                 {/* Footer */}
                 <div className="p-4 text-center border-t border-dashed border-slate-200 bg-slate-50/30">
                   <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">Kitchen Copy</p>
@@ -317,33 +370,4 @@ function StatBadge({ label, count, icon: Icon, color }) {
   );
 }
 
-function StatusButtons({ kb, updateStatus }) {
-  const getNextStatus = () => {
-    const statusFlow = ["Pending", "Preparing", "Cooking", "Ready", "Served"];
-    const currentIndex = statusFlow.indexOf(kb.status);
-    return currentIndex < statusFlow.length - 1 ? statusFlow[currentIndex + 1] : null;
-  };
 
-  const nextStatus = getNextStatus();
-
-  const buttonStyles = {
-    Preparing: "bg-amber-500 hover:bg-amber-600",
-    Cooking: "bg-orange-500 hover:bg-orange-600",
-    Ready: "bg-indigo-500 hover:bg-indigo-600",
-    Served: "bg-emerald-500 hover:bg-emerald-600",
-  };
-
-  if (!nextStatus) return null;
-
-  return (
-    <button
-      onClick={() => updateStatus(kb._id, nextStatus)}
-      className={`w-full py-3 rounded-xl text-white font-black text-xs uppercase tracking-widest transition-all ${buttonStyles[nextStatus]} flex items-center justify-center gap-2`}
-    >
-      {nextStatus === "Preparing" && <><Flame size={14} /> Start Preparing</>}
-      {nextStatus === "Cooking" && <><Coffee size={14} /> Start Cooking</>}
-      {nextStatus === "Ready" && <><BellRing size={14} /> Mark Ready</>}
-      {nextStatus === "Served" && <><CheckCircle size={14} /> Mark Served</>}
-    </button>
-  );
-}
