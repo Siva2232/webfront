@@ -29,6 +29,10 @@ export default function OrderSummary() {
   const [searchParams] = useSearchParams();
   const [isClosingBill, setIsClosingBill] = useState(false);
 
+  // Get current table & mode from URL
+  const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
+  const mode = searchParams.get("mode");
+
   // Fetch orders for this table via public endpoint (no auth token needed).
   // Falls back to fetchOrders (admin) if no table context is available.
   const fetchCurrentOrders = () => {
@@ -51,10 +55,6 @@ export default function OrderSummary() {
     const interval = setInterval(fetchCurrentOrders, 10000);
     return () => clearInterval(interval);
   }, [currentTable, mode]);
-
-  // Get current table & mode from URL
-  const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
-  const mode = searchParams.get("mode");
 
   // helper to generate a menu URL that preserves takeaway mode when needed
   const menuLink = (() => {
