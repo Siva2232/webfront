@@ -22,13 +22,25 @@ const gradientMap = {
 
 const statusStep = { New: 1, Preparing: 2, Ready: 3, Served: 4 };
 
+const isStatusActive = (status) => ["New", "Preparing", "Ready", "Served", "Pending"].includes(status);
+
 export default function OrdersDashboard({ overrideOrders = null }) {
-  const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders } = useOrders();
+  const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders, isLoading } = useOrders();
   const orders = overrideOrders !== null ? overrideOrders : ctxOrders;
 
   // track orders that were just marked served so we can keep their card
   // mounted long enough to show the completion modal before removing
   const [servedPendingIds, setServedPendingIds] = useState(new Set());
+
+  // Use a ref to track if we've already done the initial fetch to avoid loops
+  const initialFetchDone = React.useRef(false);
+
+  useEffect(() => {
+    if (!initialFetchDone.current) {
+      fetchOrders();
+      initialFetchDone.current = true;
+    }
+  }, [fetchOrders]);
 
   const updateOrderStatus = (id, status) => {
     if (status === "Served") {
@@ -44,47 +56,61 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     ctxUpdateStatus(id, status);
   };
 
-  // Orders are already hydrated by OrderProvider (which caches + fetches),
-  // and socket events keep the list fresh. No periodic polling needed here.
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  if (isLoading && orders.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Operations...</p>
+        </div>
+      </div>
+    );
+  }
 
   // DASHBOARD CALCULATIONS
   const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = useMemo(() => {
-    const active = orders
+    // Only process orders that are relevant for the current view
+    const relevantOrders = orders.filter(o => isStatusActive(o.status));
+
+    const active = relevantOrders
       .filter((o) => o.status !== "Served" || servedPendingIds.has(o._id))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
-    const served = orders
+    const served = relevantOrders
       .filter((o) => o.status === "Served")
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const revenue = orders.reduce((acc, order) => {
-      const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    // Fast reduction for stats
+    let revenue = 0;
+    let itemsSold = 0;
+    const tables = new Set();
+    let activeTA = 0;
+    let servedTA = 0;
+
+    for (const order of relevantOrders) {
+      const isTA = isTakeawayOrder(order);
+      const isAct = order.status !== "Served" || servedPendingIds.has(order._id);
+      
+      // Revenue & Items
+      const subtotal = order.items?.reduce((sum, item) => sum + (item.price * item.qty), 0) || 0;
       const tax = order.billDetails?.cgst ? (order.billDetails.cgst + order.billDetails.sgst) : (subtotal * 0.05);
-      return acc + subtotal + tax;
-    }, 0);
+      revenue += (subtotal + tax);
+      itemsSold += order.items?.reduce((sum, item) => sum + item.qty, 0) || 0;
 
-    const itemsSold = orders.reduce((acc, order) => {
-      return acc + order.items.reduce((sum, item) => sum + item.qty, 0);
-    }, 0);
-
-    const tablesCount = new Set(
-      active
-        .map(o => o.table)
-        .filter(t => t && t !== TAKEAWAY_TABLE)
-    ).size;
-
-    const activeTA = active.filter(isTakeawayOrder).length;
-    const servedTA = served.filter(isTakeawayOrder).length;
+      if (isAct) {
+        if (isTA) activeTA++;
+        else if (order.table) tables.add(order.table);
+      } else {
+        if (isTA) servedTA++;
+      }
+    }
 
     return { 
       activeOrders: active, 
       servedOrders: served, 
       totalRevenue: revenue, 
       totalItemsSold: itemsSold, 
-      liveTablesCount: tablesCount, 
+      liveTablesCount: tables.size, 
       activeTakeawayCount: activeTA, 
       servedTakeawayCount: servedTA 
     };
