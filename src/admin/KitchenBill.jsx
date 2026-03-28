@@ -142,7 +142,7 @@ ${kb.notes ? `<div class="line"></div><div class="bold">Notes:</div>\n${kb.notes
           </button>
           <div className="text-center">
             <p className="text-[9px] font-black uppercase tracking-[0.4em] text-orange-500">Kitchen Terminal</p>
-            <h1 className="text-xs font-black uppercase tracking-widest">Kitchen Bills</h1>
+            <h1 className="text-xs font-black uppercase tracking-widest">KOT</h1>
           </div>
           <div className="w-10" />
         </div>

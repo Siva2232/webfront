@@ -185,10 +185,17 @@ export const OrderProvider = ({ children }) => {
         seen.add(key);
         return true;
       });
-      setBills(unique);
-      try {
-        localStorage.setItem("cachedBills", JSON.stringify(unique));
-      } catch (e) {}
+      // Merge: keep any socket-injected bills not yet returned by API
+      setBills((prev) => {
+        const apiKeys = new Set(unique.map(b => b.orderRef || b._id || b.id));
+        const socketOnly = prev.filter(b => {
+          const key = b.orderRef || b._id || b.id;
+          return !apiKeys.has(key);
+        });
+        const merged = [...socketOnly, ...unique];
+        try { localStorage.setItem("cachedBills", JSON.stringify(merged)); } catch (_) {}
+        return merged;
+      });
     } catch (error) {
       console.error("Error fetching bills:", error);
       // If it's a 401, the axios interceptor handles redirect.
@@ -578,7 +585,14 @@ export const OrderProvider = ({ children }) => {
 
     // listen for bills added so billing page updates automatically
     socket.on("billCreated", (bill) => {
-      setBills((prev) => [bill, ...prev]);
+      setBills((prev) => {
+        const exists = prev.find((b) => (b._id || b.id) === (bill._id || bill.id) || b.orderRef === bill.orderRef);
+        const next = exists
+          ? prev.map((b) => ((b._id || b.id) === (bill._id || bill.id) || b.orderRef === bill.orderRef) ? bill : b)
+          : [bill, ...prev];
+        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        return next;
+      });
     });
 
     // listen for "Add More Items" so admin panel can show notification

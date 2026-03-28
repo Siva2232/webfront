@@ -1,7 +1,22 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import API from "../api/axios";
+import { io } from "socket.io-client";
 
-const ProductContext = createContext();
+// the socket URL should match the backend deployment; use env var if available
+// fall back to the same host as the REST API by trimming any trailing /api segment
+const SOCKET_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+    : "http://localhost:5000");
+
+// shared socket instance so we don't reconnect on every render
+const socket = io(SOCKET_URL, {
+  transports: ["websocket"],
+  autoConnect: false,
+});
+
+export const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
   // Hydrate instantly from localStorage so the menu renders without waiting for API
@@ -76,11 +91,31 @@ export const ProductProvider = ({ children }) => {
     try {
       // Only show loading spinner if there's no cached data
       if (products.length === 0) setIsLoading(true);
-      await Promise.all([fetchCategories(), fetchSubitems()]);
-      const { data } = await API.get("/products");
-      const list = Array.isArray(data) ? data : [];
-      setProducts(list);
-      try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
+      
+      const [categoriesRes, subitemsRes, productsRes] = await Promise.allSettled([
+        API.get("/categories"),
+        API.get("/sub-items"),
+        API.get("/products")
+      ]);
+
+      if (categoriesRes.status === "fulfilled") {
+        const data = categoriesRes.value.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+          try { localStorage.setItem("categories", JSON.stringify(data)); } catch {}
+        }
+      }
+
+      if (subitemsRes.status === "fulfilled") {
+        const data = subitemsRes.value.data;
+        setSubitems(Array.isArray(data) ? data : []);
+      }
+
+      if (productsRes.status === "fulfilled") {
+        const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
+        setProducts(list);
+        try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -92,7 +127,29 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, []);
 
+  // Listen for real-time updates from library/sub-item changes
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
+    socket.connect();
+
+    socket.on("productsUpdated", () => {
+      console.log("Real-time sync: Library changed, re-fetching products...");
+      fetchProducts();
+    });
+
+    socket.on("subItemsUpdated", () => {
+      console.log("Real-time sync: Sub-items changed, re-fetching...");
+      fetchSubitems();
+    });
+
+    return () => {
+      socket.off("productsUpdated");
+      socket.off("subItemsUpdated");
+      socket.disconnect();
+    };
+  }, []);
 
   // Ordered categories with preferred order — always returns name strings
   const orderedCategories = useMemo(() => {
@@ -148,7 +205,9 @@ export const ProductProvider = ({ children }) => {
       // avoid sending temporary id field to backend
       const { id, ...payload } = productData;
       const { data } = await API.post("/products", payload);
-      setProducts([...products, data]);
+      const updated = [...products, data];
+      setProducts(updated);
+      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
       return data;
     } catch (error) {
       console.error("Error adding product:", error.response?.data || error.message || error);
@@ -164,7 +223,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.post("/categories", { name: trimmed });
       const updated = [...categories, data.name];
       setCategories(updated);
-      localStorage.setItem("categories", JSON.stringify(updated));
+      try { localStorage.setItem("categories", JSON.stringify(updated)); } catch {}
     } catch (error) {
       console.error("Error adding category:", error);
       // Fallback to local only if API fails
@@ -176,7 +235,9 @@ export const ProductProvider = ({ children }) => {
   const updateProduct = async (id, updates) => {
     try {
       const { data } = await API.put(`/products/${id}`, updates);
-      setProducts(products.map(p => p._id === id ? data : p));
+      const updated = products.map(p => p._id === id ? data : p);
+      setProducts(updated);
+      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
       return data;
     } catch (error) {
       console.error("Error updating product:", error);
@@ -188,7 +249,9 @@ export const ProductProvider = ({ children }) => {
   const deleteProduct = async (id) => {
     try {
       await API.delete(`/products/${id}`);
-      setProducts(products.filter(p => p._id !== id));
+      const updated = products.filter(p => p._id !== id);
+      setProducts(updated);
+      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
     } catch (error) {
       console.error("Error deleting product:", error);
     }
@@ -199,7 +262,9 @@ export const ProductProvider = ({ children }) => {
     if (!product) return;
     try {
       const { data } = await API.put(`/products/${id}`, { isAvailable: !product.isAvailable });
-      setProducts(products.map(p => p._id === id ? data : p));
+      const updated = products.map(p => p._id === id ? data : p);
+      setProducts(updated);
+      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
     } catch (error) {
       console.error("Error toggling availability:", error);
     }
@@ -209,6 +274,7 @@ export const ProductProvider = ({ children }) => {
     products,
     categories,
     subitems,
+    isLoading,
     orderedCategories,
     addProduct,
     addCategory,
@@ -216,6 +282,7 @@ export const ProductProvider = ({ children }) => {
     deleteProduct,
     toggleAvailability,
     fetchProducts,
+    fetchSubitems,
   };
 
   return (

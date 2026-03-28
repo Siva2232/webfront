@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import { useSearchParams } from "react-router-dom";
 import API from "../api/axios";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
+import { ProductContext } from "../context/ProductContext";
 import {
   Plus,
   Trash2,
@@ -101,8 +102,18 @@ function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) {
 }
 
 export default function SubItemLibrary() {
+  const { subitems, fetchSubitems } = useContext(ProductContext);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync internal state when context updates (e.g. via real-time sockets)
+  useEffect(() => {
+    if (subitems && subitems.length >= 0) {
+      setItems(subitems);
+      setLoading(false);
+    }
+  }, [subitems]);
+
   const [tab, setTab] = useState("portion"); // "portion" | "addonGroup"
   const [search, setSearch] = useState("");
 
@@ -131,13 +142,17 @@ export default function SubItemLibrary() {
   const [searchParams] = useSearchParams();
   // ── Fetch ──
   const fetchItems = async () => {
-    try {
-      const { data } = await API.get("/sub-items");
-      setItems(data);
-    } catch {
-      toast.error("Failed to load sub-items");
-    } finally {
-      setLoading(false);
+    if (fetchSubitems) {
+      await fetchSubitems();
+    } else {
+      try {
+        const { data } = await API.get("/sub-items");
+        setItems(data);
+      } catch {
+        toast.error("Failed to load sub-items");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -169,7 +184,6 @@ export default function SubItemLibrary() {
 
   // ── Grouped filtered list ──
   const groupedData = useMemo(() => {
-    if (tab !== "portion") return { ungrouped: filtered };
     const groups = {};
     const ungrouped = [];
     filtered.forEach((item) => {
@@ -181,7 +195,7 @@ export default function SubItemLibrary() {
       }
     });
     return { groups, ungrouped };
-  }, [filtered, tab]);
+  }, [filtered]);
 
   // ── Open modal ──
   const openCreate = () => {
@@ -309,20 +323,20 @@ export default function SubItemLibrary() {
     }
     const validatedItems = bulkForm.items.filter((i) => i.name.trim());
     if (validatedItems.length === 0) {
-      toast.error("At least one portion name is required");
+      toast.error(`At least one ${tab === 'portion' ? 'portion' : 'add-on'} name is required`);
       return;
     }
 
     setSaving(true);
     try {
       const payload = {
-        type: "portion",
+        type: tab,
         category: bulkForm.category.trim(),
         items: validatedItems,
       };
       const { data } = await API.post("/sub-items", payload);
       setItems((prev) => [...prev, ...data]);
-      toast.success(`Created ${data.length} portion(s) under ${bulkForm.category}!`);
+      toast.success(`Created ${data.length} ${tab === 'portion' ? 'portion(s)' : 'add-on(s)'} under ${bulkForm.category}!`);
       setShowBulkModal(false);
     } catch (err) {
       toast.error(err.response?.data?.message || "Bulk creation failed");
@@ -335,57 +349,61 @@ export default function SubItemLibrary() {
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-8 lg:p-12 font-sans text-slate-950">
       <div className="max-w-[1100px] mx-auto space-y-10">
         {/* ── Header ── */}
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="h-1 w-10 bg-violet-600 rounded-full" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
-                Master Library
-              </span>
+        <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+          <div className="space-y-4 flex-1">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-10 bg-violet-600 rounded-full" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
+                  Master Library
+                </span>
+              </div>
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-950">
+                Sub <span className="text-slate-300 font-light italic">Items</span>
+              </h1>
             </div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-950">
-              Sub <span className="text-slate-300 font-light italic">Items</span>
-            </h1>
-            <p className="text-sm text-slate-400 font-medium max-w-lg">
+            <p className="text-sm text-slate-400 font-medium max-w-lg leading-relaxed">
               Save reusable portions and add-on groups here. Pick them instantly
               when editing any product — no need to type every time.
             </p>
           </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-              <div className="relative group w-full sm:w-72">
-                <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-violet-50/50 outline-none transition-all font-medium"
-                />
-              </div>
-              
-              <div className="flex gap-2 w-full sm:w-auto">
-                {tab === "portion" && (
-                  <button
-                    onClick={openBulkCreate}
-                    className="flex-1 sm:flex-none border-2 border-violet-600 text-violet-600 px-6 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-violet-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <Plus size={16} /> Bulk Portion
-                  </button>
-                )}
-                
-                <button
-                  onClick={openCreate}
-                  className="flex-1 sm:flex-none bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-violet-600 transition-all shadow-xl hover:shadow-violet-200 active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <Plus size={18} />
-                  New {tab === "portion" ? "Portion" : "Add-on Group"}
-                </button>
-              </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full xl:w-auto self-end">
+            <div className="relative group w-full sm:w-64">
+              <Search
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-violet-50/50 outline-none transition-all font-medium text-sm"
+              />
             </div>
+            
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={openBulkCreate}
+                className={`flex-1 sm:flex-none px-6 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 border-2 ${
+                  tab === "portion" 
+                    ? "border-violet-600 text-violet-600 hover:bg-violet-50" 
+                    : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                }`}
+              >
+                <Plus size={16} /> Bulk {tab === "portion" ? "Portion" : "Add-on"}
+              </button>
+              
+              <button
+                onClick={openCreate}
+                className="flex-1 sm:flex-none bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest hover:bg-violet-600 transition-all shadow-xl hover:shadow-violet-200 active:scale-95 flex items-center justify-center gap-3"
+              >
+                <Plus size={18} />
+                New {tab === "portion" ? "Portion" : "Add-on"}
+              </button>
+            </div>
+          </div>
         </header>
 
         {/* ── Tab Switcher ── */}
@@ -434,8 +452,8 @@ export default function SubItemLibrary() {
           </div>
         ) : (
           <div className="space-y-12">
-            {/* 1. Grouped Portions */}
-            {tab === "portion" && Object.entries(groupedData.groups).map(([groupName, groupItems]) => (
+            {/* 1. Grouped Items (Portions or Add-on Groups with Category) */}
+            {Object.entries(groupedData.groups).map(([groupName, groupItems]) => (
               <div key={groupName} className="space-y-6">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
@@ -461,10 +479,10 @@ export default function SubItemLibrary() {
               </div>
             ))}
 
-            {/* 2. Ungrouped / Addon Groups */}
-            {(groupedData.ungrouped.length > 0 || (tab === "portion" && Object.keys(groupedData.groups).length > 0)) && (
+            {/* 2. Ungrouped Items */}
+            {groupedData.ungrouped.length > 0 && (
               <div className="space-y-6">
-                {tab === "portion" && Object.keys(groupedData.groups).length > 0 && (
+                {Object.keys(groupedData.groups).length > 0 && (
                   <div className="flex items-center gap-4">
                     <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
                       <Plus className="text-slate-400" size={24} />
@@ -509,14 +527,18 @@ export default function SubItemLibrary() {
             >
               <div className="p-6 bg-violet-600 text-white shrink-0">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-black uppercase tracking-tight">Bulk Portions</h3>
+                  <h3 className="text-lg font-black uppercase tracking-tight">
+                    Bulk {tab === "portion" ? "Portions" : "Add-on Groups"}
+                  </h3>
                   <button onClick={() => setShowBulkModal(false)} className="p-1 hover:bg-white/20 rounded-full"><X size={20} /></button>
                 </div>
               </div>
 
               <div className="p-6 space-y-6 overflow-y-auto flex-1">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Group Name (e.g. "Alpahm")</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                    Group Name (e.g. {tab === "portion" ? '"Alpahm"' : '"Extra Toppings"'})
+                  </label>
                   <input
                     value={bulkForm.category}
                     onChange={(e) => setBulkForm(p => ({ ...p, category: e.target.value }))}
@@ -526,11 +548,13 @@ export default function SubItemLibrary() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Add Portions</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                    Add {tab === "portion" ? "Portions" : "Groups"}
+                  </label>
                   {bulkForm.items.map((it, idx) => (
                     <div key={idx} className="flex gap-2">
                       <input
-                        placeholder="Portion (e.g. Half)"
+                        placeholder={tab === "portion" ? "Name (e.g. Half)" : "Add-on Name (e.g. Extra Cheese)"}
                         value={it.name}
                         onChange={(e) => updateBulkRow(idx, "name", e.target.value)}
                         className="flex-1 px-4 py-2 bg-slate-50 rounded-xl font-bold outline-none border focus:border-violet-300"

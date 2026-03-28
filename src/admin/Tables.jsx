@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
+import API from "../api/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -11,41 +12,43 @@ import {
   ChevronRight,
   Trash2,
   UtensilsCrossed,
-  QrCode
+  QrCode,
+  Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function Tables() {
-  const [tables, setTables] = useState(() => {
-    const saved = localStorage.getItem("restaurant_tables_config");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, capacity: 2 },
-      { id: 2, capacity: 4 },
-      { id: 3, capacity: 4 },
-      { id: 4, capacity: 6 },
-      { id: 5, capacity: 2 },
-      { id: 6, capacity: 4 },
-      { id: 7, capacity: 8 },
-    ];
-  });
+  const [tables, setTables] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newTableId, setNewTableId] = useState("");
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const [isSavingTable, setIsSavingTable] = useState(false);
 
   const { orders } = useOrders();
-  const [activeOrders, setActiveOrders] = useState(() => {
-    const saved = localStorage.getItem("active_orders");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [activeOrders, setActiveOrders] = useState({});
   const [deleteModal, setDeleteModal] = useState({ show: false, tableId: null });
 
   const navigate = useNavigate();
 
-  // Save to localStorage
+  // Fetch from Backend
   useEffect(() => {
-    localStorage.setItem("restaurant_tables_config", JSON.stringify(tables));
-  }, [tables]);
-
-  useEffect(() => {
-    localStorage.setItem("active_orders", JSON.stringify(activeOrders));
-  }, [activeOrders]);
+    const fetchTables = async () => {
+      try {
+        setIsLoading(true);
+        const { data } = await API.get("/tables");
+        setTables(data);
+      } catch (err) {
+        console.error("Failed to fetch tables", err);
+        toast.error("Cloud sync failed. Using local fallback.");
+        const saved = localStorage.getItem("restaurant_tables_config");
+        if (saved) setTables(JSON.parse(saved));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTables();
+  }, []);
 
   // Sync with live orders
   useEffect(() => {
@@ -70,26 +73,71 @@ export default function Tables() {
     toast.success(`Table ${tableId} checked out`);
   };
 
-  const addNewTable = () => {
-    const nextId = tables.length > 0 
-      ? Math.max(...tables.map(t => t.id)) + 1 
-      : 1;
-    setTables([...tables, { id: nextId, capacity: 4 }]);
+  const addNewTable = async () => {
+    setShowAddModal(true);
+    setNewTableId("");
+    setNewTableCapacity(4);
   };
+
+  const submitNewTable = async () => {
+    const tableId = Number(newTableId);
+    if (!Number.isInteger(tableId) || tableId <= 0) {
+      toast.error("Enter a valid numeric table Number");
+      return;
+    }
+
+    if (tables.some((t) => t.id === tableId)) {
+      toast.error("Table Number already exists");
+      return;
+    }
+
+    setIsSavingTable(true);
+
+    const newTable = { id: tableId, capacity: Number(newTableCapacity) || 4 };
+    const prevTables = [...tables];
+    setTables((prev) => [...prev, newTable]);
+
+    try {
+      await API.post("/tables", newTable);
+      toast.success(`Table ${tableId} created and synced`);
+      const { data } = await API.get("/tables");
+      setTables(data);
+      setShowAddModal(false);
+    } catch (err) {
+      console.error("Failed to save table", err);
+      toast.error("Failed to save to cloud");
+      setTables(prevTables);
+    } finally {
+      setIsSavingTable(false);
+    }
+  };
+
 
   const removeTable = (e, tableId) => {
     e.stopPropagation();
     setDeleteModal({ show: true, tableId });
   };
 
-  const confirmRemoveTable = () => {
+  const confirmRemoveTable = async () => {
     const tableId = deleteModal.tableId;
-    setTables(prev => prev.filter(t => t.id !== tableId));
-    const updatedOrders = { ...activeOrders };
-    delete updatedOrders[`table-${tableId}`];
-    setActiveOrders(updatedOrders);
-    toast.success(`Table ${tableId} removed permanently`);
+
+    // Optimistic update to keep UI responsive
+    const prevTables = [...tables];
+    setTables((prev) => prev.filter((t) => t.id !== tableId));
     setDeleteModal({ show: false, tableId: null });
+
+    try {
+      await API.delete(`/tables/${tableId}`);
+      toast.success(`Table ${tableId} removed permanently`);
+
+      // Refetch to keep local state in sync with backend
+      const { data } = await API.get('/tables');
+      setTables(data);
+    } catch (err) {
+      console.error('Failed to delete table', err);
+      toast.error('Failed to sync deletion');
+      setTables(prevTables);
+    }
   };
 
   const cancelRemoveTable = () => {
@@ -97,6 +145,17 @@ export default function Tables() {
   };
 
   const isOccupied = (tableId) => !!activeOrders[`table-${tableId}`];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-slate-400" size={48} />
+          <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Loading Floor Plan...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
@@ -232,6 +291,69 @@ export default function Tables() {
             >
               <Plus size={18} /> Add First Table
             </button>
+          </motion.div>
+        )}
+
+        {showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-black">Add Table</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold uppercase text-slate-500">Table ID</label>
+                  <input
+                    type="number"
+                    value={newTableId}
+                    onChange={(e) => setNewTableId(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg outline-none border-slate-200"
+                    placeholder="Enter numeric table number"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase text-slate-500">Capacity</label>
+                  <input
+                    type="number"
+                    value={newTableCapacity}
+                    onChange={(e) => setNewTableCapacity(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg outline-none border-slate-200"
+                    min={1}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-slate-600"
+                >Cancel</button>
+                <button
+                  onClick={submitNewTable}
+                  disabled={isSavingTable}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white font-black hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {isSavingTable ? "Saving..." : "Add Table"}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
 

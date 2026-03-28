@@ -163,9 +163,8 @@ export default function OrderBill() {
 
   useEffect(() => {
     fetchBills();
-    // Auto-refresh every 30s as fallback for missed socket events
-    const interval = setInterval(() => { fetchBills(); }, 30000);
-    return () => clearInterval(interval);
+    // Socket events (billCreated / billUpdated) keep bills in sync in real-time.
+    // No polling needed — the OrderContext handles all socket listeners.
   }, []);
 
   /* deduplicated + date-filtered bills */

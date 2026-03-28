@@ -58,15 +58,15 @@ export default function AdminLayout() {
   const menuItems = [
     { name: "Analytics", icon: BarChart2, path: "reports" },
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
-    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
-    { name: "Products", icon: Package, path: "products" },
-    { name: "Sub Items", icon: Layers, path: "sub-items" },
-    { name: "Orders", icon: ShoppingCart, path: "orders" },
-    { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
-    { name: "Bill", icon: Receipt, path: "bill" },
-    { name: "Manual Bill", icon: Scissors, path: "manual-bill" },
+    { name: "KOT", icon: Ticket, path: "kitchen-bill" },
+    { name: "Add Products", icon: Package, path: "products" },
+    { name: "Add Sub Items", icon: Layers, path: "sub-items" },
+    { name: "Orders Queue", icon: ShoppingCart, path: "orders" },
+    { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
+    { name: "Customers Bills", icon: Receipt, path: "bill" },
+    { name: "Manual Bills", icon: Scissors, path: "manual-bill" },
     {
-      name: "Manage Tables&QR",
+      name: "Tables & QR",
       icon: Table,
       path: "tables",
       children: [
@@ -86,7 +86,7 @@ export default function AdminLayout() {
         { name: "Salary History", tab: "salaryHistory" },
       ],
     },
-    { name: "Add Banner", icon: ImagePlus, path: "banner" },
+    { name: "Add Banners", icon: ImagePlus, path: "banner" },
     { name: "Add Offers", icon: Sparkles, path: "offers" },
     {
       name: "Expense Tracker",
@@ -581,18 +581,30 @@ const handleClearAllStockAlerts = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
                       />
+                    ) : item._alertType === "subitem" ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-indigo-50 text-indigo-400">
+                        <Layers size={24} />
+                        <span className="text-[8px] font-black uppercase mt-0.5">LIB</span>
+                      </div>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                        <Layers className="text-slate-400" size={30} />
+                        <Package className="text-slate-400" size={24} />
                       </div>
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{item.name}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">
-                      ₹{item.price?.toLocaleString() || "—"}
-                    </p>
+                    <p className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">{item.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                       <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
+                         item._alertType === 'subitem' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+                       }`}>
+                         {item._alertType}
+                       </span>
+                       <p className="text-xs font-medium text-slate-400">
+                         ₹{item.price?.toLocaleString() || "—"}
+                       </p>
+                    </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-1">

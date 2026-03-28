@@ -20,7 +20,9 @@ import {
   ShieldCheck,
   History,
   FileSpreadsheet,
-  FileText
+  FileText,
+  CheckCircle2 ,
+  Box 
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -73,15 +75,13 @@ export default function Dashboard() {
   // Critical products + subitems alert
   const criticalProducts = useMemo(() => {
     const prodAlerts = products
-      .filter(p => {
-        const cost = p.costPrice || p.price * 0.6;
-        const margin = p.price ? ((p.price - cost) / p.price) * 100 : 0;
-        return !p.isAvailable || margin < 30;
-      })
+      .filter(p => !p.isAvailable)
       .map(p => ({
         id: p._id,
         name: p.name,
-        issue: !p.isAvailable ? "Out of Stock" : "Low Margin"
+        issue: "Out of Stock",
+        image: p.image,
+        type: 'product'
       }));
 
     const subAlerts = subitems
@@ -89,10 +89,12 @@ export default function Dashboard() {
       .map(s => ({
         id: s._id,
         name: s.name,
-        issue: "Out of Stock"
+        issue: "Out of Stock",
+        image: null,
+        type: 'subitem'
       }));
 
-    return [...prodAlerts, ...subAlerts].slice(0, 5);
+    return [...prodAlerts, ...subAlerts].slice(0, 10);
   }, [products, subitems]);
 
   // Export functionality
@@ -415,10 +417,10 @@ export default function Dashboard() {
           <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[3rem] blur opacity-5 group-hover:opacity-10 transition duration-1000"></div>
           
           <div className="relative bg-white border border-slate-100 rounded-[3rem] overflow-hidden shadow-xl shadow-slate-200/50">
-            {unavailableProducts.length > 0 ? (
-              <StockAlertSection items={unavailableProducts} />
+            {criticalProducts.length > 0 ? (
+              <StockAlertSection items={criticalProducts} />
             ) : (
-              <EmptyStateSection count={products.length} />
+              <EmptyStateSection totalProducts={products.length} totalSubitems={subitems.length} />
             )}
           </div>
         </motion.div>
@@ -491,12 +493,18 @@ const StockAlertSection = ({ items }) => (
       {items.map((item, idx) => (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={item.id} className="flex items-center justify-between p-5 bg-white rounded-[2rem] border border-slate-100 group/item transition-all">
           <div className="flex items-center gap-5">
-            <div className="h-16 w-16 rounded-[1.2rem] overflow-hidden grayscale group-hover/item:grayscale-0 transition-all shadow-inner">
-              <img src={item.image || "https://via.placeholder.com/150"} alt="" className="h-full w-full object-cover" />
+            <div className="h-16 w-16 rounded-[1.2rem] overflow-hidden grayscale group-hover/item:grayscale-0 transition-all shadow-inner bg-slate-100 flex items-center justify-center">
+              {item.image ? (
+                <img src={item.image} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Package className="text-slate-300" size={32} />
+              )}
             </div>
             <div>
               <p className="font-black text-slate-800 text-lg tracking-tight group-hover/item:text-rose-600">{item.name}</p>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Status: Restricted</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                Type: {item.type === 'subitem' ? 'Sub-item' : 'Product'}
+              </p>
             </div>
           </div>
           <div className="flex flex-col items-end">
@@ -509,20 +517,43 @@ const StockAlertSection = ({ items }) => (
   </div>
 );
 
-const EmptyStateSection = ({ count }) => (
-  <div className="p-20 text-center space-y-8 bg-gradient-to-b from-white to-emerald-50/20">
-    <div className="relative inline-block">
-      <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 4 }} className="absolute inset-0 bg-emerald-500 blur-[60px] opacity-10" />
-      <div className="relative w-24 h-24 rounded-[2rem] bg-emerald-50 flex items-center justify-center mx-auto text-emerald-500 border border-emerald-100 shadow-xl shadow-emerald-100">
-        <CheckCircle size={48} strokeWidth={1.5} />
+const EmptyStateSection = ({ totalProducts, totalSubitems }) => (
+  <div className="flex flex-col lg:flex-row min-h-[500px]">
+    <div className="lg:w-1/2 p-12 bg-emerald-500 text-white flex flex-col justify-between relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-8 opacity-10">
+         <ShieldCheck size={280} strokeWidth={1} />
+      </div>
+      <div className="space-y-6 relative z-10">
+        <div className="h-20 w-20 rounded-[2rem] bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center">
+          <CheckCircle2 size={42} />
+        </div>
+        <h3 className="text-6xl font-black tracking-tighter leading-[0.8] mix-blend-overlay">Systems <br/> Nominal</h3>
+        <p className="text-emerald-100 font-bold text-xl tracking-tight leading-relaxed max-w-sm drop-shadow-sm">Operation Clean. All {totalProducts + totalSubitems} items are currently synchronized across the inventory network.</p>
+      </div>
+      <div className="flex gap-4 relative z-10">
+          <div className="px-6 py-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100">Products</p>
+              <p className="text-2xl font-black">{totalProducts}</p>
+          </div>
+          <div className="px-6 py-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100">Sub-items</p>
+              <p className="text-2xl font-black">{totalSubitems}</p>
+          </div>
       </div>
     </div>
-    <div className="max-w-md mx-auto space-y-2">
-      <h3 className="text-3xl font-black text-slate-900 tracking-tight">Operation Clean</h3>
-      <p className="text-slate-500 font-medium text-lg leading-relaxed">All inventory is synchronized. No stock-outs detected across {count} items.</p>
+    <div className="flex-1 p-12 flex flex-col items-center justify-center text-center space-y-8 bg-white">
+      <div className="relative">
+          <div className="absolute inset-0 bg-emerald-100 blur-[100px] rounded-full opacity-30 animate-pulse" />
+          <div className="h-40 w-40 bg-slate-50 border border-slate-100 rounded-[3rem] flex items-center justify-center relative rotate-12 group-hover:rotate-0 transition-all duration-700">
+             <Box size={80} className="text-slate-300 group-hover:text-emerald-400 transition-colors" strokeWidth={1} />
+          </div>
+      </div>
+      <div className="space-y-3">
+        <h4 className="text-3xl font-black text-slate-800 tracking-tighter">Inventory Synchronized</h4>
+        <p className="text-slate-400 font-medium max-w-xs mx-auto">Zero critical alerts detected. All warehouse stocks and variations are active.</p>
+      </div>
+      <div className="h-[2px] w-20 bg-slate-100" />
+      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">Last System Audit: Just Now</p>
     </div>
-    <Link to="/admin/products" className="inline-flex items-center gap-3 px-10 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-indigo-600 transition-all">
-      Manage Inventory <ArrowUpRight size={16} />
-    </Link>
   </div>
 );

@@ -33,9 +33,13 @@ export default function SubItemModal({
   } = product;
 
   // ── Local state ──
-  const [selectedPortion, setSelectedPortion] = useState(
-    hasPortions && portions.length > 0 ? portions[0].name : null
-  );
+  const [selectedPortion, setSelectedPortion] = useState(() => {
+    if (hasPortions && portions.length > 0) {
+      const firstAvailable = portions.find(p => p.isAvailable !== false);
+      return firstAvailable ? firstAvailable.name : portions[0].name;
+    }
+    return null;
+  });
   const [selectedAddons, setSelectedAddons] = useState([]); // [{ name, price, groupName }]
   const [qty, setQty] = useState(initialQty);
 
@@ -173,89 +177,33 @@ export default function SubItemModal({
             {/* ── Scrollable Body ── */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
               {/* ── Portions ── */}
-              {hasPortions && portions.length > 0 && (
+              {hasPortions && portions.length > 0 && portions.some(p => p.isAvailable !== false) && (
                 <div>
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3">
                     Select Portion
                   </h3>
                   <div className="space-y-2">
-                    {portions.map((p) => (
-                      <button
-                        key={p.name}
-                        onClick={() => setSelectedPortion(p.name)}
-                        className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 transition-all ${
-                          selectedPortion === p.name
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-100 bg-white hover:border-slate-200"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              selectedPortion === p.name
-                                ? "border-blue-500 bg-blue-500"
-                                : "border-slate-300"
-                            }`}
-                          >
-                            {selectedPortion === p.name && (
-                              <Check
-                                size={12}
-                                className="text-white"
-                                strokeWidth={3}
-                              />
-                            )}
-                          </div>
-                          <span className="text-sm font-bold text-slate-800">
-                            {p.name}
-                          </span>
-                        </div>
-                        <span className="text-sm font-black text-slate-900">
-                          ₹{p.price}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Addon Groups ── */}
-              {addonGroups.map((group) => (
-                <div key={group.name}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                      {group.name}
-                    </h3>
-                    {group.maxSelections > 0 && (
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">
-                        Select upto {group.maxSelections}
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {group.addons.map((addon) => {
-                      const isSelected = isAddonSelected(
-                        addon.name,
-                        group.name
-                      );
-                      return (
+                    {portions
+                      .filter((p) => p.isAvailable !== false)
+                      .map((p) => (
                         <button
-                          key={addon.name}
-                          onClick={() => toggleAddon(addon, group)}
-                          className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all ${
-                            isSelected
-                              ? "border-emerald-500 bg-emerald-50"
+                          key={p.name}
+                          onClick={() => setSelectedPortion(p.name)}
+                          className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 transition-all ${
+                            selectedPortion === p.name
+                              ? "border-blue-500 bg-blue-50"
                               : "border-slate-100 bg-white hover:border-slate-200"
                           }`}
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                                isSelected
-                                  ? "border-emerald-500 bg-emerald-500"
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                selectedPortion === p.name
+                                  ? "border-blue-500 bg-blue-500"
                                   : "border-slate-300"
                               }`}
                             >
-                              {isSelected && (
+                              {selectedPortion === p.name && (
                                 <Check
                                   size={12}
                                   className="text-white"
@@ -263,19 +211,79 @@ export default function SubItemModal({
                                 />
                               )}
                             </div>
-                            <span className="text-sm font-medium text-slate-700">
-                              {addon.name}
+                            <span className="text-sm font-bold text-slate-800">
+                              {p.name}
                             </span>
                           </div>
-                          <span className="text-sm font-bold text-slate-600">
-                            +₹{addon.price || 0}
+                          <span className="text-sm font-black text-slate-900">
+                            ₹{p.price}
                           </span>
                         </button>
-                      );
-                    })}
+                      ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* ── Addon Groups ── */}
+              {addonGroups
+                .filter((group) => group.isAvailable !== false)
+                .map((group) => (
+                  <div key={group.name}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                        {group.name}
+                      </h3>
+                      {group.maxSelections > 0 && (
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">
+                          Select upto {group.maxSelections}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {group.addons.map((addon) => {
+                        const isSelected = isAddonSelected(
+                          addon.name,
+                          group.name
+                        );
+                        return (
+                          <button
+                            key={addon.name}
+                            onClick={() => toggleAddon(addon, group)}
+                            className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all ${
+                              isSelected
+                                ? "border-emerald-500 bg-emerald-50"
+                                : "border-slate-100 bg-white hover:border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                  isSelected
+                                    ? "border-emerald-500 bg-emerald-500"
+                                    : "border-slate-300"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <Check
+                                    size={12}
+                                    className="text-white"
+                                    strokeWidth={3}
+                                  />
+                                )}
+                              </div>
+                              <span className="text-sm font-medium text-slate-700">
+                                {addon.name}
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-slate-600">
+                              +₹{addon.price || 0}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
             </div>
 
             {/* ── Footer: Qty + Add ── */}

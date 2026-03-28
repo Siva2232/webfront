@@ -11,7 +11,7 @@ import {
 import API from "../api/axios";
 
 export default function AdminProducts() {
-  const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory } = useProducts();
+  const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory, subitems = [] } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("");
   const navigate = useNavigate();
@@ -43,21 +43,8 @@ export default function AdminProducts() {
   const [isCompressing, setIsCompressing] = useState(false);
 
   // ── Sub-item library (portions + addon groups from master list) ──
-  const [libraryPortions, setLibraryPortions] = useState([]);
-  const [libraryAddonGroups, setLibraryAddonGroups] = useState([]);
-
-  useEffect(() => {
-    const fetchLibrary = async () => {
-      try {
-        const { data } = await API.get("/sub-items");
-        setLibraryPortions(data.filter((s) => s.type === "portion"));
-        setLibraryAddonGroups(data.filter((s) => s.type === "addonGroup"));
-      } catch {
-        // silent
-      }
-    };
-    fetchLibrary();
-  }, []);
+  const libraryPortions = useMemo(() => subitems.filter(s => s.type === "portion"), [subitems]);
+  const libraryAddonGroups = useMemo(() => subitems.filter(s => s.type === "addonGroup"), [subitems]);
 
   // --- Portion helpers ---
   const addPortion = () => setProductForm(prev => ({ ...prev, portions: [...prev.portions, { name: "", price: "" }] }));
@@ -1106,8 +1093,20 @@ function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = []
             {product.hasPortions && product.portions?.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {product.portions.map((p, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-blue-50 text-blue-600 text-[9px] font-bold rounded-lg">
+                  <span 
+                    key={i} 
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded-lg flex items-center gap-1 ${
+                      p.isAvailable === false 
+                        ? "bg-rose-50 text-rose-500 border border-restore-100" 
+                        : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    }`}
+                  >
                     {p.name} — ₹{p.price}
+                    <span className={`text-[7px] font-black uppercase ml-1 px-1 rounded ${
+                      p.isAvailable === false ? "bg-rose-100" : "bg-emerald-100"
+                    }`}>
+                      {p.isAvailable === false ? "Stock Out" : "Stock In"}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -1115,8 +1114,20 @@ function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = []
             {product.addonGroups?.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {product.addonGroups.map((g, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-lg">
+                  <span 
+                    key={i} 
+                    className={`px-2.5 py-1 text-[9px] font-bold rounded-lg flex items-center gap-1 ${
+                      g.isAvailable === false 
+                        ? "bg-rose-50 text-rose-500 border border-rose-100" 
+                        : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                    }`}
+                  >
                     {g.name} ({g.addons?.length || 0})
+                    <span className={`text-[7px] font-black uppercase ml-1 px-1 rounded ${
+                      g.isAvailable === false ? "bg-rose-100" : "bg-emerald-100"
+                    }`}>
+                      {g.isAvailable === false ? "Stock Out" : "Stock In"}
+                    </span>
                   </span>
                 ))}
               </div>
