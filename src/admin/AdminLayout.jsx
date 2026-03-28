@@ -66,7 +66,7 @@ export default function AdminLayout() {
     { name: "Bill", icon: Receipt, path: "bill" },
     { name: "Manual Bill", icon: Scissors, path: "manual-bill" },
     {
-      name: "Manage Tables&QR",
+      name: "Tables&QR",
       icon: Table,
       path: "tables",
       children: [
