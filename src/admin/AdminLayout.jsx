@@ -58,7 +58,7 @@ export default function AdminLayout() {
   const menuItems = [
     { name: "Analytics", icon: BarChart2, path: "reports" },
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
-    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
+    { name: "KOT", icon: Ticket, path: "kitchen-bill" },
     { name: "Products", icon: Package, path: "products" },
     { name: "Sub Items", icon: Layers, path: "sub-items" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
