@@ -17,11 +17,101 @@ import {
   XCircle,
 } from "lucide-react";
 
+// ── Shared Card Component ──
+function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) {
+  return (
+    <div
+      className={`bg-white rounded-[2rem] border transition-all p-6 space-y-4 shadow-sm hover:shadow-md ${
+        item.isAvailable === false ? "opacity-75 border-rose-200 bg-rose-50/10" : "border-slate-100"
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                item.type === "portion" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+              }`}
+            >
+              {item.type === "portion" ? "Portion" : "Add-on Group"}
+            </span>
+            {item.isAvailable === false && (
+              <span className="px-2 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-lg">
+                Stock Out
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h3 className={`text-lg font-black uppercase tracking-tight ${
+              item.isAvailable === false ? "text-slate-400 line-through decoration-rose-500 decoration-2" : "text-slate-900"
+            }`}>
+              {item.name}
+            </h3>
+          </div>
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          <button
+            onClick={() => onToggleStatus(item, item.isAvailable !== false ? "out" : "in")}
+            className={`p-2.5 rounded-xl transition-all shadow-sm ${
+              item.isAvailable !== false
+                ? "bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
+                : "bg-emerald-600 text-white border border-emerald-600 shadow-lg shadow-emerald-100"
+            }`}
+          >
+            {item.isAvailable !== false ? <XCircle size={14} /> : <CheckCircle size={14} />}
+          </button>
+          <button
+            onClick={() => onEdit(item)}
+            className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100"
+          >
+            <Edit3 size={14} className="text-slate-500" />
+          </button>
+          <button
+            onClick={() => onDelete(item)}
+            className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100"
+          >
+            <Trash2 size={14} className="text-rose-500" />
+          </button>
+        </div>
+      </div>
+
+      {item.type === "portion" && (
+        <div className="flex items-center gap-1.5 text-violet-600 font-black">
+          <IndianRupee size={14} strokeWidth={3} />
+          <span className="text-xl tracking-tighter italic">{item.price}</span>
+        </div>
+      )}
+
+      {item.type === "addonGroup" && (
+        <div className="space-y-2">
+          {item.maxSelections > 0 && (
+            <p className="text-[10px] font-bold text-slate-400 uppercase">Max select: {item.maxSelections}</p>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {item.addons?.map((a, i) => (
+              <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg">
+                {a.name}{a.price > 0 ? ` +₹${a.price}` : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SubItemLibrary() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("portion"); // "portion" | "addonGroup"
   const [search, setSearch] = useState("");
+
+  // bulk portion
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    category: "",
+    items: [{ name: "", price: "" }],
+  });
 
   // modal
   const [showModal, setShowModal] = useState(false);
@@ -76,6 +166,22 @@ export default function SubItemLibrary() {
       .filter((i) => i.type === tab)
       .filter((i) => (term ? i.name.toLowerCase().includes(term) : true));
   }, [items, tab, search, outOfStockOnly]);
+
+  // ── Grouped filtered list ──
+  const groupedData = useMemo(() => {
+    if (tab !== "portion") return { ungrouped: filtered };
+    const groups = {};
+    const ungrouped = [];
+    filtered.forEach((item) => {
+      if (item.category) {
+        if (!groups[item.category]) groups[item.category] = [];
+        groups[item.category].push(item);
+      } else {
+        ungrouped.push(item);
+      }
+    });
+    return { groups, ungrouped };
+  }, [filtered, tab]);
 
   // ── Open modal ──
   const openCreate = () => {
@@ -178,6 +284,53 @@ export default function SubItemLibrary() {
   const removeAddonRow = (idx) =>
     setForm((p) => ({ ...p, addons: p.addons.filter((_, i) => i !== idx) }));
 
+  // ── Bulk Portion Helpers ──
+  const openBulkCreate = () => {
+    setBulkForm({ category: "", items: [{ name: "", price: "" }] });
+    setShowBulkModal(true);
+  };
+
+  const addBulkRow = () =>
+    setBulkForm((p) => ({ ...p, items: [...p.items, { name: "", price: "" }] }));
+
+  const updateBulkRow = (idx, field, val) =>
+    setBulkForm((p) => ({
+      ...p,
+      items: p.items.map((item, i) => (i === idx ? { ...item, [field]: val } : item)),
+    }));
+
+  const removeBulkRow = (idx) =>
+    setBulkForm((p) => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
+
+  const handleBulkSave = async () => {
+    if (!bulkForm.category.trim()) {
+      toast.error("Group name (category) is required");
+      return;
+    }
+    const validatedItems = bulkForm.items.filter((i) => i.name.trim());
+    if (validatedItems.length === 0) {
+      toast.error("At least one portion name is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        type: "portion",
+        category: bulkForm.category.trim(),
+        items: validatedItems,
+      };
+      const { data } = await API.post("/sub-items", payload);
+      setItems((prev) => [...prev, ...data]);
+      toast.success(`Created ${data.length} portion(s) under ${bulkForm.category}!`);
+      setShowBulkModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Bulk creation failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-8 lg:p-12 font-sans text-slate-950">
       <div className="max-w-[1100px] mx-auto space-y-10">
@@ -199,28 +352,40 @@ export default function SubItemLibrary() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-            <div className="relative group w-full sm:w-72">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
-                size={18}
-              />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-violet-50/50 outline-none transition-all font-medium"
-              />
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+              <div className="relative group w-full sm:w-72">
+                <Search
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-violet-50/50 outline-none transition-all font-medium"
+                />
+              </div>
+              
+              <div className="flex gap-2 w-full sm:w-auto">
+                {tab === "portion" && (
+                  <button
+                    onClick={openBulkCreate}
+                    className="flex-1 sm:flex-none border-2 border-violet-600 text-violet-600 px-6 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-violet-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Plus size={16} /> Bulk Portion
+                  </button>
+                )}
+                
+                <button
+                  onClick={openCreate}
+                  className="flex-1 sm:flex-none bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-violet-600 transition-all shadow-xl hover:shadow-violet-200 active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <Plus size={18} />
+                  New {tab === "portion" ? "Portion" : "Add-on Group"}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={openCreate}
-              className="w-full sm:w-auto bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-violet-600 transition-all shadow-xl hover:shadow-violet-200 active:scale-95 flex items-center justify-center gap-3"
-            >
-              <Plus size={18} />
-              New {tab === "portion" ? "Portion" : "Add-on Group"}
-            </button>
-          </div>
         </header>
 
         {/* ── Tab Switcher ── */}
@@ -268,104 +433,143 @@ export default function SubItemLibrary() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((item) => (
-              <div
-                key={item._id}
-                className={`bg-white rounded-[2rem] border transition-all p-6 space-y-4 shadow-sm hover:shadow-md ${
-                  item.isAvailable === false ? "opacity-75 border-rose-200 bg-rose-50/10" : "border-slate-100"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                          item.type === "portion"
-                            ? "bg-blue-50 text-blue-600"
-                            : "bg-emerald-50 text-emerald-600"
-                        }`}
-                      >
-                        {item.type === "portion" ? "Portion" : "Add-on Group"}
-                      </span>
-                      {item.isAvailable === false && (
-                        <span className="px-2 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-lg">
-                          Stock Out
-                        </span>
-                      )}
-                    </div>
-                    <h3 className={`text-lg font-black uppercase tracking-tight ${
-                      item.isAvailable === false ? "text-slate-400 line-through decoration-rose-500 decoration-2" : "text-slate-900"
-                    }`}>
-                      {item.name}
-                    </h3>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button
-                      onClick={() => setStockModal({ show: true, item, target: item.isAvailable !== false ? "out" : "in" })}
-                      title={item.isAvailable !== false ? "Mark Stock Out" : "Mark Stock In"}
-                      className={`p-2.5 rounded-xl transition-all shadow-sm ${
-                        item.isAvailable !== false 
-                          ? "bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200" 
-                          : "bg-emerald-600 text-white border border-emerald-600 shadow-lg shadow-emerald-100"
-                      }`}
-                    >
-                      {item.isAvailable !== false ? <XCircle size={14} /> : <CheckCircle size={14} />}
-                    </button>
-                    <button
-                      onClick={() => openEdit(item)}
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100"
-                    >
-                      <Edit3 size={14} className="text-slate-500" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteModal({ show: true, item })}
-                      className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100"
-                    >
-                      <Trash2 size={14} className="text-rose-500" />
-                    </button>
-                  </div>
+          <div className="space-y-12">
+            {/* 1. Grouped Portions */}
+            {tab === "portion" && Object.entries(groupedData.groups).map(([groupName, groupItems]) => (
+              <div key={groupName} className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
+                    <Layers className="text-violet-600" size={24} />
+                    {groupName} <span className="text-slate-300 font-light italic">Group</span>
+                  </h2>
+                  <div className="h-px flex-1 bg-slate-100" />
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                    {groupItems.length} Variants
+                  </span>
                 </div>
-
-                {item.type === "portion" && (
-                  <div className="flex items-center gap-1.5 text-violet-600 font-black">
-                    <IndianRupee size={14} strokeWidth={3} />
-                    <span className="text-xl tracking-tighter italic">
-                      {item.price}
-                    </span>
-                  </div>
-                )}
-
-                {item.type === "addonGroup" && (
-                  <div className="space-y-2">
-                    {item.maxSelections > 0 && (
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
-                        Max select: {item.maxSelections}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.addons?.map((a, i) => (
-                        <span
-                          key={i}
-                          className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg"
-                        >
-                          {a.name}{a.price > 0 ? ` +₹${a.price}` : ""}
-                        </span>
-                      ))}
-                      {(!item.addons || item.addons.length === 0) && (
-                        <span className="text-[10px] text-slate-300 italic">No addons</span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {groupItems.map((item) => (
+                    <SubItemCard 
+                      key={item._id} 
+                      item={item} 
+                      onEdit={openEdit} 
+                      onDelete={(it) => setDeleteModal({ show: true, item: it })}
+                      onToggleStatus={(it, target) => setStockModal({ show: true, item: it, target })}
+                    />
+                  ))}
+                </div>
               </div>
             ))}
+
+            {/* 2. Ungrouped / Addon Groups */}
+            {(groupedData.ungrouped.length > 0 || (tab === "portion" && Object.keys(groupedData.groups).length > 0)) && (
+              <div className="space-y-6">
+                {tab === "portion" && Object.keys(groupedData.groups).length > 0 && (
+                  <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
+                      <Plus className="text-slate-400" size={24} />
+                      Individual <span className="text-slate-300 font-light italic">Items</span>
+                    </h2>
+                    <div className="h-px flex-1 bg-slate-100" />
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {groupedData.ungrouped.map((item) => (
+                    <SubItemCard 
+                      key={item._id} 
+                      item={item} 
+                      onEdit={openEdit} 
+                      onDelete={(it) => setDeleteModal({ show: true, item: it })}
+                      onToggleStatus={(it, target) => setStockModal({ show: true, item: it, target })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* ══════════ Create / Edit Modal ══════════ */}
+      {/* ══════════ Bulk Portion Modal ══════════ */}
       <AnimatePresence>
+        {showBulkModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+            onClick={() => !saving && setShowBulkModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 bg-violet-600 text-white shrink-0">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black uppercase tracking-tight">Bulk Portions</h3>
+                  <button onClick={() => setShowBulkModal(false)} className="p-1 hover:bg-white/20 rounded-full"><X size={20} /></button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Group Name (e.g. "Alpahm")</label>
+                  <input
+                    value={bulkForm.category}
+                    onChange={(e) => setBulkForm(p => ({ ...p, category: e.target.value }))}
+                    placeholder="Enter Group (category)"
+                    className="w-full px-5 py-3.5 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Add Portions</label>
+                  {bulkForm.items.map((it, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        placeholder="Portion (e.g. Half)"
+                        value={it.name}
+                        onChange={(e) => updateBulkRow(idx, "name", e.target.value)}
+                        className="flex-1 px-4 py-2 bg-slate-50 rounded-xl font-bold outline-none border focus:border-violet-300"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Price"
+                        value={it.price}
+                        onChange={(e) => updateBulkRow(idx, "price", e.target.value)}
+                        className="w-24 px-4 py-2 bg-slate-50 rounded-xl font-bold outline-none border focus:border-violet-300"
+                      />
+                      {bulkForm.items.length > 1 && (
+                        <button onClick={() => removeBulkRow(idx)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16} /></button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={addBulkRow}
+                    className="flex justify-center items-center gap-2 w-full py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:border-violet-300 hover:text-violet-500 transition-all font-bold text-xs"
+                  >
+                    <Plus size={14} /> Add Row
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 flex gap-3 border-t">
+                <button onClick={() => setShowBulkModal(false)} className="flex-1 py-4 font-bold border rounded-xl">Cancel</button>
+                <button
+                  onClick={handleBulkSave}
+                  disabled={saving}
+                  className="flex-1 py-4 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? "Creating..." : "Save All"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {stockModal.show && (
           <motion.div
             initial={{ opacity: 0 }}

@@ -159,11 +159,17 @@ export default function OrderBill() {
   const [printModalOrder, setPrintModalOrder] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [dateFilter, setDateFilter] = useState(""); // "" = all
+  const [displayLimit, setDisplayLimit] = useState(20);
 
-  useEffect(() => { fetchBills(); }, []);
+  useEffect(() => {
+    fetchBills();
+    // Auto-refresh every 30s as fallback for missed socket events
+    const interval = setInterval(() => { fetchBills(); }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   /* deduplicated + date-filtered bills */
-  const uniqueBills = useMemo(() => {
+  const filteredBills = useMemo(() => {
     const seen = new Set();
     const deduped = (bills || []).filter((b) => {
       const key = b.orderRef || b._id || b.id;
@@ -180,6 +186,10 @@ export default function OrderBill() {
       return d >= start && d <= end;
     });
   }, [bills, dateFilter]);
+
+  const uniqueBills = useMemo(() => {
+    return filteredBills.slice(0, displayLimit);
+  }, [filteredBills, displayLimit]);
 
   /* refresh */
   const handleRefresh = useCallback(() => {
@@ -250,7 +260,7 @@ export default function OrderBill() {
   }, [printModalOrder, selectedCashier]);
 
   /* ─── empty state ────────────────────────────────────────── */
-  if (!uniqueBills.length && !billsReady) {
+  if (!uniqueBills.length && isLoading && !billsReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <RefreshCw size={28} className="animate-spin text-slate-300" />
@@ -332,6 +342,19 @@ export default function OrderBill() {
           />
         ))}
       </main>
+
+      {/* Load More Button */}
+      {filteredBills.length > displayLimit && (
+        <div className="flex justify-center pb-20">
+          <button
+            onClick={() => setDisplayLimit(prev => prev + 20)}
+            className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-full font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <RefreshCw size={14} className="text-indigo-500" />
+            Load More Records
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       <AnimatePresence>

@@ -46,7 +46,16 @@ export const OrderProvider = ({ children }) => {
   });
   
   const [isLoading, setIsLoading] = useState(false);
-  const [billsReady, setBillsReady] = useState(false);
+  const [billsReady, setBillsReady] = useState(() => {
+    try {
+      const cached = localStorage.getItem("cachedBills");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return Array.isArray(parsed) && parsed.length > 0;
+      }
+    } catch {}
+    return false;
+  });
   const _billsFetchInFlight = useRef(false);
   const _ordersFetchInFlight = useRef(false);
   const _kitchenBillsFetchInFlight = useRef(false);
@@ -68,7 +77,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served");
+      const { data } = await API.get("/orders?limit=40&status=Pending,New,Preparing,Ready,Served");
       setOrders(data);
       try { localStorage.setItem("cachedOrders", JSON.stringify(data)); } catch {}
     } catch (error) {
@@ -163,7 +172,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      const { data } = await API.get("/bills?limit=500");
+      const { data } = await API.get("/bills?limit=50");
       if (!Array.isArray(data)) {
         console.error("fetchBills: unexpected response", data);
         return;
@@ -529,6 +538,12 @@ export const OrderProvider = ({ children }) => {
     // reconnect socket once when provider mounts
     socket.connect();
 
+    // Re-fetch bills when socket reconnects (covers missed events during disconnect)
+    socket.on("connect", () => {
+      const t = localStorage.getItem("token");
+      if (t) fetchBills();
+    });
+
     socket.on("orderCreated", (order) => {
       setOrders((prev) => {
         // avoid duplicates if snapshot already included this order
@@ -656,6 +671,7 @@ export const OrderProvider = ({ children }) => {
       socket.off("billUpdated");
       socket.off("orderItemsAdded");
       socket.off("ordersSnapshot");
+      socket.off("connect");
       socket.off("kitchenBillCreated");
       socket.off("kitchenBillUpdated");
       socket.disconnect();
@@ -674,7 +690,10 @@ export const OrderProvider = ({ children }) => {
     // re-fetch only when the tab regains focus (user switched back)
     const onFocus = () => {
       const t = localStorage.getItem("token");
-      if (t) fetchOrders();
+      if (t) {
+        fetchOrders();
+        fetchBills();
+      }
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);

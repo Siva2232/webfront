@@ -881,16 +881,47 @@ export default function AdminProducts() {
                                   }));
                                 }
                               }}
-                              className="px-3 py-2.5 bg-violet-50 text-violet-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-200 outline-none cursor-pointer"
+                              className="px-3 py-2.5 bg-violet-50 text-violet-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-violet-200 outline-none cursor-pointer max-w-[180px] overflow-hidden truncate"
                             >
                               <option value="">Pick from Library</option>
-                              {libraryPortions
-                                .filter((lp) => lp.isAvailable !== false)
-                                .map((lp) => (
-                                  <option key={lp._id} value={lp._id}>
-                                    {lp.name} — ₹{lp.price}
-                                  </option>
-                                ))}
+                              {(() => {
+                                // Group portions by category
+                                const groups = {};
+                                const ungrouped = [];
+                                libraryPortions
+                                  .filter((lp) => lp.isAvailable !== false)
+                                  .forEach((lp) => {
+                                    if (lp.category) {
+                                      if (!groups[lp.category]) groups[lp.category] = [];
+                                      groups[lp.category].push(lp);
+                                    } else {
+                                      ungrouped.push(lp);
+                                    }
+                                  });
+
+                                return (
+                                  <>
+                                    {Object.entries(groups).map(([category, items]) => (
+                                      <optgroup key={category} label={category.toUpperCase() + " GROUP"}>
+                                        {items.map((lp) => (
+                                          <option key={lp._id} value={lp._id}>
+                                            {lp.name} (₹{lp.price})
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    ))}
+                                    {ungrouped.length > 0 && (
+                                      <optgroup label="INDIVIDUAL PORTIONS">
+                                        {ungrouped.map((lp) => (
+                                          <option key={lp._id} value={lp._id}>
+                                            {lp.name} (₹{lp.price})
+                                          </option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </select>
                           )}
                         </div>
@@ -1108,11 +1139,38 @@ function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = []
                   className="w-full appearance-none bg-blue-50/50 text-blue-700 font-bold text-[9px] uppercase tracking-wider py-2.5 pl-3 pr-6 rounded-xl border border-blue-100 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
                 >
                   <option value="" disabled>+ Portion</option>
-                  {libraryPortions
-                    .filter(lp => lp.isAvailable !== false)
-                    .map(lp => (
-                      <option key={lp._id} value={lp._id}>{lp.name}</option>
-                    ))}
+                  {(() => {
+                    const groups = {};
+                    const ungrouped = [];
+                    libraryPortions
+                      .filter(lp => lp.isAvailable !== false)
+                      .forEach(lp => {
+                        if (lp.category) {
+                          if (!groups[lp.category]) groups[lp.category] = [];
+                          groups[lp.category].push(lp);
+                        } else {
+                          ungrouped.push(lp);
+                        }
+                      });
+                    return (
+                      <>
+                        {Object.entries(groups).map(([category, items]) => (
+                          <optgroup key={category} label={category.toUpperCase()}>
+                            {items.map(lp => (
+                              <option key={lp._id} value={lp._id}>{lp.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        {ungrouped.length > 0 && (
+                          <optgroup label="INDIVIDUAL">
+                            {ungrouped.map(lp => (
+                              <option key={lp._id} value={lp._id}>{lp.name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
                 <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
               </div>
