@@ -32,6 +32,7 @@ import {
   QrCode,
   Ticket,
   Layers,
+  Scissors 
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import toast from "react-hot-toast";
@@ -63,6 +64,7 @@ export default function AdminLayout() {
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
     { name: "Bill", icon: Receipt, path: "bill" },
+    { name: "Manual Bill", icon: Scissors, path: "manual-bill" },
     {
       name: "Manage Tables&QR",
       icon: Table,

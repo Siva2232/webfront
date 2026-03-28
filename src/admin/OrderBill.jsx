@@ -158,19 +158,28 @@ export default function OrderBill() {
   const [markPaidModal, setMarkPaidModal] = useState(null);
   const [printModalOrder, setPrintModalOrder] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
+  const [dateFilter, setDateFilter] = useState(""); // "" = all
 
   useEffect(() => { fetchBills(); }, []);
 
-  /* deduplicated bills */
+  /* deduplicated + date-filtered bills */
   const uniqueBills = useMemo(() => {
     const seen = new Set();
-    return (bills || []).filter((b) => {
+    const deduped = (bills || []).filter((b) => {
       const key = b.orderRef || b._id || b.id;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [bills]);
+    if (!dateFilter) return deduped;
+    const pick = new Date(dateFilter);
+    const start = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 0, 0, 0, 0);
+    const end   = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 23, 59, 59, 999);
+    return deduped.filter((b) => {
+      const d = new Date(b.billedAt || b.createdAt);
+      return d >= start && d <= end;
+    });
+  }, [bills, dateFilter]);
 
   /* refresh */
   const handleRefresh = useCallback(() => {
@@ -178,6 +187,14 @@ export default function OrderBill() {
     fetchBills();
     toast.success("Refreshing invoices...");
   }, [fetchBills]);
+
+  const handleGoBack = useCallback(() => {
+    if (dateFilter) {
+      setDateFilter("");
+      return;
+    }
+    navigate("/admin/dashboard");
+  }, [dateFilter, navigate]);
 
   /* mark paid — close modal & toast instantly, sync to server in background */
   const handleConfirmMarkPaid = useCallback(async () => {
@@ -253,8 +270,8 @@ export default function OrderBill() {
           <button onClick={handleRefresh} className="text-[10px] font-black text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-full uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95">
             <RefreshCw size={14} /> Refresh Bills
           </button>
-          <button onClick={() => navigate(-1)} className="text-[10px] font-black text-indigo-600 border-b-2 border-indigo-600 pb-1 uppercase tracking-widest">
-            Go Back
+          <button onClick={handleGoBack} className="text-[10px] font-black text-indigo-600 border-b-2 border-indigo-600 pb-1 uppercase tracking-widest">
+            {dateFilter ? "Clear Filter" : "Go Back"}
           </button>
         </div>
       </div>
@@ -277,6 +294,27 @@ export default function OrderBill() {
           <button onClick={handleRefresh} className="p-2 hover:bg-slate-100 rounded-full transition-colors" title="Refresh Bills">
             <RefreshCw size={18} className={isLoading ? "animate-spin text-indigo-500" : "text-slate-400"} />
           </button>
+        </div>
+        {/* Date filter row */}
+        <div className="max-w-2xl mx-auto mt-3 flex items-center gap-3">
+          <Calendar size={14} className="text-slate-400 shrink-0" />
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 text-xs font-bold bg-slate-100 border-none rounded-lg px-3 py-2 text-slate-700 focus:ring-2 focus:ring-indigo-300"
+          />
+          {dateFilter && (
+            <button
+              onClick={() => setDateFilter("")}
+              className="text-[9px] font-black uppercase tracking-widest text-indigo-600 border-b border-indigo-400 pb-0.5 shrink-0"
+            >
+              Show All
+            </button>
+          )}
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest shrink-0">
+            {uniqueBills.length} record{uniqueBills.length !== 1 ? "s" : ""}
+          </span>
         </div>
       </header>
 

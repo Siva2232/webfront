@@ -44,13 +44,13 @@ export default function OrderSummary() {
     }
   };
 
-  // fetch orders on mount
+  // fetch orders on mount only — optimistic updates + sockets handle the rest
   useEffect(() => {
     fetchCurrentOrders();
   }, [currentTable, mode]);
 
-  // Use a longer interval for background refresh (30s instead of 10s)
-  // real-time updates are already handled by sockets in OrderContext.
+  // Background refresh as a safety net (30s interval)
+  // real-time updates are handled by sockets + optimistic state in OrderContext
   useEffect(() => {
     const interval = setInterval(fetchCurrentOrders, 30000);
     return () => clearInterval(interval);
@@ -280,7 +280,11 @@ export default function OrderSummary() {
                 >
                   <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 shadow-sm">
                     <img 
-                      src={item.image} 
+                      src={item.image || "https://via.placeholder.com/140?text=No+Image"} 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://via.placeholder.com/140?text=No+Image";
+                      }}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                       alt={item.name}
                     />
@@ -380,7 +384,7 @@ export default function OrderSummary() {
             whileTap={{ scale: 0.98 }}
             className="relative group"
           >
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 mt-25"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
             <Link 
               to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
               className="relative flex items-center justify-center gap-3 w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all"

@@ -82,15 +82,60 @@ export const OrderProvider = ({ children }) => {
   const fetchTableOrders = async (tableNum) => {
     try {
       const { data } = await API.get(`/orders/table/${tableNum}`);
-      // merge instead of replacing so we don't clobber orders for other tables
+
+      // if we have a persisted optimistic patch from before refresh, reapply it
+      let optimisticPatch;
+      try {
+        optimisticPatch = JSON.parse(localStorage.getItem("optimisticOrderPatch"));
+      } catch (e) {
+        optimisticPatch = null;
+      }
+
+      const patchedData = data.map((order) => {
+        if (optimisticPatch && order._id === optimisticPatch.orderId) {
+          const mergedItems = [...order.items, ...optimisticPatch.mergedItems.map(item => ({
+            ...item,
+            addedAt: new Date().toISOString(),
+            isNewItem: true,
+          }))];
+          return {
+            ...order,
+            items: mergedItems,
+            totalAmount: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0),
+            billDetails: {
+              subtotal: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0),
+              cgst: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 0.025,
+              sgst: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 0.025,
+              grandTotal: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.05,
+            },
+            _optimisticAt: Date.now(),
+          };
+        }
+        return order;
+      });
+
       setOrders((prev) => {
-        const incoming = new Map(data.map((o) => [o._id, o]));
-        const merged = prev.map((o) => incoming.get(o._id) || o);
-        // add any new orders that weren't in prev
-        data.forEach((o) => { if (!prev.find((p) => p._id === o._id)) merged.push(o); });
+        const now = Date.now();
+        const incoming = new Map(patchedData.map((o) => [o._id, o]));
+        const merged = prev.map((o) => {
+          const server = incoming.get(o._id);
+          if (!server) return o;
+          if (o._optimisticAt && (now - o._optimisticAt) < 15000) {
+            if (server.items && o.items && server.items.length < o.items.length) {
+              return o;
+            }
+          }
+          return { ...server, _optimisticAt: undefined };
+        });
+        patchedData.forEach((o) => { if (!prev.find((p) => p._id === o._id)) merged.push(o); });
         try { localStorage.setItem("cachedOrders", JSON.stringify(merged)); } catch {}
         return merged;
       });
+
+      // if we successfully re-applied the patch, clear it once we have a packet
+      if (optimisticPatch) {
+        localStorage.removeItem("optimisticOrderPatch");
+      }
     } catch (error) {
       console.error("Error fetching table orders:", error);
     }
@@ -118,7 +163,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      const { data } = await API.get("/bills?today=true&limit=200");
+      const { data } = await API.get("/bills?limit=500");
       if (!Array.isArray(data)) {
         console.error("fetchBills: unexpected response", data);
         return;
@@ -272,7 +317,6 @@ export const OrderProvider = ({ children }) => {
   };
 
   const addOrder = async (orderData) => {
-    // when we create an order locally we can optimistically append it
     try {
       // calculate total if not provided (fallback to billDetails or manual sum)
       let total = orderData.totalPrice;
@@ -284,19 +328,77 @@ export const OrderProvider = ({ children }) => {
         }
       }
 
+      const effectiveTable = orderData.table || TAKEAWAY_TABLE;
+      const orderItems = orderData.orderItems || orderData.items;
+
+      // OPTIMISTIC UPDATE — immediately update local state so OrderSummary
+      // sees the data without waiting for the server round-trip
+      if (orderData.existingOrderId) {
+        // Merge items into existing order optimistically
+        setOrders((prev) => {
+          const updated = prev.map((o) => {
+            if (o._id !== orderData.existingOrderId) return o;
+            const mergedItems = [...(o.items || []), ...orderItems.map(item => ({
+              ...item,
+              addedAt: new Date().toISOString(),
+              isNewItem: true,
+            }))];
+            const newSubtotal = mergedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            const newCgst = newSubtotal * 0.025;
+            const newSgst = newSubtotal * 0.025;
+            const newGrandTotal = newSubtotal + newCgst + newSgst;
+            return {
+              ...o,
+              items: mergedItems,
+              totalAmount: newGrandTotal,
+              billDetails: { subtotal: newSubtotal, cgst: newCgst, sgst: newSgst, grandTotal: newGrandTotal },
+              _optimisticAt: Date.now(), // protect from stale fetches
+            };
+          });
+
+          // Persist optimistic patch in case of hard refresh
+          try {
+            const patch = {
+              orderId: orderData.existingOrderId,
+              mergedItems: orderItems,
+              updatedAt: Date.now(),
+            };
+            localStorage.setItem("optimisticOrderPatch", JSON.stringify(patch));
+          } catch (e) {
+            console.warn("Could not persist optimistic patch", e);
+          }
+
+          return updated;
+        });
+      } else {
+        // New order — append optimistic entry
+        const optimisticOrder = {
+          _id: orderData.id || 'optimistic-' + Date.now(),
+          table: effectiveTable,
+          items: orderItems,
+          totalAmount: orderData.totalAmount || total,
+          status: orderData.status || 'Pending',
+          billDetails: orderData.billDetails,
+          notes: orderData.notes,
+          customerName: orderData.customerName,
+          paymentMethod: orderData.paymentMethod,
+          paymentStatus: orderData.paymentStatus,
+          createdAt: orderData.createdAt || new Date().toISOString(),
+          _optimistic: true,
+        };
+        setOrders((prev) => [optimisticOrder, ...prev]);
+      }
+
       const payload = {
-        orderItems: orderData.orderItems || orderData.items,
-        // if table is empty / falsy treat as a takeaway to match
-        // frontend semantics and avoid disappearing orders.
-        table: orderData.table || TAKEAWAY_TABLE,
+        orderItems: orderItems,
+        table: effectiveTable,
         totalAmount: orderData.totalAmount || total,
-        // forward optional metadata if provided
         notes: orderData.notes,
         billDetails: orderData.billDetails,
         paymentMethod: orderData.paymentMethod,
-        paymentStatus: orderData.paymentStatus, // IMPORTANT: forward payment status
-        paymentId: orderData.paymentId, // IMPORTANT: forward Stripe payment ID
-        status: orderData.status, // e.g. "Preparing" from cart
+        paymentStatus: orderData.paymentStatus,
+        paymentId: orderData.paymentId,
+        status: orderData.status,
         customerName: orderData.customerName,
         customerAddress: orderData.customerAddress,
         deliveryTime: orderData.deliveryTime,
@@ -313,18 +415,16 @@ export const OrderProvider = ({ children }) => {
 
       const { data } = await API.post("/orders", payload);
 
-      // If the backend merged the order, it returns 200 and the updated object.
-      // We should update the existing order in state instead of appending.
+      // Replace optimistic data with real server data
       setOrders((prev) => {
-        const exists = prev.find((o) => o._id === data._id);
+        const exists = prev.find((o) => o._id === data._id || o._id === orderData.existingOrderId || o._optimistic);
         if (exists) {
-          return prev.map((o) => (o._id === data._id ? data : o));
+          return prev
+            .filter((o) => !o._optimistic || o._id === data._id)
+            .map((o) => (o._id === data._id || o._id === orderData.existingOrderId ? data : o));
         }
         return [...prev, data];
       });
-
-      // NOTE: Backend already creates/updates bills automatically.
-      // No need to create bills here - this would cause duplicates.
 
       return data;
     } catch (error) {
@@ -442,9 +542,19 @@ export const OrderProvider = ({ children }) => {
     });
     socket.on("orderUpdated", (order) => {
       setOrders((prev) => {
+        const now = Date.now();
         const exists = prev.find((o) => o._id === order._id);
         const next = exists
-          ? prev.map((o) => (o._id === order._id ? order : o))
+          ? prev.map((o) => {
+              if (o._id !== order._id) return o;
+              // If optimistic merge is recent and server data has fewer items, skip
+              if (o._optimisticAt && (now - o._optimisticAt) < 15000 &&
+                  order.items && o.items && order.items.length < o.items.length) {
+                return o;
+              }
+              // Server caught up or has equal/more items — accept and clear flag
+              return { ...order, _optimisticAt: undefined };
+            })
           : [order, ...prev];
         try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
         return next;

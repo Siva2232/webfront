@@ -254,35 +254,42 @@ export default function Cart({ hideTable = false }) {
       colors: ['#10b981', '#fb923c', '#ffffff']
     });
 
+    // Capture cart items before React state updates clear them
+    const cartSnapshot = [...cart];
+
     const details = { 
       id: orderId, 
       existingOrderId: mergeId, 
       table: effectiveTable,
-      orderItems: [...cart], 
+      orderItems: cartSnapshot, 
       status: "Pending", 
       customerName: customerName.trim() || undefined,
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
       totalAmount: grandTotal,
-      hasTakeaway: !isTakeaway && cart.some(item => item.isTakeaway),
+      hasTakeaway: !isTakeaway && cartSnapshot.some(item => item.isTakeaway),
       paymentMethod: paymentDetails ? 'online' : 'cod',
       paymentStatus: paymentDetails ? 'paid' : 'pending',
       paymentId: paymentDetails?.id || null,
     };
 
+    // Fire API in background — don't block the UI
     addOrder(details).then(created => {
       const effectiveId = created?._id || orderId;
       localStorage.setItem("lastOrderId", effectiveId);
+    }).catch(err => {
+      console.error("Order placement error:", err);
     });
 
+    // Navigate after a brief delay for the success animation
     setTimeout(() => {
       if (effectiveTable === TAKEAWAY_TABLE) {
         navigate(`/order-summary?mode=takeaway`);
       } else {
         navigate(`/order-summary?table=${effectiveTable}`);
       }
-    }, 1000); 
+    }, 1200);
   };
 
   const handleSwipeComplete = () => {
