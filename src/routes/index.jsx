@@ -24,6 +24,7 @@ import Analytics from "../admin/Analytics";
 import OrderBill from "../admin/OrderBill";
 import KitchenBill from "../admin/KitchenBill";
 import ManualOrder from "../admin/ManualOrder";
+import ManualBill from "../admin/ManualBill";
 import AddStaff from "../admin/AddStaff";
 import ExpenseTracker from "../admin/ExpenseTracker"; // temporary redirect component (can be removed later)
 import PurchaseExpense from "../admin/expenses/PurchaseExpense";
@@ -90,6 +91,7 @@ export default function AppRoutes() {
           <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
+          <Route path="manual-bill" element={<ManualBill />} />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditForm />} />
@@ -108,7 +110,7 @@ export default function AppRoutes() {
           <Route path="expense/direct" element={<DirectExpense />} />
           <Route path="expense/indirect" element={<IndirectExpense />} />
           <Route path="reports" element={<Analytics />} />
-          <Route path="*" element={<Navigate to="dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Route>
 
