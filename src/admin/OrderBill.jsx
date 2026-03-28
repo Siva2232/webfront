@@ -187,8 +187,8 @@ export default function OrderBill() {
   }, [bills, dateFilter]);
 
   const uniqueBills = useMemo(() => {
-    return filteredBills.slice(0, displayLimit);
-  }, [filteredBills, displayLimit]);
+    return filteredBills;
+  }, [filteredBills]);
 
   /* refresh */
   const handleRefresh = useCallback(() => {
@@ -328,7 +328,7 @@ export default function OrderBill() {
       </header>
 
       {/* Bills Grid */}
-      <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {uniqueBills.map((order, index) => (
           <BillCard
             key={order._id || order.id || index}

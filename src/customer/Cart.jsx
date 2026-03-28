@@ -397,6 +397,21 @@ export default function Cart({ hideTable = false }) {
                       )}
                     </div>
                   </div>
+
+                  {/* Add Takeaway Items button - navigates to menu to select takeaway items */}
+                  {table?.trim() && (
+                    <button 
+                      onClick={() => navigate(`/menu?table=${table}&addTakeaway=true&from=chooser`)}
+                      className={`w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs uppercase transition-all ${
+                        cart.some(item => item.isTakeaway) 
+                          ? 'bg-orange-500 text-white' 
+                          : 'bg-white/10 text-white/60 hover:bg-white/20'
+                      }`}
+                    >
+                      <Package size={16} /> 
+                      {cart.some(item => item.isTakeaway) ? '✓ Takeaway Items Added' : 'Also Want Takeaway? Tap to Add'}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">

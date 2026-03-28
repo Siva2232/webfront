@@ -66,20 +66,42 @@ export const OrderProvider = ({ children }) => {
     if (_ordersFetchInFlight.current) return;
     _ordersFetchInFlight.current = true;
 
-    // hydrate from cache immediately for instant UI
-    try {
-      const cached = localStorage.getItem("cachedOrders");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) setOrders(parsed);
-      }
-    } catch {}
+    // The state is already hydrated from localStorage in the useState initializer.
+    // We only need to check if we should trigger the loader.
+    if (orders.length === 0) {
+      setIsLoading(true);
+    }
 
     try {
-      setIsLoading(true);
       const { data } = await API.get("/orders?limit=40&status=Pending,New,Preparing,Ready,Served");
-      setOrders(data);
-      try { localStorage.setItem("cachedOrders", JSON.stringify(data)); } catch {}
+      setOrders((prev) => {
+        // Merge strategy: incoming data from server is the "source of truth",
+        // but we preserve any very recent optimistic updates that haven't hit the DB yet.
+        const now = Date.now();
+        const serverMap = new Map(data.map(o => [o._id, o]));
+        
+        // Items in prev that are NOT in server data (might be new/local only)
+        const localOnly = prev.filter(o => !serverMap.has(o._id) && o._optimistic);
+        
+        const merged = data.map(serverOrder => {
+          const localOrder = prev.find(o => o._id === serverOrder._id);
+          // If we have a local version with a recent optimistic flag, 
+          // and the server version has fewer items, stick with local for a few seconds.
+          if (localOrder?._optimisticAt && (now - localOrder._optimisticAt < 15000)) {
+             if ((localOrder.items?.length || 0) > (serverOrder.items?.length || 0)) {
+               return localOrder;
+             }
+          }
+          return serverOrder;
+        });
+
+        const final = [...localOnly, ...merged].sort((a, b) => 
+          new Date(b.createdAt || b._optimisticAt || 0) - new Date(a.createdAt || a._optimisticAt || 0)
+        );
+
+        try { localStorage.setItem("cachedOrders", JSON.stringify(final)); } catch {}
+        return final;
+      });
     } catch (error) {
       console.error("Error fetching orders:", error);
     } finally {
@@ -433,13 +455,17 @@ export const OrderProvider = ({ children }) => {
 
       // Replace optimistic data with real server data
       setOrders((prev) => {
-        const exists = prev.find((o) => o._id === data._id || o._id === orderData.existingOrderId || o._optimistic);
-        if (exists) {
-          return prev
-            .filter((o) => !o._optimistic || o._id === data._id)
-            .map((o) => (o._id === data._id || o._id === orderData.existingOrderId ? data : o));
+        // Step 1: strip out ALL optimistic entries for this table
+        const withoutOptimistic = prev.filter((o) => !o._optimistic);
+        // Step 2: if the real server order already present (via socket), just update it
+        const alreadyExists = withoutOptimistic.find((o) => o._id === data._id);
+        if (alreadyExists) {
+          return withoutOptimistic.map((o) => (o._id === data._id ? data : o));
         }
-        return [...prev, data];
+        // Step 3: otherwise prepend the confirmed server order
+        const updated = [data, ...withoutOptimistic];
+        try { localStorage.setItem("cachedOrders", JSON.stringify(updated)); } catch {}
+        return updated;
       });
 
       return data;
@@ -585,10 +611,12 @@ export const OrderProvider = ({ children }) => {
 
     // listen for bills added so billing page updates automatically
     socket.on("billCreated", (bill) => {
+      console.log("Socket: billCreated", bill);
       setBills((prev) => {
-        const exists = prev.find((b) => (b._id || b.id) === (bill._id || bill.id) || b.orderRef === bill.orderRef);
+        const key = bill.orderRef || bill._id || bill.id;
+        const exists = prev.find((b) => (b._id || b.id) === key || b.orderRef === key);
         const next = exists
-          ? prev.map((b) => ((b._id || b.id) === (bill._id || bill.id) || b.orderRef === bill.orderRef) ? bill : b)
+          ? prev.map((b) => ((b._id || b.id) === key || b.orderRef === key) ? bill : b)
           : [bill, ...prev];
         try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
         return next;

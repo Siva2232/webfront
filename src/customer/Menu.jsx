@@ -174,6 +174,52 @@ export default function Menu() {
     </div>
   </div>
 )}
+                
+                {/* Takeaway/Dine-in Toggle Button in Menu.jsx */}
+                {table && table !== TAKEAWAY_TABLE && !addTakeawayMode && (
+                  <button 
+                    onClick={() => {
+                      // Navigate to takeaway mode while preserving table context in URL if needed
+                      navigate(`/menu?mode=takeaway&from=chooser`);
+                    }}
+                    className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-orange-50 transition-colors group"
+                  >
+                    <div className="w-9 h-9 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-center shadow-inner group-hover:bg-orange-100">
+                      <Package size={16} className="text-orange-600" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-tight">
+                        Switch To
+                      </span>
+                      <span className="text-sm font-black text-orange-600 uppercase tracking-tighter">
+                        Takeaway
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {isTakeaway && !addTakeawayMode && (
+                  <button 
+                    onClick={() => {
+                      // If we have a stored table or just go back to chooser/last table
+                      const storedTable = localStorage.getItem("lastTable") || "1";
+                      navigate(`/menu?table=${storedTable}&from=chooser`);
+                    }}
+                    className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors group"
+                  >
+                    <div className="w-9 h-9 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center shadow-inner group-hover:bg-emerald-100">
+                      <TableIcon size={16} className="text-emerald-600" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-tight">
+                        Switch To
+                      </span>
+                      <span className="text-sm font-black text-emerald-600 uppercase tracking-tighter">
+                        Dine-In
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {/* Search Bar */}

@@ -47,9 +47,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   // Orders are already hydrated by OrderProvider (which caches + fetches),
   // and socket events keep the list fresh. No periodic polling needed here.
   useEffect(() => {
-    if (orders.length === 0) {
-      fetchOrders();
-    }
+    fetchOrders();
   }, []);
 
   // DASHBOARD CALCULATIONS

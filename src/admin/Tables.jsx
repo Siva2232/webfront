@@ -12,7 +12,6 @@ import {
   ChevronRight,
   Trash2,
   UtensilsCrossed,
-  QrCode,
   Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -61,10 +60,6 @@ export default function Tables() {
     setActiveOrders(liveMap);
   }, [orders]);
 
-  const goToMenu = (tableId) => {
-    navigate(`/choose-mode?table=${tableId}`);
-  };
-
   const releaseTable = (e, tableId) => {
     e.stopPropagation();
     const updated = { ...activeOrders };
@@ -112,7 +107,6 @@ export default function Tables() {
     }
   };
 
-
   const removeTable = (e, tableId) => {
     e.stopPropagation();
     setDeleteModal({ show: true, tableId });
@@ -121,7 +115,6 @@ export default function Tables() {
   const confirmRemoveTable = async () => {
     const tableId = deleteModal.tableId;
 
-    // Optimistic update to keep UI responsive
     const prevTables = [...tables];
     setTables((prev) => prev.filter((t) => t.id !== tableId));
     setDeleteModal({ show: false, tableId: null });
@@ -129,8 +122,6 @@ export default function Tables() {
     try {
       await API.delete(`/tables/${tableId}`);
       toast.success(`Table ${tableId} removed permanently`);
-
-      // Refetch to keep local state in sync with backend
       const { data } = await API.get('/tables');
       setTables(data);
     } catch (err) {
@@ -146,6 +137,18 @@ export default function Tables() {
 
   const isOccupied = (tableId) => !!activeOrders[`table-${tableId}`];
 
+  const isAdmin = localStorage.getItem("isAdminLoggedIn") === "true";
+  const isWaiter = localStorage.getItem("isWaiterLoggedIn") === "true";
+  const canManageTables = isAdmin || isWaiter;
+
+  const goToMenu = (tableId) => {
+    if (isWaiter) {
+      navigate(`/waiter/products?table=${tableId}`);
+    } else {
+      navigate(`/choose-mode?table=${tableId}`);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -158,10 +161,10 @@ export default function Tables() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-4 md:p-8 font-sans">
       
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="max-w-7xl mx-auto mb-8 md:mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="relative flex h-3 w-3">
@@ -170,25 +173,27 @@ export default function Tables() {
             </div>
             <span className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Live Floor Management</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-slate-900 tracking-tighter">
             Floor <span className="text-slate-300">Plan</span>
           </h1>
         </div>
 
-        <button
-          onClick={addNewTable}
-          className="group flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all active:scale-95 shadow-xl hover:shadow-orange-200/40"
-        >
-          <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-          Add Table
-        </button>
+        {canManageTables && (
+          <button
+            onClick={addNewTable}
+            className="group flex items-center gap-2 bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all active:scale-95 shadow-xl hover:shadow-orange-200/40"
+          >
+            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            Add Table
+          </button>
+        )}
       </div>
 
-      {/* Grid: 2 on Mobile, 3 on Small Tablets, 6 on Desktops (md and up) */}
+      {/* Grid: 2 on Mobile, 3 on Small Tablets, 6 on Desktops */}
       <div className="max-w-7xl mx-auto">
         <motion.div 
           layout 
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4"
+          className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4"
         >
           <AnimatePresence mode="popLayout">
             {tables.map((table) => {
@@ -203,41 +208,42 @@ export default function Tables() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
                   onClick={() => goToMenu(table.id)}
-                  className={`group relative flex flex-col rounded-2xl p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
+                  className={`group relative flex flex-col rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
                     ${occupied 
                       ? "bg-gradient-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
                       : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
                 >
                   {/* Status Badge */}
-                  <div className="flex justify-between items-center mb-4">
-                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
+                  <div className="flex justify-between items-center mb-3 sm:mb-4">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
                       ${occupied ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
                       <Circle size={6} fill="currentColor" className={occupied ? "text-rose-500" : "text-emerald-500"} />
                       {occupied ? "BUSY" : "FREE"}
                     </div>
 
-                    {/* Delete Button (visible on hover) */}
-                    <button
-                      onClick={(e) => removeTable(e, table.id)}
-                      className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      title="Delete Table"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => removeTable(e, table.id)}
+                        className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete Table"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Icon Area */}
-                  <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-4 transition-all duration-300
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300
                     ${occupied 
                       ? "bg-rose-500 text-white scale-105" 
                       : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
-                    <LayoutGrid size={22} strokeWidth={1.8} />
+                    <LayoutGrid size={20} strokeWidth={1.8} className="sm:block" />
                   </div>
 
                   {/* Table Number */}
-                  <div className="text-center mb-6">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">TABLE</p>
-                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter">
+                  <div className="text-center mb-4 sm:mb-6">
+                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">TABLE</p>
+                    <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">
                       {table.id < 10 ? `0${table.id}` : table.id}
                     </h3>
                   </div>
@@ -250,8 +256,6 @@ export default function Tables() {
                     </div>
 
                     <div className="flex gap-1.5">
-                     
-
                       {occupied ? (
                         <button
                           onClick={(e) => releaseTable(e, table.id)}
@@ -278,22 +282,25 @@ export default function Tables() {
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-28 border-4 border-dashed border-slate-200 rounded-[3rem] bg-white/40"
+            className="flex flex-col items-center justify-center py-20 md:py-28 border-4 border-dashed border-slate-200 rounded-[3rem] bg-white/40"
           >
             <UtensilsCrossed size={50} className="text-slate-200 mb-6" />
             <h2 className="text-xl font-black text-slate-700 mb-2">No Tables Configured Yet</h2>
             <p className="text-slate-500 mb-6 max-w-sm text-center text-sm">
               Start building your floor plan by adding your first dining station.
             </p>
-            <button 
-              onClick={addNewTable}
-              className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all shadow-xl"
-            >
-              <Plus size={18} /> Add First Table
-            </button>
+            {canManageTables && (
+              <button 
+                onClick={addNewTable}
+                className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all shadow-xl"
+              >
+                <Plus size={18} /> Add First Table
+              </button>
+            )}
           </motion.div>
         )}
 
+        {/* Add Table Modal */}
         {showAddModal && (
           <motion.div
             initial={{ opacity: 0 }}
