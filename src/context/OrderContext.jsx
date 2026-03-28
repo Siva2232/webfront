@@ -155,9 +155,6 @@ export const OrderProvider = ({ children }) => {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setBills(parsed);
-          // Mark ready immediately so OrderBill renders from cache
-          // instead of spinning until the slow network call completes
-          setBillsReady(true);
         }
       }
     } catch (e) {

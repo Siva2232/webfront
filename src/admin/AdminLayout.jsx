@@ -32,7 +32,6 @@ import {
   QrCode,
   Ticket,
   Layers,
-  Scissors 
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import toast from "react-hot-toast";
@@ -58,15 +57,14 @@ export default function AdminLayout() {
   const menuItems = [
     { name: "Analytics", icon: BarChart2, path: "reports" },
     { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
-    { name: "KOT", icon: Ticket, path: "kitchen-bill" },
+    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Products", icon: Package, path: "products" },
     { name: "Sub Items", icon: Layers, path: "sub-items" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Manual Order", icon: UtensilsCrossed, path: "manual-order" },
     { name: "Bill", icon: Receipt, path: "bill" },
-    { name: "Manual Bill", icon: Scissors, path: "manual-bill" },
     {
-      name: "Tables&QR",
+      name: "Manage Tables&QR",
       icon: Table,
       path: "tables",
       children: [

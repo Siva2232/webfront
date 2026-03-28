@@ -154,25 +154,13 @@ export default function OrderBill() {
   const navigate = useNavigate();
 
   const [closedBillIds, setClosedBillIds] = useState(new Set());
-  const [closeBillModal, setCloseBillModal] = useState(null);
+  const [closeBillModal, setCloseBillModal] = useState(null); // { order }
   const [markPaidModal, setMarkPaidModal] = useState(null);
   const [printModalOrder, setPrintModalOrder] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
-  const [dateFilter, setDateFilter] = useState("");
-  const [fetchError, setFetchError] = useState(false);
+  const [dateFilter, setDateFilter] = useState(""); // "" = all
 
-  useEffect(() => {
-    setFetchError(false);
-    fetchBills().catch(() => setFetchError(true));
-  }, []);
-  // fetchBills doesn't return a promise rejection to the caller — track via isLoading+billsReady
-  // Use a separate effect to detect when billsReady=true but bills still empty after load
-  useEffect(() => {
-    if (billsReady && !isLoading && (bills || []).length === 0) {
-      // Could be genuine empty or a failed fetch with no cache
-      // We leave fetchError as-is; it was set if the API threw
-    }
-  }, [billsReady, isLoading, bills]);
+  useEffect(() => { fetchBills(); }, []);
 
   /* deduplicated + date-filtered bills */
   const uniqueBills = useMemo(() => {
@@ -274,27 +262,13 @@ export default function OrderBill() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center bg-[#F4F4F5]">
         <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
-          <Receipt size={32} className={fetchError ? "text-rose-300" : "text-slate-300"} />
+          <Receipt size={32} className="text-slate-300" />
         </div>
-        {fetchError ? (
-          <>
-            <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tighter uppercase">Connection Error</h2>
-            <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">
-              Could not reach the server. Check your connection and retry.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tighter uppercase">No Records</h2>
-            <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Clear of active invoices</p>
-          </>
-        )}
+        <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tighter uppercase">No Records</h2>
+        <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Clear of active invoices</p>
         <div className="flex gap-4">
-          <button
-            onClick={() => { setFetchError(false); handleRefresh(); }}
-            className="text-[10px] font-black text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-full uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95"
-          >
-            <RefreshCw size={14} /> {fetchError ? "Retry" : "Refresh Bills"}
+          <button onClick={handleRefresh} className="text-[10px] font-black text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-full uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95">
+            <RefreshCw size={14} /> Refresh Bills
           </button>
           <button onClick={handleGoBack} className="text-[10px] font-black text-indigo-600 border-b-2 border-indigo-600 pb-1 uppercase tracking-widest">
             {dateFilter ? "Clear Filter" : "Go Back"}
