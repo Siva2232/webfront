@@ -161,21 +161,28 @@ export default function OrderBill() {
   const [dateFilter, setDateFilter] = useState(""); // "" = all
   const [displayLimit, setDisplayLimit] = useState(20);
 
+  // Background sync timer to keep data fresh without blocking UI
   useEffect(() => {
     fetchBills();
-    // Socket events (billCreated / billUpdated) keep bills in sync in real-time.
-    // No polling needed — the OrderContext handles all socket listeners.
+    
+    // Low-frequency polling (every 60s) as a safety net for sockets
+    const interval = setInterval(() => {
+      fetchBills();
+    }, 60000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   /* deduplicated + date-filtered bills */
   const filteredBills = useMemo(() => {
-    const seen = new Set();
-    const deduped = (bills || []).filter((b) => {
-      const key = b.orderRef || b._id || b.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const deduped = (bills || []).reduce((acc, current) => {
+      const key = current.orderRef || current._id || current.id;
+      if (!acc.find(item => (item.orderRef || item._id || item.id) === key)) {
+        acc.push(current);
+      }
+      return acc;
+    }, []);
+
     if (!dateFilter) return deduped;
     const pick = new Date(dateFilter);
     const start = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 0, 0, 0, 0);
@@ -187,7 +194,9 @@ export default function OrderBill() {
   }, [bills, dateFilter]);
 
   const uniqueBills = useMemo(() => {
-    return filteredBills;
+    // Return only active/recent bills for performance, sorted by most recent first
+    return [...filteredBills]
+      .sort((a, b) => new Date(b.billedAt || b.createdAt) - new Date(a.billedAt || a.createdAt));
   }, [filteredBills]);
 
   /* refresh */

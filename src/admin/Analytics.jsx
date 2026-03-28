@@ -185,7 +185,7 @@ export default function Analytics() {
               <h1 className="text-xl font-black uppercase tracking-tighter">
                 Finance<span className="text-indigo-600">Core</span>
               </h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">v2.4 • Neural Audit</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">v2.4 • Neural Audit</p>
             </div>
           </div>
 
@@ -193,7 +193,7 @@ export default function Analytics() {
             <div className="relative group w-full sm:w-auto">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input 
-                className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-[11px] font-bold w-full sm:w-48 focus:ring-4 ring-indigo-500/10 outline-none" 
+                className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-[11px]  w-full sm:w-48 focus:ring-4 ring-indigo-500/10 outline-none" 
                 placeholder="Search SKU..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)}
@@ -259,7 +259,7 @@ export default function Analytics() {
                     <k.icon size={24} />
                   </div>
                   <p className="text-xs md:text-sm font-black uppercase text-slate-500 tracking-wider mb-1">{k.label}</p>
-                  <p className="text-2xl md:text-3xl font-black text-slate-900">
+                  <p className="text-2xl md:text-3xl font-semibold text-slate-900">
                     {k.suffix === "%" ? k.val.toFixed(1) : `₹${Math.floor(k.val).toLocaleString()}`}
                     {k.suffix || ""}
                   </p>
@@ -281,7 +281,7 @@ export default function Analytics() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Main Chart */}
             <div className="bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
-              <h3 className="text-base md:text-lg font-black mb-6 md:mb-8 flex items-center gap-3">
+              <h3 className="text-base md:text-lg font-semibold mb-6 md:mb-8 flex items-center gap-3">
                 <Activity className="text-indigo-600" size={20} />
                 Revenue Projections • {timeframe}
               </h3>
@@ -289,8 +289,8 @@ export default function Analytics() {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={engine.salesProjectionData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 'bold'}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 'bold'}} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: ''}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: ''}} />
                     <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)'}} />
                     <Bar dataKey="totalSales" fill="#0f172a" radius={[10, 10, 0, 0]} barSize={32} />
                     <Line type="monotone" dataKey="futureSales" stroke="#6366f1" strokeWidth={4} dot={{ r: 5, fill: '#6366f1', strokeWidth: 2 }} />
@@ -313,7 +313,7 @@ export default function Analytics() {
                   ].map((item, i) => (
                     <div key={i} className="text-center p-4 bg-white rounded-2xl shadow-sm">
                       <p className="text-xs text-slate-500 mb-1">{item.title}</p>
-                      <p className="text-xl font-black">
+                      <p className="text-[16px] font-semibold">
                         {item.unit}{Math.round(item.current).toLocaleString()}
                       </p>
                       <p className={`text-xs mt-1 font-medium ${
@@ -330,7 +330,7 @@ export default function Analytics() {
               {/* NEW FEATURE 3: Category Revenue Breakdown */}
               {categoryRevenue.length > 0 && (
                 <div className="mt-10">
-                  <h4 className="text-base font-black mb-5 flex items-center gap-3">
+                  <h4 className="text-base font-semibold mb-5 flex items-center gap-3">
                     <Layers className="text-purple-600" size={18} />
                     Revenue by Category
                   </h4>
@@ -356,7 +356,7 @@ export default function Analytics() {
 
             {/* Top Products by Revenue */}
             <div className="bg-white p-6 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
-              <h3 className="text-base md:text-lg font-black mb-6 md:mb-8 flex items-center gap-3">
+              <h3 className="text-base md:text-lg font-semibold mb-6 md:mb-8 flex items-center gap-3">
                 <Crown className="text-amber-500" size={20} />
                 Top Performers by Revenue
               </h3>
@@ -372,14 +372,14 @@ export default function Analytics() {
                         {i+1}
                       </div>
                       <div>
-                        <p className="font-bold text-base">{item.name}</p>
+                        <p className=" text-base">{item.name}</p>
                         <p className="text-xs text-slate-500">
                           {item.count} × ₹{item.price.toLocaleString()}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-xl">₹{item.revenue.toLocaleString()}</p>
+                      <p className="font-semibold text-xl">₹{item.revenue.toLocaleString()}</p>
                       <p className="text-xs text-emerald-600">
                         {(item.revenue / engine.estRevenue * 100).toFixed(1)}% share
                       </p>
@@ -429,7 +429,7 @@ export default function Analytics() {
                       }`}>{idx + 1}</div>
                       <div className="flex-1">
                         <div className="flex justify-between mb-2 items-center">
-                          <span className="font-bold text-slate-800">{item.name}</span>
+                          <span className=" text-slate-800">{item.name}</span>
                           <span className={`text-[11px] font-black px-3 py-1 rounded-full ${
                             idx === 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-50 text-slate-500'
                           }`}>{item.qty} units</span>
@@ -446,7 +446,7 @@ export default function Analytics() {
                     </div>
                   ))
                 ) : (
-                  <div className="py-10 text-center text-slate-300 font-bold uppercase text-[10px] tracking-widest">
+                  <div className="py-10 text-center text-slate-300  uppercase text-[10px] tracking-widest">
                     Waiting for sales data...
                   </div>
                 )}
@@ -473,11 +473,11 @@ export default function Analytics() {
                      <p className="text-4xl font-black tracking-tighter leading-none mb-4">{bestSellersByVolume[0].name}</p>
                      <div className="flex items-center gap-2 text-indigo-100 bg-white/10 w-fit px-4 py-2 rounded-full border border-white/10">
                        <TrendingUp size={14} />
-                       <span className="text-xs font-bold uppercase tracking-widest">{bestSellersByVolume[0].qty} units sold</span>
+                       <span className="text-xs  uppercase tracking-widest">{bestSellersByVolume[0].qty} units sold</span>
                      </div>
                    </>
                  ) : (
-                   <p className="text-xl font-bold">Collecting Data...</p>
+                   <p className="text-xl">Collecting Data...</p>
                  )}
               </div>
 

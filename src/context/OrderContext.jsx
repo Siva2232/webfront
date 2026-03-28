@@ -209,14 +209,32 @@ export const OrderProvider = ({ children }) => {
       });
       // Merge: keep any socket-injected bills not yet returned by API
       setBills((prev) => {
+        const now = Date.now();
         const apiKeys = new Set(unique.map(b => b.orderRef || b._id || b.id));
-        const socketOnly = prev.filter(b => {
-          const key = b.orderRef || b._id || b.id;
-          return !apiKeys.has(key);
+        
+        const merged = prev.map(p => {
+          const key = p.orderRef || p._id || p.id;
+          const server = unique.find(b => (b.orderRef || b._id || b.id) === key);
+          
+          // Protect pending updates from being overwritten by stale API responses
+          if (p._pendingUpdate && (now - p._pendingUpdate < 5000)) {
+            return p;
+          }
+          
+          return server ? { ...server, _pendingUpdate: undefined } : p;
         });
-        const merged = [...socketOnly, ...unique];
-        try { localStorage.setItem("cachedBills", JSON.stringify(merged)); } catch (_) {}
-        return merged;
+
+        // Add any NEW bills from server not in local state
+        unique.forEach(b => {
+          const key = b.orderRef || b._id || b.id;
+          if (!merged.find(m => (m.orderRef || m._id || m.id) === key)) {
+            merged.push(b);
+          }
+        });
+
+        const final = merged.sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0));
+        try { localStorage.setItem("cachedBills", JSON.stringify(final)); } catch (_) {}
+        return final;
       });
     } catch (error) {
       console.error("Error fetching bills:", error);
@@ -237,11 +255,16 @@ export const OrderProvider = ({ children }) => {
     setBills((prev) => {
       prevBills = prev;
       const next = prev.map((b) => {
-        if (b._id !== id) return b;
+        if (b._id !== id && b.id !== id) return b;
         const updatedSessions = (b.paymentSessions || []).map((s) =>
           s.method === "cod" ? { ...s, status: "paid" } : s
         );
-        return { ...b, paymentStatus: "paid", paymentSessions: updatedSessions };
+        return { 
+          ...b, 
+          paymentStatus: "paid", 
+          paymentSessions: updatedSessions,
+          _pendingUpdate: Date.now() // Flag prevents socket/poll from reverting
+        };
       });
       // persist optimistic state to localStorage so a refresh keeps it
       try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
@@ -251,7 +274,7 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.put(`/bills/${id}/pay`);
       // Reconcile with actual server data
       setBills((prev) => {
-        const next = prev.map((b) => (b._id === id ? data : b));
+        const next = prev.map((b) => ((b._id || b.id) === (data._id || data.id)) ? { ...data, _pendingUpdate: undefined } : b);
         try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
         return next;
       });
@@ -273,7 +296,11 @@ export const OrderProvider = ({ children }) => {
     let prevBills;
     setBills((prev) => {
       prevBills = prev;
-      const next = prev.map((b) => (b._id === id ? { ...b, status: "Closed" } : b));
+      const next = prev.map((b) => 
+        (b._id === id || b.id === id) 
+          ? { ...b, status: "Closed", _pendingUpdate: Date.now() } 
+          : b
+      );
       try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
       return next;
     });
@@ -282,7 +309,11 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.put(`/bills/${id}/close`);
       // Reconcile with actual server data
       setBills((prev) => {
-        const next = prev.map((b) => (b._id === id ? data : b));
+        const next = prev.map((b) => 
+          ((b._id || b.id) === (data._id || data.id)) 
+            ? { ...data, _pendingUpdate: undefined } 
+            : b
+        );
         try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
         return next;
       });
@@ -632,26 +663,38 @@ export const OrderProvider = ({ children }) => {
     // listen for bill updates (e.g., when Add More Items merges into existing bill)
     socket.on("billUpdated", (updatedBill) => {
       setBills((prev) => {
-        const exists = prev.find((b) => (b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef);
+        const id = updatedBill._id || updatedBill.id;
+        const exists = prev.find((b) => (b._id === id || b.id === id) || b.orderRef === updatedBill.orderRef);
+        
+        // Merge logic: protect local pending updates from being overwritten by 
+        // stale socket messages for 5 seconds
+        if (exists?._pendingUpdate && (Date.now() - exists._pendingUpdate < 5000)) {
+           return prev;
+        }
+
+        let next;
         if (exists) {
-          return prev.map((b) => 
-            ((b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
+          next = prev.map((b) => 
+            ((b._id === id || b.id === id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
           );
+        } else {
+          // If a new bill arrives via socket (e.g. from manual ordering or first addition),
+          // ensure we don't duplicate it.
+          next = [updatedBill, ...prev];
         }
-        // If not found, add it (edge case)
-        return [updatedBill, ...prev];
+
+        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        return next;
       });
-      // Also update localStorage cache immediately
-      try {
-        const cached = localStorage.getItem("cachedBills");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          const updated = parsed.map((b) => 
-            ((b._id || b.id) === (updatedBill._id || updatedBill.id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
-          );
-          localStorage.setItem("cachedBills", JSON.stringify(updated));
-        }
-      } catch (e) {}
+    });
+
+    // Handle bill deletions
+    socket.on("billDeleted", (billId) => {
+      setBills((prev) => {
+        const next = prev.filter(b => b._id !== billId && b.id !== billId);
+        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        return next;
+      });
     });
 
     // Kitchen bill socket events
