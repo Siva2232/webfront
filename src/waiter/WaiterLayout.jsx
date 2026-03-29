@@ -257,13 +257,13 @@ export default function WaiterLayout() {
           </div>
 
           <div className="flex items-center gap-6">
-            {/* <button 
+            <button 
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={`p-2 rounded-full transition-colors ${soundEnabled ? "text-indigo-600 bg-indigo-50" : "text-slate-300 bg-slate-50"}`}
               title={soundEnabled ? "Mute Caller Sound" : "Enable Caller Sound"}
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button> */}
+            </button>
 
             {/* Waiter Call Notifications */}
             <div className="relative" ref={notifRef}>

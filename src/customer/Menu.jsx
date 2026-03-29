@@ -278,7 +278,7 @@ export default function Menu() {
                               <div className="text-left min-w-0">
                                 <p className="text-sm font-bold text-slate-900 truncate">{p.name}</p>
                                 <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wide">
-                                  {p.category}
+                                  {p.category?.name || p.category}
                                 </p>
                               </div>
                             </div>

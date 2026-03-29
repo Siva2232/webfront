@@ -28,7 +28,7 @@ export default function CartItem({ item, onUpdateQty, onRemove }) {
             <div className={`w-1.5 h-1.5 rounded-full ${isVeg ? 'bg-emerald-500' : 'bg-red-500'}`} />
           </div>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {item.category}
+            {item.category?.name || item.category}
           </span>
         </div>
 

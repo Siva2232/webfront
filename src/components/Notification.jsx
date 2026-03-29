@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChefHat,
   PlusCircle,
+  Receipt,
   X
 } from "lucide-react";
 
@@ -85,30 +86,49 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const socketRef = useRef(null);
   
   /* 🔊 SOUND LOGIC */
-  const audioRef = useRef(null);
+  const waiterAudioRef = useRef(null);
+  const billAudioRef = useRef(null);
+  const orderAudioRef = useRef(null);
   const audioUnlocked = useRef(false);
 
   // Create and preload audio
   useEffect(() => {
-    const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3");
-    audio.preload = "auto";
-    audio.load();
-    audioRef.current = audio;
+    // Happy Bells for Waiter Calls
+    const waiterAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/937/937-preview.mp3");
+    waiterAudio.preload = "auto";
+    waiterAudio.load();
+    waiterAudioRef.current = waiterAudio;
+
+    // Software Interface sound for Bills
+    const billAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2575/2575-preview.mp3");
+    billAudio.preload = "auto";
+    billAudio.load();
+    billAudioRef.current = billAudio;
+
+    // Standard Ding for Orders
+    const orderAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3");
+    orderAudio.preload = "auto";
+    orderAudio.load();
+    orderAudioRef.current = orderAudio;
   }, []);
 
   // Unlock audio on first user interaction (required by browser autoplay policy)
   useEffect(() => {
     const unlock = () => {
-      if (audioUnlocked.current || !audioRef.current) return;
-      // Play and immediately pause to unlock the audio context
-      const p = audioRef.current.play();
-      if (p && p.then) {
-        p.then(() => {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          audioUnlocked.current = true;
-        }).catch(() => {});
-      }
+      if (audioUnlocked.current) return;
+      
+      [waiterAudioRef, billAudioRef, orderAudioRef].forEach(ref => {
+        if (ref.current) {
+          const p = ref.current.play();
+          if (p && p.then) {
+            p.then(() => {
+              ref.current.pause();
+              ref.current.currentTime = 0;
+            }).catch(() => {});
+          }
+        }
+      });
+      audioUnlocked.current = true;
     };
     const events = ["click", "touchstart", "keydown"];
     events.forEach(e => document.addEventListener(e, unlock, { once: false, capture: true }));
@@ -116,15 +136,23 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   }, []);
 
   // Reliable play helper
-  const playSound = () => {
-    if (!audioRef.current) return;
+  const playSound = (type = 'order') => {
+    let audio;
+    if (type === 'bill') {
+      audio = billAudioRef.current;
+    } else if (type === 'waiter') {
+      audio = waiterAudioRef.current;
+    } else {
+      audio = orderAudioRef.current;
+    }
+    
+    if (!audio) return;
     try {
-      audioRef.current.currentTime = 0;
-      const p = audioRef.current.play();
+      audio.currentTime = 0;
+      const p = audio.play();
       if (p && p.then) {
         p.catch(() => {
-          // If play fails, clone the audio node and try again (handles edge cases)
-          const clone = audioRef.current.cloneNode();
+          const clone = audio.cloneNode();
           clone.play().catch(() => {});
         });
       }
@@ -132,15 +160,15 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   };
 
   // Helper to trigger notification alert
-  const triggerAlert = () => {
+  const triggerAlert = (type = 'order') => {
     setIsNewOrder(true);
     clearTimeout(pulseTimeout.current);
     pulseTimeout.current = setTimeout(() => {
       setIsNewOrder(false);
     }, 10000);
     
-    // Play sound
-    playSound();
+    // Play sound based on type
+    playSound(type);
   };
 
   // Helper to handle Add More Items notification
@@ -153,7 +181,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
       ...prev.slice(0, 9), // Keep max 10
     ]);
     
-    triggerAlert();
+    triggerAlert('order');
     console.log("[Notification] Add More Items received:", data);
   };
 
@@ -225,14 +253,23 @@ export default function Notification({ targetPath = "/admin/orders" }) {
           </div>
         </motion.div>
       ), { duration: 8000, position: 'top-right' });
-      triggerAlert(); // Plays sound
+      triggerAlert('bill'); // Plays "bill" (cash register) sound
     };
 
     window.addEventListener("billRequested", handleBillRequest);
     
+    // Listen for Waiter Calls specifically for sound
+    const handleWaiterCall = (e) => {
+      console.log("[Notification] Waiter Call sound trigger:", e.detail);
+      triggerAlert('waiter'); // Plays standard ding
+    };
+
+    window.addEventListener("waiterCall", handleWaiterCall);
+    
     return () => {
       window.removeEventListener("orderItemsAdded", handleWindowEvent);
       window.removeEventListener("billRequested", handleBillRequest);
+      window.removeEventListener("waiterCall", handleWaiterCall);
       notifSocket.off("orderItemsAdded");
       notifSocket.disconnect();
     };
@@ -273,7 +310,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
     if (hasNew) {
       // play sound & shake bell
-      playSound();
+      playSound('order');
 
       setIsNewOrder(true);
 

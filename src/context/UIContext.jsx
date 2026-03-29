@@ -158,9 +158,13 @@ export const UIProvider = ({ children }) => {
 
     socket.on("newNotification", (notif) => {
       fetchNotifications();
-      // Handle the BillRequested specifically for high-priority UI sound
+      // Handle different types for specific UI sounds/events
       if (notif && notif.type === "BillRequested") {
         const event = new CustomEvent("billRequested", { detail: notif });
+        window.dispatchEvent(event);
+      } else if (notif && notif.type === "WaiterCall") {
+        // Dispatch specific event for waiter calls to play the standard ding
+        const event = new CustomEvent("waiterCall", { detail: notif });
         window.dispatchEvent(event);
       }
     });

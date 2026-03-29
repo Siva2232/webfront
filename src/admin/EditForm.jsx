@@ -49,6 +49,7 @@ export default function EditForm() {
         setFormData({
           ...existingProduct,
           price: existingProduct.price.toString(),
+          category: existingProduct.category?.name || existingProduct.category || "Main Courses",
           hasPortions: existingProduct.hasPortions || false,
           portions: existingProduct.portions || [],
           addonGroups: existingProduct.addonGroups || [],
@@ -245,11 +246,14 @@ export default function EditForm() {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Category</label>
                 <select 
-                  value={formData.category}
+                  value={formData.category?.name || formData.category}
                   onChange={(e) => setFormData({...formData, category: e.target.value})}
                   className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                 >
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categories.map(c => {
+                    const catName = c?.name || c;
+                    return <option key={catName} value={catName}>{catName}</option>;
+                  })}
                 </select>
               </div>
             </div>
