@@ -193,46 +193,41 @@ export const OrderProvider = ({ children }) => {
     }
 
     try {
-      setIsLoading(true);
-      const { data } = await API.get("/bills?limit=50");
+      // Fetch fewer items by default
+      const { data } = await API.get("/bills?limit=25");
       if (!Array.isArray(data)) {
         console.error("fetchBills: unexpected response", data);
         return;
       }
-      // remove duplicates by orderRef or _id
-      const seen = new Set();
-      const unique = data.filter(b => {
+      // remove duplicates by orderRef or _id using a Map for O(1) lookups
+      const uniqueMap = new Map();
+      data.forEach(b => {
         const key = b.orderRef || b._id || b.id;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
+        if (!uniqueMap.has(key)) uniqueMap.set(key, b);
       });
+
       // Merge: keep any socket-injected bills not yet returned by API
       setBills((prev) => {
         const now = Date.now();
-        const apiKeys = new Set(unique.map(b => b.orderRef || b._id || b.id));
+        const prevMap = new Map();
+        prev.forEach(p => {
+           const key = p.orderRef || p._id || p.id;
+           prevMap.set(key, p);
+        });
         
-        const merged = prev.map(p => {
-          const key = p.orderRef || p._id || p.id;
-          const server = unique.find(b => (b.orderRef || b._id || b.id) === key);
-          
-          // Protect pending updates from being overwritten by stale API responses
-          if (p._pendingUpdate && (now - p._pendingUpdate < 5000)) {
-            return p;
+        // Update existing from API data
+        uniqueMap.forEach((serverBill, key) => {
+          const localBill = prevMap.get(key);
+          if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 5000)) {
+            return; // skip if pending
           }
-          
-          return server ? { ...server, _pendingUpdate: undefined } : p;
+          prevMap.set(key, serverBill);
         });
 
-        // Add any NEW bills from server not in local state
-        unique.forEach(b => {
-          const key = b.orderRef || b._id || b.id;
-          if (!merged.find(m => (m.orderRef || m._id || m.id) === key)) {
-            merged.push(b);
-          }
-        });
-
-        const final = merged.sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0));
+        const final = Array.from(prevMap.values())
+          .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
+          .slice(0, 100); // hard cap on memory to keep things fast
+          
         try { localStorage.setItem("cachedBills", JSON.stringify(final)); } catch (_) {}
         return final;
       });

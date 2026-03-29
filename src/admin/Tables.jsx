@@ -144,6 +144,8 @@ export default function Tables() {
   const goToMenu = (tableId) => {
     if (isWaiter) {
       navigate(`/waiter/products?table=${tableId}`);
+    } else if (isAdmin) {
+      navigate(`/admin/order-summary?table=${tableId}`);
     } else {
       navigate(`/choose-mode?table=${tableId}`);
     }
@@ -210,7 +212,7 @@ export default function Tables() {
                   onClick={() => goToMenu(table.id)}
                   className={`group relative flex flex-col rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
                     ${occupied 
-                      ? "bg-gradient-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
+                      ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
                       : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
                 >
                   {/* Status Badge */}

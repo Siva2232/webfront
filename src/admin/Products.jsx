@@ -395,10 +395,11 @@ export default function AdminProducts() {
                       const exists = prod.portions?.some(po => po.name.toLowerCase() === lib.name.toLowerCase());
                       if (exists) { toast.error(`"${lib.name}" is already on this product`); return; }
                       
-                      const newPortions = [...(prod.portions || []), { name: lib.name, price: lib.price || 0 }];
+                      const newPortions = [...(prod.portions || []), { name: lib.name, price: lib.price || 0, isAvailable: true }];
                       const id = toast.loading("Adding portion...");
                       try {
-                        await updateProduct(productId, { ...prod, hasPortions: true, portions: newPortions });
+                        const updatedProduct = { ...prod, hasPortions: true, portions: newPortions };
+                        await updateProduct(productId, updatedProduct);
                         toast.success("Portion added!", { id });
                       } catch(e) { toast.error("Failed to add portion", { id }); }
                     } else {
@@ -410,12 +411,14 @@ export default function AdminProducts() {
                       const newGroup = {
                         name: lib.name,
                         maxSelections: lib.maxSelections || 0,
+                        isAvailable: true,
                         addons: (lib.addons || []).map(a => ({ name: a.name, price: a.price || 0 }))
                       };
                       const newGroups = [...(prod.addonGroups || []), newGroup];
                       const id = toast.loading("Adding group...");
                       try {
-                        await updateProduct(productId, { ...prod, addonGroups: newGroups });
+                        const updatedProduct = { ...prod, addonGroups: newGroups };
+                        await updateProduct(productId, updatedProduct);
                         toast.success("Add-on Group added!", { id });
                       } catch(e) { toast.error("Failed to add group", { id }); }
                     }
@@ -864,7 +867,7 @@ export default function AdminProducts() {
                                   }
                                   setProductForm((prev) => ({
                                     ...prev,
-                                    portions: [...prev.portions, { name: lib.name, price: lib.price || "" }],
+                                    portions: [...prev.portions, { name: lib.name, price: lib.price || "", isAvailable: true }],
                                   }));
                                 }
                               }}
@@ -948,6 +951,7 @@ export default function AdminProducts() {
                                     {
                                       name: lib.name,
                                       maxSelections: lib.maxSelections || 0,
+                                      isAvailable: true,
                                       addons: (lib.addons || []).map((a) => ({ name: a.name, price: a.price || 0 })),
                                     },
                                   ],
@@ -1097,13 +1101,13 @@ function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = []
                     key={i} 
                     className={`px-2.5 py-1 text-[9px] font-bold rounded-lg flex items-center gap-1 ${
                       p.isAvailable === false 
-                        ? "bg-rose-50 text-rose-500 border border-restore-100" 
+                        ? "bg-rose-50 text-rose-500 border border-rose-100" 
                         : "bg-emerald-50 text-emerald-600 border border-emerald-100"
                     }`}
                   >
                     {p.name} — ₹{p.price}
                     <span className={`text-[7px] font-black uppercase ml-1 px-1 rounded ${
-                      p.isAvailable === false ? "bg-rose-100" : "bg-emerald-100"
+                      p.isAvailable === false ? "bg-rose-100 text-rose-500" : "bg-emerald-100 text-emerald-600"
                     }`}>
                       {p.isAvailable === false ? "Stock Out" : "Stock In"}
                     </span>
@@ -1124,7 +1128,7 @@ function ProductCard({ product, onToggle, onDelete, onEdit, libraryPortions = []
                   >
                     {g.name} ({g.addons?.length || 0})
                     <span className={`text-[7px] font-black uppercase ml-1 px-1 rounded ${
-                      g.isAvailable === false ? "bg-rose-100" : "bg-emerald-100"
+                      g.isAvailable === false ? "bg-rose-100 text-rose-500" : "bg-emerald-100 text-emerald-600"
                     }`}>
                       {g.isAvailable === false ? "Stock Out" : "Stock In"}
                     </span>

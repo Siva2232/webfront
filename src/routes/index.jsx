@@ -31,6 +31,9 @@ import PurchaseExpense from "../admin/expenses/PurchaseExpense";
 import UtilityExpense from "../admin/expenses/UtilityExpense";
 import DirectExpense from "../admin/expenses/DirectExpense";
 import IndirectExpense from "../admin/expenses/IndirectExpense";
+import AdminProductsOrdering from "../admin/AdminProducts";
+import AdminCart from "../admin/AdminCart";
+import AdminOrderSummary from "../admin/AdminOrderSummary";
 import KitchenRoutes from "./KitchenRoutes";
 import WaiterRoutes from "./WaiterRoutes"; // added for waiter panel
 
@@ -98,6 +101,9 @@ export default function AppRoutes() {
           <Route path="sub-items" element={<SubItemLibrary />} />
           <Route path="orders" element={<Orders />} />
           <Route path="manual-order" element={<ManualOrder />} />
+          <Route path="products-ordering" element={<AdminProductsOrdering />} />
+          <Route path="cart" element={<AdminCart />} />
+          <Route path="order-summary" element={<AdminOrderSummary />} />
           <Route path="tables" element={<Tables />} />
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />

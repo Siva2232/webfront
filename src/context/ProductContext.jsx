@@ -134,9 +134,59 @@ export const ProductProvider = ({ children }) => {
 
     socket.connect();
 
+    socket.on("subItemsUpdated", () => {
+      console.log("Real-time sync: Sub-items changed, re-fetching...");
+      fetchSubitems();
+      fetchProducts();
+    });
+
     socket.on("productsUpdated", () => {
       console.log("Real-time sync: Library changed, re-fetching products...");
       fetchProducts();
+    });
+
+    socket.on("productUpdated", (updatedProduct) => {
+      if (!updatedProduct || !updatedProduct._id) return;
+      console.log("Real-time sync: Single product updated:", updatedProduct.name);
+      
+      setProducts(prev => {
+        const index = prev.findIndex(p => p._id === updatedProduct._id);
+        if (index === -1) return [...prev, updatedProduct];
+        const newList = [...prev];
+        newList[index] = updatedProduct;
+        return newList;
+      });
+
+      // Also update localStorage to keep it fresh
+      try {
+        const stored = localStorage.getItem("products");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const index = parsed.findIndex(p => p._id === updatedProduct._id);
+          if (index !== -1) {
+            parsed[index] = updatedProduct;
+            localStorage.setItem("products", JSON.stringify(parsed));
+          }
+        }
+      } catch (err) {
+        console.error("Local sync error:", err);
+      }
+    });
+
+    socket.on("productDeleted", (productId) => {
+      console.log("Real-time sync: Product deleted:", productId);
+      setProducts(prev => prev.filter(p => p._id !== productId));
+      
+      try {
+        const stored = localStorage.getItem("products");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const filtered = parsed.filter(p => p._id !== productId);
+          localStorage.setItem("products", JSON.stringify(filtered));
+        }
+      } catch (err) {
+        console.error("Local sync error (delete):", err);
+      }
     });
 
     socket.on("subItemsUpdated", () => {
