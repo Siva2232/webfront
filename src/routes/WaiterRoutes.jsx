@@ -13,6 +13,7 @@ import Tables from "../admin/Tables";
 import QrGenerator from "../admin/QrGenerator";
 import WaiterOrders from "../waiter/WaiterOrders";
 import KitchenBill from "../admin/KitchenBill";
+import Reservations from "../admin/Reservations";
 import WaiterProducts from "../waiter/WaiterProducts";
 import WaiterCart from "../waiter/WaiterCart";
 import WaiterOrderSummary from "../waiter/WaiterOrderSummary";
@@ -42,6 +43,7 @@ export default function WaiterRoutes() {
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="orders" element={<WaiterOrders />} />
           <Route path="kitchen-bill" element={<KitchenBill />} />
+          <Route path="reservations" element={<Reservations />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

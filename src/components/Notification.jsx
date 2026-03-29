@@ -199,8 +199,40 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     
     window.addEventListener("orderItemsAdded", handleWindowEvent);
     
+    // Listen for Bill Requests
+    const handleBillRequest = (e) => {
+      console.log("[Notification] Bill Request event:", e.detail);
+      toast.custom((t) => (
+        <motion.div
+           initial={{ opacity: 0, x: 50 }}
+           animate={{ opacity: 1, x: 0 }}
+           exit={{ opacity: 0, x: 50 }}
+           className="bg-indigo-600 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-4 cursor-pointer min-w-[300px] border border-indigo-400"
+           onClick={() => {
+             navigate(targetPath === "/admin/orders" ? "/admin/bill" : targetPath);
+             toast.dismiss(t.id);
+           }}
+        >
+          <div className="bg-white/20 p-2 rounded-xl">
+            <Receipt size={24} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Bill Requested</p>
+            <p className="font-bold text-lg">Table {e.detail.table}</p>
+          </div>
+          <div className="bg-white/10 px-2 py-1 rounded text-[10px] font-bold">
+            NEW
+          </div>
+        </motion.div>
+      ), { duration: 8000, position: 'top-right' });
+      triggerAlert(); // Plays sound
+    };
+
+    window.addEventListener("billRequested", handleBillRequest);
+    
     return () => {
       window.removeEventListener("orderItemsAdded", handleWindowEvent);
+      window.removeEventListener("billRequested", handleBillRequest);
       notifSocket.off("orderItemsAdded");
       notifSocket.disconnect();
     };

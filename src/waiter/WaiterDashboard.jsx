@@ -48,12 +48,12 @@ export default function WaiterDashboard() {
             <p className="text-2xl font-black text-slate-900 uppercase leading-none">Waiter Dashboard</p>
           </div>
           <div className="flex items-center gap-3">
-             <button 
+             {/* <button 
               onClick={handleLogout}
               className="p-3 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all border border-slate-100"
             >
               <LogOut size={20} />
-            </button>
+            </button> */}
             <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
               <User size={24} />
             </div>

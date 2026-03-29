@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import API from "../api/axios";
+import { io as socketIOClient } from "socket.io-client";
 
 const UIContext = createContext();
 
@@ -61,14 +62,29 @@ export const UIProvider = ({ children }) => {
     return defaultOffers;
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [reservations, setReservations] = useState([]);
 
   const fetchNotifications = useCallback(async () => {
+    setNotificationsLoading(true);
     try {
       const { data } = await API.get("/notifications");
       setNotifications(data);
     } catch (error) {
       console.error("Error fetching notifications:", error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, []);
+
+  const fetchReservations = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await API.get(`/reservations?date=${today}`);
+      setReservations(data || []);
+    } catch (error) {
+      console.error("Error fetching reservations in UI context:", error);
     }
   }, []);
 
@@ -116,9 +132,9 @@ export const UIProvider = ({ children }) => {
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchBanners(), fetchOffers(), fetchNotifications()]);
+    await Promise.all([fetchBanners(), fetchOffers(), fetchNotifications(), fetchReservations()]);
     setIsLoading(false);
-  }, [fetchBanners, fetchOffers, fetchNotifications]);
+  }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations]);
 
   useEffect(() => {
     fetchData();
@@ -127,8 +143,49 @@ export const UIProvider = ({ children }) => {
     window.addEventListener("storage", fetchData);
     window.addEventListener("notificationsUpdated", fetchNotifications);
 
-    // Add polling for notifications as a fallback if socket is not globally managed here
-    const pollInterval = setInterval(fetchNotifications, 10000); // Poll every 10 seconds
+    // Add server socket for immediate notification updates
+    const backendURL = import.meta.env.PROD
+      ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com"
+      : import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5000";
+
+    const socket = socketIOClient(backendURL, {
+      transports: ["websocket"],
+    });
+
+    socket.on("connect", () => {
+      // optional: console.debug("Socket connected", socket.id);
+    });
+
+    socket.on("newNotification", (notif) => {
+      fetchNotifications();
+      // Handle the BillRequested specifically for high-priority UI sound
+      if (notif && notif.type === "BillRequested") {
+        const event = new CustomEvent("billRequested", { detail: notif });
+        window.dispatchEvent(event);
+      }
+    });
+
+    socket.on("notificationUpdated", () => {
+      fetchNotifications();
+    });
+
+    socket.on("newReservation", () => {
+      fetchReservations();
+    });
+
+    socket.on("reservationUpdated", () => {
+      fetchReservations();
+    });
+
+    socket.on("disconnect", () => {
+      // optional: console.debug("Socket disconnected");
+    });
+
+    // Polling fallback
+    const pollInterval = setInterval(() => {
+      fetchNotifications();
+      fetchReservations();
+    }, 15000); // Poll every 15 seconds
 
     return () => {
       window.removeEventListener("bannersUpdated", fetchBanners);
@@ -136,6 +193,7 @@ export const UIProvider = ({ children }) => {
       window.removeEventListener("storage", fetchData);
       window.removeEventListener("notificationsUpdated", fetchNotifications);
       clearInterval(pollInterval);
+      socket.disconnect();
     };
   }, [fetchData, fetchBanners, fetchOffers, fetchNotifications]);
 
@@ -143,11 +201,14 @@ export const UIProvider = ({ children }) => {
     banners,
     offers,
     notifications,
+    reservations,
     isLoading,
+    notificationsLoading,
     refreshUI: fetchData,
     setBanners,
     setOffers,
     fetchNotifications,
+    fetchReservations,
     markNotificationAsRead
   };
 

@@ -33,7 +33,7 @@ export default function ChooseMode() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 py-8 md:py-12 font-sans antialiased text-black mt-[-104px]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 py-8 md:py-12 font-sans antialiased text-black md:mt-[10px] mt-[0px]">
       <div className="w-full max-w-md space-y-10 sm:space-y-12">
         {/* Header */}
         <div className="text-center space-y-3">

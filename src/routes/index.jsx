@@ -23,6 +23,7 @@ import CustomerSupport from "../admin/CustomerSupport";
 import Analytics from "../admin/Analytics";
 import OrderBill from "../admin/OrderBill";
 import KitchenBill from "../admin/KitchenBill";
+import Reservations from "../admin/Reservations";
 import ManualOrder from "../admin/ManualOrder";
 import ManualBill from "../admin/ManualBill";
 import AddStaff from "../admin/AddStaff";
@@ -95,6 +96,7 @@ export default function AppRoutes() {
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="manual-bill" element={<ManualBill />} />
+          <Route path="reservations" element={<Reservations />} />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditForm />} />

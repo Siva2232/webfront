@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   BellRing,
   Volume2,
-  VolumeX
+  VolumeX,
+  CalendarDays
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUI } from "../context/UIContext";
@@ -79,6 +80,7 @@ export default function WaiterLayout() {
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "dashboard" },
     { name: "Tables", icon: ShoppingCart, path: "tables" },
+    { name: "Reservations", icon: CalendarDays, path: "reservations" },
     { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
     { name: "Orders", icon: ShoppingCart, path: "orders" },
     { name: "Bill", icon: Receipt, path: "bill" },
@@ -255,13 +257,13 @@ export default function WaiterLayout() {
           </div>
 
           <div className="flex items-center gap-6">
-            <button 
+            {/* <button 
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={`p-2 rounded-full transition-colors ${soundEnabled ? "text-indigo-600 bg-indigo-50" : "text-slate-300 bg-slate-50"}`}
               title={soundEnabled ? "Mute Caller Sound" : "Enable Caller Sound"}
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
+            </button> */}
 
             {/* Waiter Call Notifications */}
             <div className="relative" ref={notifRef}>
@@ -309,22 +311,46 @@ export default function WaiterLayout() {
                         </div>
                       ) : (
                         notifications.map((notif) => (
-                          <div key={notif._id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-all group">
+                          <div 
+                            key={notif._id} 
+                            className={`p-4 border-b border-slate-100 transition-all group ${
+                              notif.type === 'BillRequested' ? 'bg-indigo-50 hover:bg-indigo-100/50' : 'hover:bg-slate-50'
+                            }`}
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-black rounded uppercase">Table {notif.table}</span>
-                                  <span className="text-[10px] font-bold text-slate-400">{new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span className={`px-2 py-0.5 text-[10px] font-black rounded uppercase ${
+                                    notif.type === 'BillRequested' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white'
+                                  }`}>
+                                    Table {notif.table}
+                                  </span>
+                                  {notif.type === 'BillRequested' && (
+                                    <span className="flex items-center gap-1 text-[9px] font-black text-indigo-700 uppercase tracking-tighter">
+                                      <Receipt size={10} /> Bill Request
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-bold text-slate-400">
+                                    {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
                                 </div>
-                                <p className="text-xs font-bold text-slate-500 uppercase leading-tight">{notif.message || 'Needs assistance'}</p>
+                                <p className={`text-xs font-bold leading-tight uppercase ${
+                                  notif.type === 'BillRequested' ? 'text-indigo-600' : 'text-slate-500'
+                                }`}>
+                                  {notif.message || (notif.type === 'BillRequested' ? 'Ready to Checkout' : 'Needs assistance')}
+                                </p>
                               </div>
                               <button
                                 onClick={() => {
                                   markNotificationAsRead(notif._id);
-                                  toast.success(`Heading to Table ${notif.table}!`);
+                                  toast.success(notif.type === 'BillRequested' ? `Preparing bill for Table ${notif.table}!` : `Heading to Table ${notif.table}!`);
                                 }}
-                                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:scale-110 active:scale-95 transition-all shadow-sm"
-                                title="Acknowledge Call"
+                                className={`p-2.5 rounded-xl transition-all shadow-sm group-hover:scale-105 active:scale-95 ${
+                                  notif.type === 'BillRequested'
+                                    ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                }`}
+                                title="Acknowledge Request"
                               >
                                 <CheckCircle2 size={18} />
                               </button>

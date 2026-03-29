@@ -34,6 +34,8 @@ import {
   Layers,
   HandHelping,
   CheckCircle2,
+  Loader2,
+  CalendarDays,
   Scissors,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
@@ -42,12 +44,14 @@ import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { products = [], subitems = [] } = useProducts();
-  const { notifications = [], markNotificationAsRead, fetchNotifications } = useUI();
+  const { notifications = [], notificationsLoading, markNotificationAsRead, fetchNotifications } = useUI();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showStockAlert, setShowStockAlert] = useState(false);
+  const [showWaiterPanel, setShowWaiterPanel] = useState(false);
+  const waiterRef = useRef(null);
   // ids that have been cleared from the alert list (until refresh)
   const [clearedIds, setClearedIds] = useState([]);
 
@@ -76,6 +80,7 @@ export default function AdminLayout() {
       children: [
         { name: "Tables", path: "tables", icon: Table },
         { name: "QR Generator", path: "qr-generator", icon: QrCode },
+        { name: "Reservations", path: "reservations", icon: CalendarDays },
       ],
     },
     {
@@ -154,7 +159,7 @@ export default function AdminLayout() {
     // OrderContext already fetches on mount — no duplicate calls needed
   }, []);
 
-  // Close profile dropdown & stock alert when clicking outside
+  // Close profile dropdown, stock alert, and waiter panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -163,10 +168,20 @@ export default function AdminLayout() {
       if (stockRef.current && !stockRef.current.contains(e.target)) {
         setShowStockAlert(false);
       }
+      if (waiterRef.current && !waiterRef.current.contains(e.target)) {
+        setShowWaiterPanel(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // open waiter notification panel automatically when there are new calls
+  useEffect(() => {
+    if (notifications.length > 0) {
+      setShowWaiterPanel(true);
+    }
+  }, [notifications.length]);
 
   // automatically expand the staff submenu if we're on a staff path
   useEffect(() => {
@@ -484,17 +499,22 @@ const handleClearAllStockAlerts = () => {
 
           <div className="flex items-center gap-6">
             {/* Waiter Notifications */}
-            <div className="relative">
+            <div className="relative" ref={waiterRef}>
               <button
-                onClick={() => navigate("/admin/dashboard")} // Assuming notifications might be visible there or just a general link
+                onClick={() => setShowWaiterPanel((prev) => !prev)}
                 className={`relative p-3 rounded-full transition-all duration-200 ${
                   notifications.length > 0
                     ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
                     : "hover:bg-slate-100 text-slate-400"
                 }`}
+                aria-label="Open waiter notification panel"
               >
-                <HandHelping size={24} className={notifications.length > 0 ? "animate-bounce" : ""} />
-                {notifications.length > 0 && (
+                {notificationsLoading ? (
+                   <Loader2 className="animate-spin" size={20} />
+                ) : (
+                   <HandHelping size={24} className={notifications.length > 0 ? "animate-bounce" : ""} />
+                )}
+                {notifications.length > 0 && !notificationsLoading && (
                   <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
                     {notifications.length}
                   </span>
@@ -503,7 +523,7 @@ const handleClearAllStockAlerts = () => {
               
               {/* Notification Popup if any */}
               <AnimatePresence>
-                {notifications.length > 0 && (
+                {showWaiterPanel && (
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -513,7 +533,7 @@ const handleClearAllStockAlerts = () => {
                     <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
                         <HandHelping size={16} className="text-amber-500" />
-                        Waiter Requests
+                        Service Calls
                       </h3>
                       <span className="px-2 py-1 bg-amber-100 text-amber-600 text-[10px] font-bold rounded-full uppercase">
                         {notifications.length} Active
@@ -521,18 +541,31 @@ const handleClearAllStockAlerts = () => {
                     </div>
                     <div className="max-h-[350px] overflow-y-auto no-scrollbar">
                       {notifications.map((notif) => (
-                        <div key={notif._id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group">
+                        <div key={notif._id} className={`p-4 border-b border-slate-50 transition-colors group ${notif.type === 'BillRequested' ? 'bg-indigo-50/50 hover:bg-indigo-50' : 'hover:bg-slate-50'}`}>
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
-                              <p className="text-sm font-bold text-slate-800">Table {notif.table}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{notif.message || 'Needs assistance'}</p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm font-bold text-slate-800">Table {notif.table}</p>
+                                {notif.type === 'BillRequested' && (
+                                  <span className="flex items-center gap-1 px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] font-black rounded uppercase tracking-tighter">
+                                    <Receipt size={10} /> Bill Request
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-xs mt-0.5 font-medium ${notif.type === 'BillRequested' ? 'text-indigo-600' : 'text-slate-500'}`}>
+                                {notif.message || (notif.type === 'BillRequested' ? 'Requesting final bill' : 'Needs assistance')}
+                              </p>
                               <span className="text-[10px] font-bold text-slate-400 mt-2 block uppercase tracking-tighter">
                                 {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                             <button
                               onClick={() => markNotificationAsRead(notif._id)}
-                              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-100"
+                              className={`p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity ${
+                                notif.type === 'BillRequested' 
+                                  ? 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200' 
+                                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              }`}
                               title="Mark as Completed"
                             >
                               <CheckCircle2 size={18} />

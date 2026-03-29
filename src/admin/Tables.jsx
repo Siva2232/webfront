@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
+import { useUI } from "../context/UIContext";
 import API from "../api/axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -12,7 +13,8 @@ import {
   ChevronRight,
   Trash2,
   UtensilsCrossed,
-  Loader2
+  Loader2,
+  CalendarCheck
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -25,7 +27,9 @@ export default function Tables() {
   const [isSavingTable, setIsSavingTable] = useState(false);
 
   const { orders } = useOrders();
+  const { reservations } = useUI();
   const [activeOrders, setActiveOrders] = useState({});
+  const [reservedTables, setReservedTables] = useState({});
   const [deleteModal, setDeleteModal] = useState({ show: false, tableId: null });
 
   const navigate = useNavigate();
@@ -59,6 +63,28 @@ export default function Tables() {
     });
     setActiveOrders(liveMap);
   }, [orders]);
+
+  // Logic for Auto-Occupying Tables based on Reservations
+  useEffect(() => {
+    const reserveMap = {};
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    reservations.forEach(res => {
+      if (["Pending", "Confirmed"].includes(res.status) && res.table) {
+        const resTime = new Date(res.reservationTime);
+        
+        // Block table if reservation is within the next hour or already started
+        if (resTime <= oneHourFromNow && resTime >= new Date(now.getTime() - 2 * 60 * 60 * 1000)) {
+          reserveMap[`table-${res.table}`] = {
+            customerName: res.customerName,
+            time: resTime
+          };
+        }
+      }
+    });
+    setReservedTables(reserveMap);
+  }, [reservations]);
 
   const releaseTable = (e, tableId) => {
     e.stopPropagation();
@@ -136,6 +162,7 @@ export default function Tables() {
   };
 
   const isOccupied = (tableId) => !!activeOrders[`table-${tableId}`];
+  const isReserved = (tableId) => !!reservedTables[`table-${tableId}`];
 
   const isAdmin = localStorage.getItem("isAdminLoggedIn") === "true";
   const isWaiter = localStorage.getItem("isWaiterLoggedIn") === "true";
@@ -200,6 +227,8 @@ export default function Tables() {
           <AnimatePresence mode="popLayout">
             {tables.map((table) => {
               const occupied = isOccupied(table.id);
+              const reserved = isReserved(table.id);
+              const resInfo = reserved ? reservedTables[`table-${table.id}`] : null;
 
               return (
                 <motion.div
@@ -213,14 +242,20 @@ export default function Tables() {
                   className={`group relative flex flex-col rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
                     ${occupied 
                       ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
-                      : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
+                      : reserved 
+                        ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
+                        : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
                 >
                   {/* Status Badge */}
                   <div className="flex justify-between items-center mb-3 sm:mb-4">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
-                      ${occupied ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                      <Circle size={6} fill="currentColor" className={occupied ? "text-rose-500" : "text-emerald-500"} />
-                      {occupied ? "BUSY" : "FREE"}
+                      ${occupied 
+                        ? "bg-rose-50 text-rose-700 border-rose-200" 
+                        : reserved 
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                      <Circle size={6} fill="currentColor" className={occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
+                      {occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
                     </div>
 
                     {isAdmin && (
@@ -238,8 +273,14 @@ export default function Tables() {
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300
                     ${occupied 
                       ? "bg-rose-500 text-white scale-105" 
-                      : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
-                    <LayoutGrid size={20} strokeWidth={1.8} className="sm:block" />
+                      : reserved
+                        ? "bg-amber-500 text-white"
+                        : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
+                    {reserved && !occupied ? (
+                       <CalendarCheck size={20} strokeWidth={1.8} />
+                    ) : (
+                       <LayoutGrid size={20} strokeWidth={1.8} className="sm:block" />
+                    )}
                   </div>
 
                   {/* Table Number */}
@@ -248,6 +289,23 @@ export default function Tables() {
                     <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">
                       {table.id < 10 ? `0${table.id}` : table.id}
                     </h3>
+                  </div>
+
+                  {/* Reserved Info */}
+                  {reserved && !occupied && (
+                    <div className="mt-auto pt-2 border-t border-amber-100">
+                      <p className="text-[10px] font-bold text-amber-600 truncate">{resInfo.customerName}</p>
+                      <p className="text-[9px] text-amber-500">{new Date(resInfo.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  )}
+
+                  {/* Action Indicator */}
+                  <div className={`mt-auto pt-4 flex items-center justify-between
+                    ${occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-slate-300 group-hover:text-slate-900"}`}>
+                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider italic">
+                      {occupied ? "View Order" : "Assign"}
+                    </span>
+                    <ChevronRight size={16} className={`transition-transform duration-300 ${occupied ? "" : "group-hover:translate-x-1"}`} />
                   </div>
 
                   {/* Footer Actions */}
