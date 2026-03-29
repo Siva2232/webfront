@@ -199,6 +199,16 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   // Direct socket connection for "Add More Items" notifications
   // This ensures notifications work even if OrderContext socket has issues
   useEffect(() => {
+    // Track recently handled notification IDs to prevent double-fire
+    // (direct socket + UIContext window event can both fire for the same notification)
+    const recentNotifIds = new Set();
+    const dedup = (id, fn) => {
+      if (recentNotifIds.has(id)) return;
+      recentNotifIds.add(id);
+      setTimeout(() => recentNotifIds.delete(id), 3000);
+      fn();
+    };
+
     // Create dedicated socket for notifications
     const notifSocket = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
@@ -228,8 +238,9 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     window.addEventListener("orderItemsAdded", handleWindowEvent);
     
     // Listen for Bill Requests
-    const handleBillRequest = (e) => {
-      console.log("[Notification] Bill Request event:", e.detail);
+    const handleBillRequest = (notifData) => {
+      const detail = notifData.detail || notifData;
+      console.log("[Notification] Bill Request event:", detail);
       toast.custom((t) => (
         <motion.div
            initial={{ opacity: 0, x: 50 }}
@@ -246,31 +257,47 @@ export default function Notification({ targetPath = "/admin/orders" }) {
           </div>
           <div className="flex-1">
             <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Bill Requested</p>
-            <p className="font-bold text-lg">Table {e.detail.table}</p>
+            <p className="font-bold text-lg">Table {detail.table}</p>
           </div>
           <div className="bg-white/10 px-2 py-1 rounded text-[10px] font-bold">
             NEW
           </div>
         </motion.div>
       ), { duration: 8000, position: 'top-right' });
-      triggerAlert('bill'); // Plays "bill" (cash register) sound
+      triggerAlert('bill');
     };
 
-    window.addEventListener("billRequested", handleBillRequest);
-    
-    // Listen for Waiter Calls specifically for sound
-    const handleWaiterCall = (e) => {
-      console.log("[Notification] Waiter Call sound trigger:", e.detail);
-      triggerAlert('waiter'); // Plays standard ding
+    // Window event wrapper (from UIContext dispatch)
+    const handleBillRequestEvent = (e) => dedup(e.detail?._id || e.detail?.table + '_bill', () => handleBillRequest(e.detail));
+    window.addEventListener("billRequested", handleBillRequestEvent);
+
+    // Listen for Waiter Calls
+    const handleWaiterCall = (notifData) => {
+      const detail = notifData.detail || notifData;
+      console.log("[Notification] Waiter Call sound trigger:", detail);
+      triggerAlert('waiter');
     };
 
-    window.addEventListener("waiterCall", handleWaiterCall);
-    
+    // Window event wrapper (from UIContext dispatch)
+    const handleWaiterCallEvent = (e) => dedup(e.detail?._id || e.detail?.table + '_waiter', () => handleWaiterCall(e.detail));
+    window.addEventListener("waiterCall", handleWaiterCallEvent);
+
+    // Direct socket listener for newNotification — bypasses UIContext as reliable backup
+    notifSocket.on("newNotification", (notif) => {
+      console.log("[Notification] Direct socket newNotification:", notif);
+      if (notif && notif.type === "BillRequested") {
+        dedup(notif._id || notif.table + '_bill', () => handleBillRequest(notif));
+      } else if (notif && notif.type === "WaiterCall") {
+        dedup(notif._id || notif.table + '_waiter', () => handleWaiterCall(notif));
+      }
+    });
+
     return () => {
       window.removeEventListener("orderItemsAdded", handleWindowEvent);
-      window.removeEventListener("billRequested", handleBillRequest);
-      window.removeEventListener("waiterCall", handleWaiterCall);
+      window.removeEventListener("billRequested", handleBillRequestEvent);
+      window.removeEventListener("waiterCall", handleWaiterCallEvent);
       notifSocket.off("orderItemsAdded");
+      notifSocket.off("newNotification");
       notifSocket.disconnect();
     };
   }, []);

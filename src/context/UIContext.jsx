@@ -144,12 +144,16 @@ export const UIProvider = ({ children }) => {
     window.addEventListener("notificationsUpdated", fetchNotifications);
 
     // Add server socket for immediate notification updates
+    // Strip /api suffix from the URL since socket.io connects to the base server URL
     const backendURL = import.meta.env.PROD
-      ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com"
-      : import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5000";
+      ? (import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api").replace(/\/api\/?$/, "")
+      : (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5000").replace(/\/api\/?$/, "");
 
     const socket = socketIOClient(backendURL, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
 
     socket.on("connect", () => {
