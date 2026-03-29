@@ -61,6 +61,25 @@ export const UIProvider = ({ children }) => {
     return defaultOffers;
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const { data } = await API.get("/notifications");
+      setNotifications(data);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  }, []);
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await API.put(`/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
 
   const fetchBanners = useCallback(async () => {
     try {
@@ -97,30 +116,39 @@ export const UIProvider = ({ children }) => {
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
-    await Promise.all([fetchBanners(), fetchOffers()]);
+    await Promise.all([fetchBanners(), fetchOffers(), fetchNotifications()]);
     setIsLoading(false);
-  }, [fetchBanners, fetchOffers]);
+  }, [fetchBanners, fetchOffers, fetchNotifications]);
 
   useEffect(() => {
     fetchData();
     window.addEventListener("bannersUpdated", fetchBanners);
     window.addEventListener("promosUpdated", fetchOffers);
     window.addEventListener("storage", fetchData);
+    window.addEventListener("notificationsUpdated", fetchNotifications);
+
+    // Add polling for notifications as a fallback if socket is not globally managed here
+    const pollInterval = setInterval(fetchNotifications, 10000); // Poll every 10 seconds
 
     return () => {
       window.removeEventListener("bannersUpdated", fetchBanners);
       window.removeEventListener("promosUpdated", fetchOffers);
       window.removeEventListener("storage", fetchData);
+      window.removeEventListener("notificationsUpdated", fetchNotifications);
+      clearInterval(pollInterval);
     };
-  }, [fetchData, fetchBanners, fetchOffers]);
+  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications]);
 
   const value = {
     banners,
     offers,
+    notifications,
     isLoading,
     refreshUI: fetchData,
     setBanners,
-    setOffers
+    setOffers,
+    fetchNotifications,
+    markNotificationAsRead
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

@@ -1,17 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { motion } from "framer-motion";
-import { Utensils, ShoppingCart, Receipt, ChefHat, Bell } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Utensils, ShoppingCart, Receipt, ChefHat, Bell, HandHelping, CheckCircle2 } from "lucide-react";
 import { TAKEAWAY_TABLE } from "../context/CartContext";
+import API from "../api/axios";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [hasUnreadOffer, setHasUnreadOffer] = useState(false);
+  const [isCallingWaiter, setIsCallingWaiter] = useState(false);
+  const [showCallSuccess, setShowCallSuccess] = useState(false);
 
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");
+
+  const handleCallWaiter = async () => {
+    if (!currentTable || mode === "takeaway") return;
+    
+    setIsCallingWaiter(true);
+    try {
+      await API.post("/notifications", {
+        table: currentTable,
+        type: "WaiterCall",
+        message: `Table ${currentTable} is requesting assistance.`
+      });
+      setShowCallSuccess(true);
+      setTimeout(() => setShowCallSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to call waiter:", error);
+    } finally {
+      setIsCallingWaiter(false);
+    }
+  };
 
   const getLinkWithTable = (path) => {
     // if we know this is a takeaway order, preserve that on nav
@@ -69,6 +91,24 @@ export default function Navbar({ title }) {
             </motion.div>
 
             <div className="flex items-center gap-5">
+              {/* Call Waiter Button - Desktop */}
+              {currentTable && mode !== "takeaway" && (
+                <button
+                  onClick={handleCallWaiter}
+                  disabled={isCallingWaiter}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
+                    isCallingWaiter
+                      ? "bg-amber-50 border-amber-200 text-amber-500"
+                      : "bg-white border-slate-200 text-slate-700 hover:border-amber-400 hover:text-amber-500"
+                  }`}
+                >
+                  <HandHelping size={20} className={isCallingWaiter ? "animate-bounce" : ""} />
+                  <span className="text-sm font-bold uppercase tracking-wider">
+                    {isCallingWaiter ? "Calling..." : "Call Waiter"}
+                  </span>
+                </button>
+              )}
+
               {/* Notification Bell */}
               <button
                 onClick={handleBellClick}
@@ -125,6 +165,19 @@ export default function Navbar({ title }) {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Call Waiter Button - Mobile */}
+          {currentTable && mode !== "takeaway" && (
+            <button
+              onClick={handleCallWaiter}
+              disabled={isCallingWaiter}
+              className={`p-2 rounded-full transition-all ${
+                isCallingWaiter ? "bg-amber-100 text-amber-600 animate-pulse" : "text-slate-700 bg-slate-50 border border-slate-100"
+              }`}
+            >
+              <HandHelping size={20} />
+            </button>
+          )}
+
           {/* Notification Bell - Mobile */}
           <button
             onClick={handleBellClick}
@@ -141,6 +194,24 @@ export default function Navbar({ title }) {
           </div>
         </div>
       </div>
+
+      {/* Success Notification Alert */}
+      <AnimatePresence>
+        {showCallSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md bg-emerald-500/90"
+          >
+            <CheckCircle2 size={24} />
+            <div className="flex flex-col">
+              <span className="text-sm font-black uppercase tracking-widest leading-none">Waiter Called</span>
+              <span className="text-[10px] font-bold text-emerald-100 opacity-80 mt-1 uppercase">Someone will assist you soon</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 bg-white border-t border-slate-100 pb-safe">

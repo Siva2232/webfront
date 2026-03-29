@@ -596,11 +596,17 @@ export const OrderProvider = ({ children }) => {
   useEffect(() => {
     // reconnect socket once when provider mounts
     socket.connect();
+    console.log("OrderContext: Socket initializing...");
 
     // Re-fetch bills when socket reconnects (covers missed events during disconnect)
     socket.on("connect", () => {
+      console.log("OrderContext: Socket connected successfully");
       const t = localStorage.getItem("token");
       if (t) fetchBills();
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("OrderContext: Socket connection error:", err.message);
     });
 
     socket.on("orderCreated", (order) => {
@@ -637,14 +643,15 @@ export const OrderProvider = ({ children }) => {
 
     // listen for bills added so billing page updates automatically
     socket.on("billCreated", (bill) => {
-      console.log("Socket: billCreated", bill);
+      console.log("Socket: billCreated RECEIVED", bill);
       setBills((prev) => {
         const key = bill.orderRef || bill._id || bill.id;
-        const exists = prev.find((b) => (b._id || b.id) === key || b.orderRef === key);
-        const next = exists
-          ? prev.map((b) => ((b._id || b.id) === key || b.orderRef === key) ? bill : b)
-          : [bill, ...prev];
-        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        const exists = prev.find((b) => (b._id === key || b.id === key) || b.orderRef === key);
+        
+        if (exists) return prev.map((b) => ((b._id === key || b.id === key) || b.orderRef === key) ? bill : b);
+        
+        const next = [bill, ...prev];
+        try { localStorage.setItem("cachedBills", JSON.stringify(next.slice(0, 100))); } catch (_) {}
         return next;
       });
     });

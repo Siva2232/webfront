@@ -32,13 +32,17 @@ import {
   QrCode,
   Ticket,
   Layers,
+  HandHelping,
+  CheckCircle2,
   Scissors,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
+import { useUI } from "../context/UIContext";
 import toast from "react-hot-toast";
 
 export default function AdminLayout() {
   const { products = [], subitems = [] } = useProducts();
+  const { notifications = [], markNotificationAsRead, fetchNotifications } = useUI();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -479,6 +483,69 @@ const handleClearAllStockAlerts = () => {
           </div>
 
           <div className="flex items-center gap-6">
+            {/* Waiter Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => navigate("/admin/dashboard")} // Assuming notifications might be visible there or just a general link
+                className={`relative p-3 rounded-full transition-all duration-200 ${
+                  notifications.length > 0
+                    ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
+                    : "hover:bg-slate-100 text-slate-400"
+                }`}
+              >
+                <HandHelping size={24} className={notifications.length > 0 ? "animate-bounce" : ""} />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notification Popup if any */}
+              <AnimatePresence>
+                {notifications.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-4 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-[100]"
+                  >
+                    <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
+                        <HandHelping size={16} className="text-amber-500" />
+                        Waiter Requests
+                      </h3>
+                      <span className="px-2 py-1 bg-amber-100 text-amber-600 text-[10px] font-bold rounded-full uppercase">
+                        {notifications.length} Active
+                      </span>
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto no-scrollbar">
+                      {notifications.map((notif) => (
+                        <div key={notif._id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors group">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-slate-800">Table {notif.table}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{notif.message || 'Needs assistance'}</p>
+                              <span className="text-[10px] font-bold text-slate-400 mt-2 block uppercase tracking-tighter">
+                                {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => markNotificationAsRead(notif._id)}
+                              className="p-2 rounded-xl bg-emerald-50 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-100"
+                              title="Mark as Completed"
+                            >
+                              <CheckCircle2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <Notification />
 
             {/* STOCK ALERT WITH DROPDOWN */}

@@ -13,16 +13,68 @@ import {
   Menu,
   ChevronDown,
   Ticket,
+  HandHelping,
+  CheckCircle2,
+  BellRing,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useUI } from "../context/UIContext";
 
 export default function WaiterLayout() {
+  const { notifications = [], markNotificationAsRead } = useUI();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const prevNotifCount = useRef(notifications.length);
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
+  const audioRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"));
+
+  // Play sound when new notification arrives
+  useEffect(() => {
+    if (notifications.length > prevNotifCount.current) {
+      if (soundEnabled) {
+        audioRef.current.play().catch(e => console.error("Audio play failed:", e));
+      }
+      
+      const newNotif = notifications[0];
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 border-l-4 border-amber-500`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                  <HandHelping size={20} />
+                </div>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Table {newNotif.table} Calling</p>
+                <p className="mt-1 text-xs font-bold text-slate-500 uppercase">{newNotif.message || "Assistance required immediately"}</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-slate-100">
+            <button
+              onClick={() => {
+                markNotificationAsRead(newNotif._id);
+                toast.dismiss(t.id);
+              }}
+              className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-black text-indigo-600 hover:text-indigo-500 focus:outline-none uppercase tracking-widest"
+            >
+              Attend
+            </button>
+          </div>
+        </div>
+      ), { duration: 5000 });
+    }
+    prevNotifCount.current = notifications.length;
+  }, [notifications, soundEnabled, markNotificationAsRead]);
 
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "dashboard" },
@@ -66,6 +118,9 @@ export default function WaiterLayout() {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifPanel(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -200,6 +255,94 @@ export default function WaiterLayout() {
           </div>
 
           <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`p-2 rounded-full transition-colors ${soundEnabled ? "text-indigo-600 bg-indigo-50" : "text-slate-300 bg-slate-50"}`}
+              title={soundEnabled ? "Mute Caller Sound" : "Enable Caller Sound"}
+            >
+              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+
+            {/* Waiter Call Notifications */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setShowNotifPanel(!showNotifPanel)}
+                className={`relative p-3 rounded-full transition-all duration-200 ${
+                  notifications.length > 0
+                    ? "bg-amber-100 text-amber-700 hover:bg-amber-200 ring-2 ring-amber-200"
+                    : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                }`}
+              >
+                <BellRing size={20} className={notifications.length > 0 ? "animate-tada" : ""} />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-600 text-white text-[10px] font-black min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white shadow-sm ring-1 ring-amber-100 px-1 pulse-scale">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden z-[100]"
+                  >
+                    <div className="p-5 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <HandHelping size={16} className="text-amber-500" />
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Calls</h3>
+                      </div>
+                      <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg uppercase">
+                        {notifications.length} Pending
+                      </span>
+                    </div>
+
+                    <div className="max-h-[350px] overflow-y-auto no-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="p-10 text-center">
+                          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <HandHelping className="text-slate-300" size={24} />
+                          </div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">All Clear</p>
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div key={notif._id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-all group">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-black rounded uppercase">Table {notif.table}</span>
+                                  <span className="text-[10px] font-bold text-slate-400">{new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                                <p className="text-xs font-bold text-slate-500 uppercase leading-tight">{notif.message || 'Needs assistance'}</p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  markNotificationAsRead(notif._id);
+                                  toast.success(`Heading to Table ${notif.table}!`);
+                                }}
+                                className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                title="Acknowledge Call"
+                              >
+                                <CheckCircle2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="p-4 bg-slate-50/50 flex justify-center">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic animate-pulse">Waiting for your response...</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <Notification targetPath="/waiter/orders" />
             <div className="relative" ref={dropdownRef}>
             <button
