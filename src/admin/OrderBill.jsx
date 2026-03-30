@@ -163,8 +163,11 @@ export default function OrderBill() {
 
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
-    fetchBills();
-  }, []);
+    // Only fetch if we don't have enough bills cached to prevent initial lag
+    if (!billsReady || bills.length < 10) {
+      fetchBills();
+    }
+  }, [fetchBills, billsReady, bills.length]);
 
   /* deduplicated + date-filtered bills using O(N) deduplication */
   const filteredBills = useMemo(() => {

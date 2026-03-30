@@ -110,11 +110,12 @@ export default function BannerPanel() {
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.3em] mt-1">Management Console</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => openModal()} className="bg-black text-white px-8 py-4 font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-gray-800 transition-all shadow-lg rounded-xl">
-              <Plus size={18} /> New Slide
-            </button>
-          </div>
+          <button 
+            onClick={() => openModal()} 
+            className="bg-black text-white px-8 py-4 font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-gray-800 transition-all shadow-lg rounded-xl"
+          >
+            <Plus size={18} /> New Slide
+          </button>
         </header>
 
         {slides.length === 0 ? (
@@ -147,67 +148,96 @@ export default function BannerPanel() {
           </div>
         )}
 
+        {/* ==================== COMPACT SMALL MODAL ==================== */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-              <div className="p-8 md:p-10">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-black uppercase italic tracking-tighter">{editingSlide ? 'Edit Banner' : 'New Banner'}</h2>
-                  <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <X size={20} />
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                {/* Modal Header */}
+                <div className="flex justify-between items-center mb-5">
+                  <h2 className="text-xl font-black uppercase italic tracking-tighter">
+                    {editingSlide ? 'Edit Banner' : 'New Banner'}
+                  </h2>
+                  <button 
+                    onClick={() => setIsModalOpen(false)} 
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X size={22} />
                   </button>
                 </div>
 
                 <div className="space-y-5">
+                  {/* Smaller Image Upload */}
                   <div
                     onClick={() => fileInputRef.current.click()}
-                    className="relative aspect-video bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl overflow-hidden cursor-pointer group hover:border-black transition-all"
+                    className="relative aspect-[16/9] bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl overflow-hidden cursor-pointer group hover:border-black transition-all"
                   >
                     {formData.imageUrl ? (
-                      <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Upload" />
+                      <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                        <Upload size={32} className="mb-2 group-hover:text-black transition-colors" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-center px-4">Click to Upload Image</span>
+                        <Upload size={28} className="mb-2 group-hover:text-black transition-colors" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-center px-4">Click to Upload Image</span>
                       </div>
                     )}
-                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Heading</label>
-                      <input
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3.5 font-bold text-sm focus:ring-2 ring-black outline-none transition-all"
-                        placeholder="Banner Title"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Tag</label>
-                      <input
-                        value={formData.tag}
-                        onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
-                        className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3.5 font-bold text-sm focus:ring-2 ring-black outline-none transition-all"
-                        placeholder="e.g. NEW"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Description</label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-gray-50 border-none rounded-2xl px-5 py-3.5 font-bold text-sm focus:ring-2 ring-black outline-none transition-all h-20 resize-none"
-                      placeholder="Enter banner details..."
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                      accept="image/*" 
+                      className="hidden" 
                     />
                   </div>
 
+                  {/* Form Fields - Compact */}
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Heading</label>
+                      <input
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-black outline-none transition-all"
+                        placeholder="Banner Title"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Tag</label>
+                      <input
+                        value={formData.tag}
+                        onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                        className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 ring-black outline-none transition-all"
+                        placeholder="e.g. NEW"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Description</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold leading-relaxed focus:ring-2 ring-black outline-none transition-all h-16 resize-none"
+                        placeholder="Enter banner details..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Toggle (Optional - added for consistency) */}
+                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Active Slide</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.isActive ? 'bg-black' : 'bg-gray-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+
+                  {/* Save Button */}
                   <button
                     onClick={handleSave}
-                    className="w-full bg-black text-white py-4 rounded-2xl font-black uppercase tracking-[0.3em] text-[10px] hover:bg-gray-800 transition-all shadow-xl mt-2"
+                    className="w-full bg-black text-white py-3.5 rounded-2xl font-black uppercase tracking-[0.3em] text-xs hover:bg-gray-800 transition-all shadow-xl"
                   >
                     {editingSlide ? 'Update Banner' : 'Publish Banner'}
                   </button>
