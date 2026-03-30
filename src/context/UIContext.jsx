@@ -98,28 +98,43 @@ export const UIProvider = ({ children }) => {
   };
 
   const fetchBanners = useCallback(async () => {
+    // Only set loading if we have no items to prevent UI flashing
+    if (banners.length === 0) setIsLoading(true);
     try {
       const { data } = await API.get("/banners");
       if (Array.isArray(data) && data.length > 0) {
-        setBanners(data);
-        try { localStorage.setItem("ui_banners", JSON.stringify(data)); } catch {}
+        // Only update state if data actually changed to prevent re-renders
+        const newStr = JSON.stringify(data);
+        const oldStr = localStorage.getItem("ui_banners");
+        if (newStr !== oldStr) {
+          setBanners(data);
+          try { localStorage.setItem("ui_banners", newStr); } catch {}
+        }
       } else {
         setBanners(defaultBanners);
       }
     } catch (error) {
       console.error("Error fetching banners:", error);
       setBanners(defaultBanners);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [banners.length]);
 
   const fetchOffers = useCallback(async () => {
+    // Only set loading if we have no items
+    if (offers.length === 0) setIsLoading(true);
     try {
       const { data } = await API.get("/offers");
       if (Array.isArray(data) && data.length > 0) {
         const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
         if (valid.length > 0) {
-          setOffers(valid);
-          try { localStorage.setItem("ui_offers", JSON.stringify(valid)); } catch {}
+          const newStr = JSON.stringify(valid);
+          const oldStr = localStorage.getItem("ui_offers");
+          if (newStr !== oldStr) {
+            setOffers(valid);
+            try { localStorage.setItem("ui_offers", newStr); } catch {}
+          }
           return;
         }
       }
@@ -127,13 +142,19 @@ export const UIProvider = ({ children }) => {
     } catch (error) {
       console.error("Error fetching offers:", error);
       setOffers(defaultOffers);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [offers.length]);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    await Promise.all([fetchBanners(), fetchOffers(), fetchNotifications(), fetchReservations()]);
-    setIsLoading(false);
+    // Parallelize with error isolation to ensure one failure doesn't block others
+    Promise.allSettled([
+      fetchBanners(), 
+      fetchOffers(), 
+      fetchNotifications(), 
+      fetchReservations()
+    ]);
   }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations]);
 
   useEffect(() => {
