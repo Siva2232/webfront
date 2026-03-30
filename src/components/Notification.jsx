@@ -74,11 +74,35 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const { orders } = useOrders();
 
   const [open, setOpen] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState([]);
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dismissedOrderIds");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isNewOrder, setIsNewOrder] = useState(false);
+
+  // Persistence for dismissedIds
+  useEffect(() => {
+    localStorage.setItem("dismissedOrderIds", JSON.stringify(dismissedIds));
+  }, [dismissedIds]);
   
   // Track "Add More Items" notifications
-  const [addMoreNotifications, setAddMoreNotifications] = useState([]);
+  const [addMoreNotifications, setAddMoreNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pendingAddMore");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Persistence for addMoreNotifications
+  useEffect(() => {
+    localStorage.setItem("pendingAddMore", JSON.stringify(addMoreNotifications));
+  }, [addMoreNotifications]);
 
   const seenOrderIds = useRef(new Set());
   const pulseTimeout = useRef(null);
