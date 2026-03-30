@@ -42,7 +42,12 @@ export default function Dashboard() {
   const { orders = [] } = useOrders();
   const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
   
-  const [tables, setTables] = useState([]);
+  const [tables, setTables] = useState(() => {
+    try {
+      const cached = localStorage.getItem("restaurant_tables_config");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [activeOrdersMap, setActiveOrdersMap] = useState({});
   const [reservedTables, setReservedTables] = useState({});
   const [tableAlerts, setTableAlerts] = useState({});
@@ -55,6 +60,7 @@ export default function Dashboard() {
       try {
         const { data } = await API.get("/tables");
         setTables(data);
+        localStorage.setItem("restaurant_tables_config", JSON.stringify(data));
       } catch (err) {
         console.error("Failed to fetch tables", err);
       }
@@ -285,27 +291,32 @@ export default function Dashboard() {
               const reserved = isReserved(table.id);
               const alert = tableAlerts[`table-${table.id}`];
               const hasAlert = alert && (alert.waiter || alert.bill);
+              const isBillRequested = alert && alert.bill;
 
               return (
                 <motion.div
                   key={table.id}
                   onClick={() => navigate(`/admin/order-summary?table=${table.id}`)}
                   className={`relative p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-2 h-24
-                    ${hasAlert 
-                      ? "bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg" 
-                      : occupied 
-                        ? "bg-rose-50 border-rose-200 text-rose-700" 
-                        : reserved 
-                          ? "bg-amber-50 border-amber-200 text-amber-700"
-                          : "bg-white border-slate-100 hover:border-slate-300 text-slate-900"}`}
+                    ${isBillRequested
+                      ? "bg-emerald-600 border-emerald-600 text-white animate-pulse shadow-lg shadow-emerald-200"
+                      : hasAlert 
+                        ? "bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg" 
+                        : occupied 
+                          ? "bg-rose-50 border-rose-200 text-rose-700" 
+                          : reserved 
+                            ? "bg-amber-50 border-amber-200 text-amber-700"
+                            : "bg-white border-slate-100 hover:border-slate-300 text-slate-900"}`}
                 >
                   <div className="text-[10px] font-black uppercase tracking-tighter opacity-60">
                     T{table.id}
                   </div>
                   
                   <div className="flex items-center justify-center">
-                    {hasAlert ? (
-                      alert.bill ? <Receipt size={16} /> : <BellRing size={16} />
+                    {isBillRequested ? (
+                      <Receipt size={18} strokeWidth={2.5} />
+                    ) : hasAlert ? (
+                      <BellRing size={16} />
                     ) : occupied ? (
                       <LayoutGrid size={16} />
                     ) : reserved ? (
@@ -316,7 +327,7 @@ export default function Dashboard() {
                   </div>
                   
                   <div className="text-[8px] font-black uppercase tracking-[0.1em]">
-                    {hasAlert ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
+                    {isBillRequested ? "BILL" : hasAlert ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
                   </div>
                 </motion.div>
               );

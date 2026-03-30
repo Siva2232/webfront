@@ -263,6 +263,7 @@ export default function Tables() {
               const reserved = isReserved(table.id);
               const resInfo = reserved ? reservedTables[`table-${table.id}`] : null;
               const alert = tableAlerts[`table-${table.id}`];
+              const isBillRequested = alert && alert.bill;
               const hasAlert = alert && (alert.waiter || alert.bill);
 
               return (
@@ -275,33 +276,37 @@ export default function Tables() {
                   transition={{ duration: 0.3 }}
                   onClick={() => goToMenu(table.id)}
                   className={`group relative flex flex-col rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
-                    ${hasAlert
-                      ? "bg-linear-to-br from-indigo-50 to-white border-indigo-200 shadow-indigo-100/50 ring-2 ring-indigo-400 ring-offset-2"
-                      : occupied 
-                        ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
-                        : reserved 
-                          ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
-                          : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
+                    ${isBillRequested
+                      ? "bg-linear-to-br from-emerald-50 to-white border-emerald-200 shadow-emerald-100/50 ring-2 ring-emerald-400 ring-offset-2"
+                      : hasAlert
+                        ? "bg-linear-to-br from-indigo-50 to-white border-indigo-200 shadow-indigo-100/50 ring-2 ring-indigo-400 ring-offset-2"
+                        : occupied 
+                          ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
+                          : reserved 
+                            ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
+                            : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
                 >
                   {/* Status Badge */}
                   <div className="flex justify-between items-center mb-3 sm:mb-4">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
-                      ${hasAlert
-                        ? "bg-indigo-600 text-white border-indigo-600 animate-pulse"
-                        : occupied 
-                          ? "bg-rose-50 text-rose-700 border-rose-200" 
-                          : reserved 
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                      <Circle size={6} fill="currentColor" className={hasAlert ? "text-white" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
-                      {hasAlert ? "CALLED" : occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
+                      ${isBillRequested
+                        ? "bg-emerald-600 text-white border-emerald-600 animate-pulse"
+                        : hasAlert
+                          ? "bg-indigo-600 text-white border-indigo-600 animate-pulse"
+                          : occupied 
+                            ? "bg-rose-50 text-rose-700 border-rose-200" 
+                            : reserved 
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                      <Circle size={6} fill="currentColor" className={isBillRequested ? "text-white" : hasAlert ? "text-white" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
+                      {isBillRequested ? "BILL" : hasAlert ? "CALLED" : occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
                     </div>
 
                     <div className="flex gap-1">
                       {hasAlert && (
                         <button
                           onClick={(e) => clearTableAlerts(e, table.id)}
-                          className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors"
+                          className={`p-1.5 rounded-lg transition-colors ${isBillRequested ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'}`}
                           title="Dismiss Alert"
                         >
                           <Circle size={12} fill="currentColor" />
@@ -321,15 +326,19 @@ export default function Tables() {
 
                   {/* Icon Area */}
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300
-                    ${hasAlert
-                      ? "bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200"
-                      : occupied 
-                        ? "bg-rose-500 text-white scale-105" 
-                        : reserved
-                          ? "bg-amber-500 text-white"
-                          : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
-                    {hasAlert ? (
-                       alert.bill ? <Receipt size={20} strokeWidth={2.5} className="animate-bounce" /> : <BellRing size={20} strokeWidth={2.5} className="animate-ring" />
+                    ${isBillRequested
+                      ? "bg-emerald-600 text-white scale-110 shadow-lg shadow-emerald-200"
+                      : hasAlert
+                        ? "bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200"
+                        : occupied 
+                          ? "bg-rose-500 text-white scale-105" 
+                          : reserved
+                            ? "bg-amber-500 text-white"
+                            : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
+                    {isBillRequested ? (
+                       <Receipt size={22} strokeWidth={2.5} className="animate-bounce" />
+                    ) : hasAlert ? (
+                       <BellRing size={20} strokeWidth={2.5} className="animate-ring" />
                     ) : reserved && !occupied ? (
                        <CalendarCheck size={20} strokeWidth={1.8} />
                     ) : (

@@ -176,65 +176,63 @@ export const OrderProvider = ({ children }) => {
   const fetchBills = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    if (_billsFetchInFlight.current) return; // prevent duplicate concurrent requests
+    if (_billsFetchInFlight.current) return;
     _billsFetchInFlight.current = true;
 
-    // try to hydrate immediately from cache for instant UI
-    try {
-      const cached = localStorage.getItem("cachedBills");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setBills(parsed);
+    // Fast path: load from localStorage if we are in the middle of a session
+    const cachedStr = localStorage.getItem("cachedBills");
+    let cachedData = [];
+    if (cachedStr) {
+      try {
+        cachedData = JSON.parse(cachedStr);
+        if (Array.isArray(cachedData) && cachedData.length > 0) {
+          setBills(cachedData);
+          setBillsReady(true);
         }
-      }
-    } catch (e) {
-      console.warn("failed to read cached bills", e);
+      } catch (e) {}
     }
 
     try {
-      // Fetch fewer items by default
-      const { data } = await API.get("/bills?limit=25");
+      // Very lean fetch: limit to 20 for fast TTI
+      const { data } = await API.get("/bills?limit=20");
       if (!Array.isArray(data)) {
-        console.error("fetchBills: unexpected response", data);
+        _billsFetchInFlight.current = false;
         return;
       }
-      // remove duplicates by orderRef or _id using a Map for O(1) lookups
-      const uniqueMap = new Map();
-      data.forEach(b => {
-        const key = b.orderRef || b._id || b.id;
-        if (!uniqueMap.has(key)) uniqueMap.set(key, b);
-      });
 
-      // Merge: keep any socket-injected bills not yet returned by API
       setBills((prev) => {
         const now = Date.now();
         const prevMap = new Map();
+        // Index existing bills by unique ID
         prev.forEach(p => {
-           const key = p.orderRef || p._id || p.id;
-           prevMap.set(key, p);
+          const key = p.orderRef || p._id || p.id;
+          if (key) prevMap.set(key, p);
         });
         
-        // Update existing from API data
-        uniqueMap.forEach((serverBill, key) => {
+        // Merge server data
+        data.forEach(serverBill => {
+          const key = serverBill.orderRef || serverBill._id || serverBill.id;
+          if (!key) return;
+
           const localBill = prevMap.get(key);
-          if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 5000)) {
-            return; // skip if pending
+          // Protection: Don't overwrite if we have a very recent local update (15s window)
+          if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 15000)) {
+            return; 
           }
           prevMap.set(key, serverBill);
         });
 
+        // Filter out closed bills that were merged from previous state but not in the fresh server batch (if they were archived)
+        // Keep active/unpaid ones regardless
         const final = Array.from(prevMap.values())
           .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
-          .slice(0, 100); // hard cap on memory to keep things fast
+          .slice(0, 50); // Hard memory cap
           
         try { localStorage.setItem("cachedBills", JSON.stringify(final)); } catch (_) {}
         return final;
       });
     } catch (error) {
-      console.error("Error fetching bills:", error);
-      // If it's a 401, the axios interceptor handles redirect.
-      // For other errors, keep cached data but don't clear it.
+      console.error("fetchBills err:", error);
     } finally {
       _billsFetchInFlight.current = false;
       setBillsReady(true);
@@ -258,13 +256,39 @@ export const OrderProvider = ({ children }) => {
           ...b, 
           paymentStatus: "paid", 
           paymentSessions: updatedSessions,
-          _pendingUpdate: Date.now() // Flag prevents socket/poll from reverting
+          status: b.status === "Closed" ? "Closed" : "Paid",
+          _pendingUpdate: Date.now() + 10000 // Flag prevents socket/poll from reverting for 10s
         };
       });
       // persist optimistic state to localStorage so a refresh keeps it
       try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
       return next;
     });
+
+    // Also update orders list optimistically
+    setOrders((prev) => {
+      const next = prev.map((o) => {
+        if (o._id !== id && o.id !== id && o.orderRef !== id) {
+           // check bill's orderRef too
+           const isMatch = (o._id === id || o.id === id);
+           if (!isMatch) return o;
+        }
+        
+        const updatedSessions = (o.paymentSessions || []).map((s) =>
+          s.method === "cod" ? { ...s, status: "paid" } : s
+        );
+        return {
+          ...o,
+          paymentStatus: "paid",
+          paymentSessions: updatedSessions,
+          status: o.status === "Closed" ? "Closed" : "Paid",
+          _optimisticAt: Date.now() + 10000
+        };
+      });
+      try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+
     try {
       const { data } = await API.put(`/bills/${id}/pay`);
       // Reconcile with actual server data
@@ -624,6 +648,15 @@ export const OrderProvider = ({ children }) => {
       setOrders((prev) => {
         const now = Date.now();
         const exists = prev.find((o) => o._id === order._id);
+        
+        // If the order is "Closed", we should ideally remove it from the ACTIVE orders list
+        // so that Tables.jsx (which filters for status !== "Closed") updates immediately.
+        if (order.status === "Closed") {
+          const next = prev.filter((o) => o._id !== order._id);
+          try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+          return next;
+        }
+
         const next = exists
           ? prev.map((o) => {
               if (o._id !== order._id) return o;
@@ -668,9 +701,13 @@ export const OrderProvider = ({ children }) => {
         const id = updatedBill._id || updatedBill.id;
         const exists = prev.find((b) => (b._id === id || b.id === id) || b.orderRef === updatedBill.orderRef);
         
+        // If a bill is closed, we don't necessarily remove it from "bills" (since history is fine),
+        // but we DO want to ensure the "orders" state is also updated.
+        // The orderUpdated socket event usually handles this, but syncing here adds redundancy.
+        
         // Merge logic: protect local pending updates from being overwritten by 
-        // stale socket messages for 5 seconds
-        if (exists?._pendingUpdate && (Date.now() - exists._pendingUpdate < 5000)) {
+        // stale socket messages for 15 seconds (matching markBillPaid logic)
+        if (exists?._pendingUpdate && (Date.now() - exists._pendingUpdate < 15000)) {
            return prev;
         }
 
@@ -685,7 +722,7 @@ export const OrderProvider = ({ children }) => {
           next = [updatedBill, ...prev];
         }
 
-        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        try { localStorage.setItem("cachedBills", JSON.stringify(next.slice(0, 100))); } catch (_) {}
         return next;
       });
     });

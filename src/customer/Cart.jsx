@@ -609,7 +609,7 @@ export default function Cart({ hideTable = false }) {
                     }`}
                   >
                     <Wallet size={24} className={paymentMethod === 'cod' ? 'text-emerald-500' : 'text-slate-400'} />
-                    <span className="text-xs font-black uppercase">Cash on Delivery</span>
+                    <span className="text-xs font-black uppercase">Pay Later</span>
                     <span className="text-[10px] text-slate-400">Pay at table</span>
                   </button>
                   <button

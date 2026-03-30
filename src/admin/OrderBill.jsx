@@ -163,37 +163,36 @@ export default function OrderBill() {
 
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
-    // Only fetch if we don't have enough bills cached to prevent initial lag
-    if (!billsReady || bills.length < 10) {
-      fetchBills();
-    }
-  }, [fetchBills, billsReady, bills.length]);
+    // Force a fresh fetch if cache is empty or too old
+    fetchBills();
+  }, [fetchBills]);
 
   /* deduplicated + date-filtered bills using O(N) deduplication */
   const filteredBills = useMemo(() => {
+    // Only map the data needed for display to avoid object bloat
     const dedupedMap = new Map();
     (bills || []).forEach(b => {
       const key = b.orderRef || b._id || b.id;
       if (!dedupedMap.has(key)) dedupedMap.set(key, b);
     });
     
-    const deduped = Array.from(dedupedMap.values());
+    let deduped = Array.from(dedupedMap.values());
 
-    if (!dateFilter) return deduped;
-    const pick = new Date(dateFilter);
-    const start = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 0, 0, 0, 0);
-    const end   = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 23, 59, 59, 999);
-    return deduped.filter((b) => {
-      const d = new Date(b.billedAt || b.createdAt);
-      return d >= start && d <= end;
-    });
+    if (dateFilter) {
+      const pick = new Date(dateFilter);
+      const start = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 0, 0, 0, 0);
+      const end   = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), 23, 59, 59, 999);
+      deduped = deduped.filter((b) => {
+        const d = new Date(b.billedAt || b.createdAt);
+        return d >= start && d <= end;
+      });
+    }
+
+    return deduped.sort((a, b) => new Date(b.billedAt || b.createdAt) - new Date(a.billedAt || a.createdAt));
   }, [bills, dateFilter]);
 
   const uniqueBills = useMemo(() => {
-    // Return only active/recent bills for performance, sorted by most recent first
-    return [...filteredBills]
-      .sort((a, b) => new Date(b.billedAt || b.createdAt) - new Date(a.billedAt || a.createdAt))
-      .slice(0, displayLimit);
+    return filteredBills.slice(0, displayLimit);
   }, [filteredBills, displayLimit]);
 
   /* refresh */

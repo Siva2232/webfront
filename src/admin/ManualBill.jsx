@@ -169,7 +169,7 @@ export default function ManualBill() {
   const removeItemFromList = useCallback((idx) => {
     setCustomItems((prev) => prev.filter((_, i) => i !== idx));
     setPendingDeleteIndex(null);
-    toast.success("Item removed from manual bill");
+    toast.success("Item removed from Split bill");
   }, []);
 
   const requestRemoveItem = useCallback((idx) => {
@@ -222,7 +222,7 @@ export default function ManualBill() {
           </button>
           <div className="flex items-center gap-2">
             <Receipt size={22} className="text-indigo-600" />
-            <h1 className="font-bold text-lg tracking-tight">Manual Bill</h1>
+            <h1 className="font-bold text-lg tracking-tight">Split Bill</h1>
           </div>
           <div className="w-8" />
         </div>
