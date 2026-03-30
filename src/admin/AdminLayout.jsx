@@ -190,19 +190,23 @@ export default function AdminLayout() {
     }
   }, [notifications.length]);
 
-  // automatically expand the staff submenu if we're on a staff path
+  // automatically expand the submenu for current path
   useEffect(() => {
     if (
       location.pathname.startsWith("/admin/staff") ||
       location.pathname.startsWith("/admin/expense") ||
+      location.pathname.startsWith("/admin/products") ||
+      location.pathname.startsWith("/admin/sub-items") ||
       location.pathname.startsWith("/admin/tables") ||
-      location.pathname.startsWith("/admin/qr-generator")
+      location.pathname.startsWith("/admin/qr-generator") ||
+      location.pathname.startsWith("/admin/reservations")
     ) {
-      // open the appropriate submenu by looking at the path
       if (location.pathname.startsWith("/admin/staff")) setOpenSubmenu("Staff");
       else if (location.pathname.startsWith("/admin/expense")) setOpenSubmenu("Expense Tracker");
-      else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator"))
-        setOpenSubmenu("Menu Manage");
+      else if (location.pathname.startsWith("/admin/products") || location.pathname.startsWith("/admin/sub-items"))
+        setOpenSubmenu("Manage Menu");
+      else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator") || location.pathname.startsWith("/admin/reservations"))
+        setOpenSubmenu("Tables & QR");
     } else {
       setOpenSubmenu(null);
     }

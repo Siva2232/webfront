@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
+import API from "../api/axios";
 import { 
   ChevronLeft, 
   RotateCcw, 
@@ -28,6 +29,8 @@ export default function OrderSummary() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isClosingBill, setIsClosingBill] = useState(false);
+  const [isRequestingBill, setIsRequestingBill] = useState(false);
+  const cheerSoundRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"));
 
   // Get current table & mode from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
@@ -41,6 +44,31 @@ export default function OrderSummary() {
       fetchTableOrders(table);
     } else {
       fetchOrders();
+    }
+  };
+
+  const handleRequestBill = async () => {
+    const tableNum = currentTable || (mode === "takeaway" ? TAKEAWAY_TABLE : null);
+    if (!order?._id || isRequestingBill || order.isBillRequested) return;
+    setIsRequestingBill(true);
+    try {
+      // 1. Send the notification to the admin dashboard
+      await API.post("/notifications", {
+        table: tableNum,
+        type: "BillRequested",
+        message: `Table ${tableNum} has requested their bill.`
+      });
+
+      // 2. Update the order object in the DB to mark bill as requested
+      // This will reset to false when they order more food
+      await API.put(`/orders/${order._id}/status`, { isBillRequested: true });
+      
+      toast.success("Bill requested! Waiter is arriving.");
+    } catch (err) {
+      console.error("bill request error", err);
+      toast.error("Failed to request bill");
+    } finally {
+      setIsRequestingBill(false);
     }
   };
 
@@ -90,9 +118,6 @@ export default function OrderSummary() {
   const order = tableOrders.length > 0 
     ? tableOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
     : null;
-
-  // Cheering sound reference
-  const cheerSoundRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"));
 
   useEffect(() => {
     if (order?.status === "Served") {
@@ -378,7 +403,23 @@ export default function OrderSummary() {
 
       {/* FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
-        <div className="max-w-md mx-auto grid grid-cols-1 gap-3">
+        <div className="max-w-md mx-auto grid grid-cols-2 gap-3">
+          <motion.button 
+            whileTap={{ scale: 0.95 }}
+            onClick={handleRequestBill}
+            disabled={isRequestingBill || order?.isBillRequested}
+            className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
+              ${order?.isBillRequested 
+                ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
+                : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
+          >
+            {order?.isBillRequested ? (
+              <><CheckCircle size={14} /> Requested</>
+            ) : (
+              <><Receipt size={14} /> Get Bill</>
+            )}
+          </motion.button>
+
           <motion.div 
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
@@ -387,11 +428,11 @@ export default function OrderSummary() {
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
             <Link 
               to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
-              className="relative flex items-center justify-center gap-3 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] shadow-lg transition-all"
+              className="relative flex items-center justify-center gap-2 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all"
             >
-              <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
-              Add More Items
-              <ArrowRight size={14} className="opacity-50" />
+              <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+              Add Items
+              <ArrowRight size={12} className="opacity-50" />
             </Link>
           </motion.div>
         </div>
