@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { Utensils, ShoppingCart, Receipt, ChefHat, Bell, HandHelping, CheckCircle2,Phone } from "lucide-react";
+import { Utensils, ShoppingCart, Receipt, ChefHat, Bell, HandHelping, CheckCircle2, Phone, X } from "lucide-react";
 import { TAKEAWAY_TABLE } from "../context/CartContext";
 import API from "../api/axios";
+import { useUI } from "../context/UIContext";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ export default function Navbar({ title }) {
   const [isRequestingBill, setIsRequestingBill] = useState(false);
   const [showCallSuccess, setShowCallSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: "", sub: "" });
+  const [isNoOffersModalOpen, setIsNoOffersModalOpen] = useState(false);
+
+  const { offers } = useUI();
 
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");
@@ -86,6 +90,11 @@ export default function Navbar({ title }) {
 
   // When bell is clicked → show offers again + clear notification
   const handleBellClick = () => {
+    if (!offers || offers.length === 0) {
+      setIsNoOffersModalOpen(true);
+      setHasUnreadOffer(false);
+      return;
+    }
     setHasUnreadOffer(false);
     window.dispatchEvent(new Event("showOfferModal"));
   };
@@ -258,6 +267,40 @@ export default function Navbar({ title }) {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isNoOffersModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/70"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-gray-200"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-black tracking-tight uppercase">No Offers Right Now</h3>
+                  <p className="mt-2 text-sm text-gray-500">We couldn’t find any active deals yet. Check back soon for new promotions.</p>
+                </div>
+                <button onClick={() => setIsNoOffersModalOpen(false)} className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full">
+                  <X size={18} />
+                </button>
+              </div>
+              <button
+                onClick={() => setIsNoOffersModalOpen(false)}
+                className="mt-5 w-full px-4 py-2 rounded-xl bg-slate-900 text-white font-black uppercase text-xs tracking-wider focus:outline-none"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Success Notification Alert */}
       <AnimatePresence>

@@ -6,9 +6,11 @@ export default function WaiterOrders() {
   const { orders, fetchOrders } = useOrders();
 
   useEffect(() => {
-    // Waiters need to see the full list of active orders
-    fetchOrders();
-  }, [fetchOrders]);
+    // Check if we already have orders before fetching to prevent initial flicker
+    if (!orders || orders.length === 0) {
+      fetchOrders();
+    }
+  }, []); // Only run once on mount, fetchOrders is stable from context
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-10 font-sans text-slate-900">

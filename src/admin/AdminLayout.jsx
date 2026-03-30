@@ -502,7 +502,7 @@ const handleClearAllStockAlerts = () => {
             <div className="relative" ref={waiterRef}>
               <button
                 onClick={() => setShowWaiterPanel((prev) => !prev)}
-                className={`relative p-3 rounded-full transition-all duration-200 ${
+                className={`relative p-2 sm:p-3 rounded-full transition-all duration-200 ${
                   notifications.length > 0
                     ? "bg-amber-50 text-amber-600 hover:bg-amber-100"
                     : "hover:bg-slate-100 text-slate-400"
@@ -528,7 +528,7 @@ const handleClearAllStockAlerts = () => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-[100]"
+                    className="absolute right-0 mt-4 w-80 max-w-[95vw] md:max-w-[350px] bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-[100]"
                   >
                     <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">

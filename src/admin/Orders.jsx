@@ -56,19 +56,8 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     ctxUpdateStatus(id, status);
   };
 
-  if (isLoading && orders.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Operations...</p>
-        </div>
-      </div>
-    );
-  }
-
   // DASHBOARD CALCULATIONS
-  const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = useMemo(() => {
+  const statsData = useMemo(() => {
     // Only process orders that are relevant for the current view
     const relevantOrders = orders.filter(o => isStatusActive(o.status));
 
@@ -116,6 +105,8 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     };
   }, [orders, servedPendingIds]);
 
+  const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = statsData;
+
   const stats = useMemo(() => [
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Live Tables", value: liveTablesCount, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
@@ -126,6 +117,17 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     { label: "Items Sold", value: totalItemsSold, icon: UtensilsCrossed, color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Kitchen Load", value: activeOrders.length > 5 ? "High" : "Normal", icon: Activity, color: "text-slate-600", bg: "bg-slate-50" },
   ], [totalRevenue, liveTablesCount, activeTakeawayCount, orders, servedOrders.length, servedTakeawayCount, totalItemsSold, activeOrders.length]);
+
+  if (isLoading && orders.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Operations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-10 font-sans text-slate-900">

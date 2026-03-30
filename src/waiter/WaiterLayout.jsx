@@ -16,8 +16,6 @@ import {
   HandHelping,
   CheckCircle2,
   BellRing,
-  Volume2,
-  VolumeX,
   CalendarDays
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -29,7 +27,6 @@ export default function WaiterLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const prevNotifCount = useRef(notifications.length);
 
   const navigate = useNavigate();
@@ -40,9 +37,7 @@ export default function WaiterLayout() {
   // Play sound when new notification arrives
   useEffect(() => {
     if (notifications.length > prevNotifCount.current) {
-      if (soundEnabled) {
-        audioRef.current.play().catch(e => console.error("Audio play failed:", e));
-      }
+      audioRef.current.play().catch(e => console.error("Audio play failed:", e));
       
       const newNotif = notifications[0];
       toast.custom((t) => (
@@ -75,7 +70,7 @@ export default function WaiterLayout() {
       ), { duration: 5000 });
     }
     prevNotifCount.current = notifications.length;
-  }, [notifications, soundEnabled, markNotificationAsRead]);
+  }, [notifications, markNotificationAsRead]);
 
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "dashboard" },
@@ -257,19 +252,11 @@ export default function WaiterLayout() {
           </div>
 
           <div className="flex items-center gap-6">
-            <button 
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className={`p-2 rounded-full transition-colors ${soundEnabled ? "text-indigo-600 bg-indigo-50" : "text-slate-300 bg-slate-50"}`}
-              title={soundEnabled ? "Mute Caller Sound" : "Enable Caller Sound"}
-            >
-              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
-
             {/* Waiter Call Notifications */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
-                className={`relative p-3 rounded-full transition-all duration-200 ${
+                className={`relative p-2 sm:p-3 rounded-full transition-all duration-200 ${
                   notifications.length > 0
                     ? "bg-amber-100 text-amber-700 hover:bg-amber-200 ring-2 ring-amber-200"
                     : "bg-slate-50 text-slate-400 hover:bg-slate-100"

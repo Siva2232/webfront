@@ -5,38 +5,38 @@ import { io as socketIOClient } from "socket.io-client";
 const UIContext = createContext();
 
 const defaultBanners = [
-  { id: 1, title: "Art of Dining", description: "Discover Flavors Beyond Boundaries", imageUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80", tag: "Seasonal Menu" },
-  { id: 2, title: "Purely Organic", description: "Farm to Fork, Every Single Day", imageUrl: "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600", tag: "Fresh" },
-  { id: 3, title: "Chef's Special", description: "Handcrafted Culinary Masterpieces", imageUrl: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80", tag: "Must Try" },
-  { id: 4, title: "Midnight Feast", description: "The best flavors for the night owl", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80", tag: "Late Night" },
-  { id: 5, title: "Dessert Heaven", description: "Sweet endings to beautiful stories", imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1600&q=80", tag: "Sweet" }
+//   { id: 1, title: "Art of Dining", description: "Discover Flavors Beyond Boundaries", imageUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80", tag: "Seasonal Menu" },
+//   { id: 2, title: "Purely Organic", description: "Farm to Fork, Every Single Day", imageUrl: "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600", tag: "Fresh" },
+//   { id: 3, title: "Chef's Special", description: "Handcrafted Culinary Masterpieces", imageUrl: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80", tag: "Must Try" },
+//   { id: 4, title: "Midnight Feast", description: "The best flavors for the night owl", imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80", tag: "Late Night" },
+//   { id: 5, title: "Dessert Heaven", description: "Sweet endings to beautiful stories", imageUrl: "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1600&q=80", tag: "Sweet" }
 ];
 
 const defaultOffers = [
-  {
-    id: 101,
-    title: "Art of Dining",
-    description: "Discover Flavors Beyond Boundaries",
-    imageUrl:
-      "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80",
-    tag: "Seasonal Menu",
-  },
-  {
-    id: 102,
-    title: "Purely Organic",
-    description: "Farm to Fork, Every Single Day",
-    imageUrl:
-      "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600",
-    tag: "Freshly Picked",
-  },
-  {
-    id: 103,
-    title: "Chef's Special",
-    description: "Handcrafted Culinary Masterpieces",
-    imageUrl:
-      "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80",
-    tag: "Must Try",
-  },
+  // {
+  //   id: 101,
+  //   title: "Art of Dining",
+  //   description: "Discover Flavors Beyond Boundaries",
+  //   imageUrl:
+  //     "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=1600&q=80",
+  //   tag: "Seasonal Menu",
+  // },
+  // {
+  //   id: 102,
+  //   title: "Purely Organic",
+  //   description: "Farm to Fork, Every Single Day",
+  //   imageUrl:
+  //     "https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=1600",
+  //   tag: "Freshly Picked",
+  // },
+  // {
+  //   id: 103,
+  //   title: "Chef's Special",
+  //   description: "Handcrafted Culinary Masterpieces",
+  //   imageUrl:
+  //     "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1600&q=80",
+  //   tag: "Must Try",
+  // },
 ];
 
 export const UIProvider = ({ children }) => {
