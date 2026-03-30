@@ -276,7 +276,7 @@ export default function WaiterLayout() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden z-[100]"
+                    className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden z-[100] md:mr-[-150px]"
                   >
                     <div className="p-5 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                       <div className="flex items-center gap-2">

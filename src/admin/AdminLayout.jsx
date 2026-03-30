@@ -497,7 +497,7 @@ const handleClearAllStockAlerts = () => {
             </h2>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 ml-[-0px]">
             {/* Waiter Notifications */}
             <div className="relative" ref={waiterRef}>
               <button
