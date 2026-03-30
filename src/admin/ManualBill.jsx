@@ -215,7 +215,7 @@ export default function ManualBill() {
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b px-4 py-3">
+      <header className="top-0 z-50 bg-white border-b px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button onClick={() => navigate("/admin/dashboard")} className="p-2 -ml-2">
             <ChevronLeft size={22} />

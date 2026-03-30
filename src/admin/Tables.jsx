@@ -300,7 +300,7 @@ export default function Tables() {
                   )}
 
                   {/* Action Indicator */}
-                  <div className={`mt-auto pt-4 flex items-center justify-between
+                  <div className={`mt-auto pt-4 flex items-center justify-between pointer-events-none
                     ${occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-slate-300 group-hover:text-slate-900"}`}>
                     <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider italic">
                       {occupied ? "View Order" : "Assign"}
@@ -309,7 +309,7 @@ export default function Tables() {
                   </div>
 
                   {/* Footer Actions */}
-                  <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3 relative z-10">
                     <div className="flex items-center gap-1 text-slate-500 text-xs font-bold">
                       <Users size={14} />
                       <span>{table.capacity}</span>
@@ -318,14 +318,17 @@ export default function Tables() {
                     <div className="flex gap-1.5">
                       {occupied ? (
                         <button
-                          onClick={(e) => releaseTable(e, table.id)}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            releaseTable(e, table.id);
+                          }}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors relative z-20"
                           title="Release Table"
                         >
                           <LogOut size={16} />
                         </button>
                       ) : (
-                        <div className="p-2 bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors">
+                        <div className="p-2 bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white rounded-xl transition-colors pointer-events-none">
                           <ChevronRight size={16} />
                         </div>
                       )}
