@@ -13,6 +13,8 @@ export default function Navbar({ title }) {
   const [hasUnreadOffer, setHasUnreadOffer] = useState(false);
   const [isCallingWaiter, setIsCallingWaiter] = useState(false);
   const [isRequestingBill, setIsRequestingBill] = useState(false);
+  const [waiterCooldown, setWaiterCooldown] = useState(0);
+  const [billCooldown, setBillCooldown] = useState(0);
   const [showCallSuccess, setShowCallSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: "", sub: "" });
   const [isNoOffersModalOpen, setIsNoOffersModalOpen] = useState(false);
@@ -23,7 +25,7 @@ export default function Navbar({ title }) {
   const mode = searchParams.get("mode");
 
   const handleCallWaiter = async () => {
-    if (!currentTable || mode === "takeaway") return;
+    if (!currentTable || mode === "takeaway" || waiterCooldown > 0) return;
     
     setIsCallingWaiter(true);
     try {
@@ -34,6 +36,7 @@ export default function Navbar({ title }) {
       });
       setSuccessMessage({ title: "Waiter Called", sub: "Someone will assist you soon" });
       setShowCallSuccess(true);
+      setWaiterCooldown(180); // 3 minutes
       setTimeout(() => setShowCallSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to call waiter:", error);
@@ -43,7 +46,7 @@ export default function Navbar({ title }) {
   };
 
   const handleRequestBill = async () => {
-    if (!currentTable || mode === "takeaway") return;
+    if (!currentTable || mode === "takeaway" || billCooldown > 0) return;
 
     setIsRequestingBill(true);
     try {
@@ -54,6 +57,7 @@ export default function Navbar({ title }) {
       });
       setSuccessMessage({ title: "Bill Requested", sub: "Your bill is being prepared" });
       setShowCallSuccess(true);
+      setBillCooldown(180); // 3 minutes
       setTimeout(() => setShowCallSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to request bill:", error);
@@ -61,6 +65,17 @@ export default function Navbar({ title }) {
       setIsRequestingBill(false);
     }
   };
+
+  useEffect(() => {
+    let interval;
+    if (waiterCooldown > 0 || billCooldown > 0) {
+      interval = setInterval(() => {
+        setWaiterCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+        setBillCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [waiterCooldown, billCooldown]);
 
   const getLinkWithTable = (path) => {
     // if we know this is a takeaway order, preserve that on nav
@@ -127,16 +142,16 @@ export default function Navbar({ title }) {
               {currentTable && mode !== "takeaway" && (
                 <button
                   onClick={handleRequestBill}
-                  disabled={isRequestingBill}
+                  disabled={isRequestingBill || billCooldown > 0}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
-                    isRequestingBill
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-500"
+                    isRequestingBill || billCooldown > 0
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-500 opacity-80 cursor-not-allowed"
                       : "bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:text-emerald-500 shadow-sm"
                   }`}
                 >
                   <Receipt size={20} className={isRequestingBill ? "animate-pulse" : ""} />
-                  <span className="text-sm font-bold uppercase tracking-wider">
-                    {isRequestingBill ? "Requesting..." : "Get Bill"}
+                  <span className="text-sm font-bold uppercase tracking-wider text-center min-w-[80px]">
+                    {isRequestingBill ? "Requesting..." : billCooldown > 0 ? `${Math.floor(billCooldown / 60)}:${(billCooldown % 60).toString().padStart(2, '0')}` : "Get Bill"}
                   </span>
                 </button>
               )}
@@ -145,16 +160,16 @@ export default function Navbar({ title }) {
               {currentTable && mode !== "takeaway" && (
                 <button
                   onClick={handleCallWaiter}
-                  disabled={isCallingWaiter}
+                  disabled={isCallingWaiter || waiterCooldown > 0}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
-                    isCallingWaiter
-                      ? "bg-amber-50 border-amber-200 text-amber-500"
+                    isCallingWaiter || waiterCooldown > 0
+                      ? "bg-amber-50 border-amber-200 text-amber-500 opacity-80 cursor-not-allowed"
                       : "bg-white border-slate-200 text-slate-700 hover:border-amber-400 hover:text-amber-500"
                   }`}
                 >
                   <HandHelping size={20} className={isCallingWaiter ? "animate-bounce" : ""} />
-                  <span className="text-sm font-bold uppercase tracking-wider">
-                    {isCallingWaiter ? "Calling..." : "Call Waiter"}
+                  <span className="text-sm font-bold uppercase tracking-wider text-center min-w-[80px]">
+                    {isCallingWaiter ? "Calling..." : waiterCooldown > 0 ? `${Math.floor(waiterCooldown / 60)}:${(waiterCooldown % 60).toString().padStart(2, '0')}` : "Call Waiter"}
                   </span>
                 </button>
               )}
@@ -220,12 +235,16 @@ export default function Navbar({ title }) {
             <div className="relative mr-1">
               <button
                 onClick={handleRequestBill}
-                disabled={isRequestingBill}
-                className={`p-2 rounded-full transition-all ${
-                  isRequestingBill ? "bg-emerald-100 text-emerald-600 animate-pulse" : "text-slate-700 bg-slate-50 border border-slate-100"
+                disabled={isRequestingBill || billCooldown > 0}
+                className={`p-2 rounded-full transition-all flex flex-col items-center justify-center min-w-[32px] ${
+                  isRequestingBill || billCooldown > 0 ? "bg-emerald-100 text-emerald-600 animate-pulse opacity-80" : "text-slate-700 bg-slate-50 border border-slate-100"
                 }`}
               >
-                <Receipt size={20} strokeWidth={2.5} />
+                {billCooldown > 0 ? (
+                  <span className="text-[10px] font-black">{Math.ceil(billCooldown / 60)}m</span>
+                ) : (
+                  <Receipt size={20} strokeWidth={2.5} />
+                )}
               </button>
               <span className="absolute -top-2 right-0 translate-x-1 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full bg-emerald-500 text-white shadow-lg">
                 Bill
@@ -238,12 +257,16 @@ export default function Navbar({ title }) {
             <div className="relative">
               <button
                 onClick={handleCallWaiter}
-                disabled={isCallingWaiter}
-                className={`p-2 rounded-full transition-all ${
-                  isCallingWaiter ? "bg-amber-100 text-amber-600 animate-pulse" : "text-slate-700 bg-slate-50 border border-slate-100"
+                disabled={isCallingWaiter || waiterCooldown > 0}
+                className={`p-2 rounded-full transition-all flex flex-col items-center justify-center min-w-[32px] ${
+                  isCallingWaiter || waiterCooldown > 0 ? "bg-amber-100 text-amber-600 animate-pulse opacity-80" : "text-slate-700 bg-slate-50 border border-slate-100"
                 }`}
               >
-                <Phone  size={20} />
+                 {waiterCooldown > 0 ? (
+                  <span className="text-[10px] font-black">{Math.ceil(waiterCooldown / 60)}m</span>
+                ) : (
+                  <Phone size={20} />
+                )}
               </button>
               <span className="absolute -top-2 left-0 -translate-x-1 px-2 py-1 text-[10px] font-black uppercase tracking-wider rounded-full bg-amber-500 text-white shadow-lg">
                 Waiter

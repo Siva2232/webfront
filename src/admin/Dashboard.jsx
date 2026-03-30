@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { Link } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from 'react';
+import { Link, useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
-import { motion } from "framer-motion";
+import { useUI } from "../context/UIContext";
+import API from "../api/axios";
+import { motion, AnimatePresence } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   Package,
@@ -21,8 +23,15 @@ import {
   History,
   FileSpreadsheet,
   FileText,
-  CheckCircle2 ,
-  Box 
+  CheckCircle2,
+  Box,
+  Circle,
+  LayoutGrid,
+  CalendarCheck,
+  BellRing,
+  Receipt,
+  ChevronRight,
+  Table as TableIcon
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -31,6 +40,76 @@ import * as XLSX from "xlsx";
 export default function Dashboard() {
   const { products = [], subitems = [] } = useProducts();
   const { orders = [] } = useOrders();
+  const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
+  
+  const [tables, setTables] = useState([]);
+  const [activeOrdersMap, setActiveOrdersMap] = useState({});
+  const [reservedTables, setReservedTables] = useState({});
+  const [tableAlerts, setTableAlerts] = useState({});
+  
+  const navigate = useNavigate();
+
+  // Fetch Tables
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const { data } = await API.get("/tables");
+        setTables(data);
+      } catch (err) {
+        console.error("Failed to fetch tables", err);
+      }
+    };
+    fetchTables();
+  }, []);
+
+  // Sync with live orders
+  useEffect(() => {
+    const liveMap = {};
+    orders.forEach(o => {
+      if (o.status && o.status !== "Closed") {
+        liveMap[`table-${o.table}`] = true;
+      }
+    });
+    setActiveOrdersMap(liveMap);
+  }, [orders]);
+
+  // Logic for Auto-Occupying Tables based on Reservations
+  useEffect(() => {
+    const reserveMap = {};
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    reservations.forEach(res => {
+      if (["Pending", "Confirmed"].includes(res.status) && res.table) {
+        const resTime = new Date(res.reservationTime);
+        if (resTime <= oneHourFromNow && resTime >= new Date(now.getTime() - 2 * 60 * 60 * 1000)) {
+          reserveMap[`table-${res.table}`] = {
+            customerName: res.customerName,
+            time: resTime
+          };
+        }
+      }
+    });
+    setReservedTables(reserveMap);
+  }, [reservations]);
+
+  // Sync with live notifications
+  useEffect(() => {
+    const alertsMap = {};
+    notifications.forEach(n => {
+      if (n.status === "Pending") {
+        const key = `table-${n.table}`;
+        if (!alertsMap[key]) alertsMap[key] = { waiter: false, bill: false, ids: [] };
+        if (n.type === "WaiterCall") alertsMap[key].waiter = true;
+        if (n.type === "BillRequested" || n.type === "BillRequest") alertsMap[key].bill = true;
+        alertsMap[key].ids.push(n._id);
+      }
+    });
+    setTableAlerts(alertsMap);
+  }, [notifications]);
+
+  const isOccupied = (tableId) => !!activeOrdersMap[`table-${tableId}`];
+  const isReserved = (tableId) => !!reservedTables[`table-${tableId}`];
 
   // --- ANALYTICS LOGIC ---
   const activeOrders = orders.filter((o) => o.status !== "Served").length;
@@ -187,6 +266,63 @@ export default function Dashboard() {
             isAlert={totalUnavailableCount > 0}
           />
         </div>
+
+        {/* --- 2.5 MINI TABLES GRID --- */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black flex items-center gap-3">
+              <TableIcon className="text-indigo-600" size={24} />
+              Floor Snapshot
+            </h2>
+            <Link to="/admin/tables" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 border-b-2 border-indigo-600 pb-1">
+              View All Tables
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {tables.map((table) => {
+              const occupied = isOccupied(table.id);
+              const reserved = isReserved(table.id);
+              const alert = tableAlerts[`table-${table.id}`];
+              const hasAlert = alert && (alert.waiter || alert.bill);
+
+              return (
+                <motion.div
+                  key={table.id}
+                  onClick={() => navigate(`/admin/order-summary?table=${table.id}`)}
+                  className={`relative p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-2 h-24
+                    ${hasAlert 
+                      ? "bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg" 
+                      : occupied 
+                        ? "bg-rose-50 border-rose-200 text-rose-700" 
+                        : reserved 
+                          ? "bg-amber-50 border-amber-200 text-amber-700"
+                          : "bg-white border-slate-100 hover:border-slate-300 text-slate-900"}`}
+                >
+                  <div className="text-[10px] font-black uppercase tracking-tighter opacity-60">
+                    T{table.id}
+                  </div>
+                  
+                  <div className="flex items-center justify-center">
+                    {hasAlert ? (
+                      alert.bill ? <Receipt size={16} /> : <BellRing size={16} />
+                    ) : occupied ? (
+                      <LayoutGrid size={16} />
+                    ) : reserved ? (
+                      <CalendarCheck size={16} />
+                    ) : (
+                      <Circle size={6} fill="currentColor" className="text-emerald-500" />
+                    )}
+                  </div>
+                  
+                  <div className="text-[8px] font-black uppercase tracking-[0.1em]">
+                    {hasAlert ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
 
         {/* --- 3. ANALYTICS VIEW: BEST SELLERS --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

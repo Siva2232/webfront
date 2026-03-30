@@ -387,7 +387,7 @@ export default function OrderSummary() {
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
             <Link 
               to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
-              className="relative flex items-center justify-center gap-3 w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-[11px] shadow-2xl transition-all"
+              className="relative flex items-center justify-center gap-3 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] shadow-lg transition-all"
             >
               <RotateCcw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
               Add More Items

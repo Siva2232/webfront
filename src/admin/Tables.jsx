@@ -14,7 +14,9 @@ import {
   Trash2,
   UtensilsCrossed,
   Loader2,
-  CalendarCheck
+  CalendarCheck,
+  BellRing,
+  Receipt
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -27,12 +29,30 @@ export default function Tables() {
   const [isSavingTable, setIsSavingTable] = useState(false);
 
   const { orders } = useOrders();
-  const { reservations } = useUI();
+  const { reservations, notifications, markNotificationAsRead } = useUI();
   const [activeOrders, setActiveOrders] = useState({});
   const [reservedTables, setReservedTables] = useState({});
+  const [tableAlerts, setTableAlerts] = useState({});
   const [deleteModal, setDeleteModal] = useState({ show: false, tableId: null });
 
   const navigate = useNavigate();
+
+  // Sync with live notifications (Waiter Call / Bill Request)
+  useEffect(() => {
+    const alertsMap = {};
+    notifications.forEach(n => {
+      if (n.status === "Pending") {
+        const key = `table-${n.table}`;
+        if (!alertsMap[key]) alertsMap[key] = { waiter: false, bill: false, ids: [] };
+        
+        if (n.type === "WaiterCall") alertsMap[key].waiter = true;
+        if (n.type === "BillRequested" || n.type === "BillRequest") alertsMap[key].bill = true;
+        
+        alertsMap[key].ids.push(n._id);
+      }
+    });
+    setTableAlerts(alertsMap);
+  }, [notifications]);
 
   // Fetch from Backend
   useEffect(() => {
@@ -164,6 +184,19 @@ export default function Tables() {
   const isOccupied = (tableId) => !!activeOrders[`table-${tableId}`];
   const isReserved = (tableId) => !!reservedTables[`table-${tableId}`];
 
+  const clearTableAlerts = async (e, tableId) => {
+    e.stopPropagation();
+    const alert = tableAlerts[`table-${tableId}`];
+    if (alert && alert.ids.length > 0) {
+      try {
+        await Promise.all(alert.ids.map(id => markNotificationAsRead(id)));
+        toast.success(`Cleared alerts for Table ${tableId}`);
+      } catch (err) {
+        console.error("Failed to clear alerts:", err);
+      }
+    }
+  };
+
   const isAdmin = localStorage.getItem("isAdminLoggedIn") === "true";
   const isWaiter = localStorage.getItem("isWaiterLoggedIn") === "true";
   const canManageTables = isAdmin || isWaiter;
@@ -229,6 +262,8 @@ export default function Tables() {
               const occupied = isOccupied(table.id);
               const reserved = isReserved(table.id);
               const resInfo = reserved ? reservedTables[`table-${table.id}`] : null;
+              const alert = tableAlerts[`table-${table.id}`];
+              const hasAlert = alert && (alert.waiter || alert.bill);
 
               return (
                 <motion.div
@@ -240,43 +275,62 @@ export default function Tables() {
                   transition={{ duration: 0.3 }}
                   onClick={() => goToMenu(table.id)}
                   className={`group relative flex flex-col rounded-2xl p-3 sm:p-4 transition-all duration-300 cursor-pointer border overflow-hidden h-full
-                    ${occupied 
-                      ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
-                      : reserved 
-                        ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
-                        : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
+                    ${hasAlert
+                      ? "bg-linear-to-br from-indigo-50 to-white border-indigo-200 shadow-indigo-100/50 ring-2 ring-indigo-400 ring-offset-2"
+                      : occupied 
+                        ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50" 
+                        : reserved 
+                          ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
+                          : "bg-white border-slate-100 hover:border-slate-300 shadow-sm hover:shadow-lg"}`}
                 >
                   {/* Status Badge */}
                   <div className="flex justify-between items-center mb-3 sm:mb-4">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
-                      ${occupied 
-                        ? "bg-rose-50 text-rose-700 border-rose-200" 
-                        : reserved 
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                      <Circle size={6} fill="currentColor" className={occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
-                      {occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
+                      ${hasAlert
+                        ? "bg-indigo-600 text-white border-indigo-600 animate-pulse"
+                        : occupied 
+                          ? "bg-rose-50 text-rose-700 border-rose-200" 
+                          : reserved 
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                      <Circle size={6} fill="currentColor" className={hasAlert ? "text-white" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
+                      {hasAlert ? "CALLED" : occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
                     </div>
 
-                    {isAdmin && (
-                      <button
-                        onClick={(e) => removeTable(e, table.id)}
-                        className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                        title="Delete Table"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
+                    <div className="flex gap-1">
+                      {hasAlert && (
+                        <button
+                          onClick={(e) => clearTableAlerts(e, table.id)}
+                          className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors"
+                          title="Dismiss Alert"
+                        >
+                          <Circle size={12} fill="currentColor" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => removeTable(e, table.id)}
+                          className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                          title="Delete Table"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Icon Area */}
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300
-                    ${occupied 
-                      ? "bg-rose-500 text-white scale-105" 
-                      : reserved
-                        ? "bg-amber-500 text-white"
-                        : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
-                    {reserved && !occupied ? (
+                    ${hasAlert
+                      ? "bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200"
+                      : occupied 
+                        ? "bg-rose-500 text-white scale-105" 
+                        : reserved
+                          ? "bg-amber-500 text-white"
+                          : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
+                    {hasAlert ? (
+                       alert.bill ? <Receipt size={20} strokeWidth={2.5} className="animate-bounce" /> : <BellRing size={20} strokeWidth={2.5} className="animate-ring" />
+                    ) : reserved && !occupied ? (
                        <CalendarCheck size={20} strokeWidth={1.8} />
                     ) : (
                        <LayoutGrid size={20} strokeWidth={1.8} className="sm:block" />
@@ -285,14 +339,20 @@ export default function Tables() {
 
                   {/* Table Number */}
                   <div className="text-center mb-4 sm:mb-6">
-                    <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">TABLE</p>
-                    <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tighter">
+                    <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ${hasAlert ? "text-indigo-400" : "text-slate-400"}`}>TABLE</p>
+                    <h3 className={`text-3xl sm:text-4xl font-black tracking-tighter ${hasAlert ? "text-indigo-900" : "text-slate-900"}`}>
                       {table.id < 10 ? `0${table.id}` : table.id}
                     </h3>
                   </div>
 
                   {/* Reserved Info */}
-                  {reserved && !occupied && (
+                  {hasAlert ? (
+                    <div className="mt-auto pt-2 border-t border-indigo-100 flex flex-col items-center">
+                      <p className={`text-[10px] font-black uppercase ${alert.bill ? "text-emerald-500" : "text-indigo-600"}`}>
+                        {alert.bill ? "Bill Requested" : "Waiter Called"}
+                      </p>
+                    </div>
+                  ) : reserved && !occupied && (
                     <div className="mt-auto pt-2 border-t border-amber-100">
                       <p className="text-[10px] font-bold text-amber-600 truncate">{resInfo.customerName}</p>
                       <p className="text-[9px] text-amber-500">{new Date(resInfo.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
@@ -301,11 +361,11 @@ export default function Tables() {
 
                   {/* Action Indicator */}
                   <div className={`mt-auto pt-4 flex items-center justify-between pointer-events-none
-                    ${occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-slate-300 group-hover:text-slate-900"}`}>
+                    ${hasAlert ? "text-indigo-600" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-slate-300 group-hover:text-slate-900"}`}>
                     <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider italic">
-                      {occupied ? "View Order" : "Assign"}
+                      {hasAlert ? "Respond" : occupied ? "View Order" : "Assign"}
                     </span>
-                    <ChevronRight size={16} className={`transition-transform duration-300 ${occupied ? "" : "group-hover:translate-x-1"}`} />
+                    <ChevronRight size={16} className={`transition-transform duration-300 ${occupied || hasAlert ? "" : "group-hover:translate-x-1"}`} />
                   </div>
 
                   {/* Footer Actions */}
