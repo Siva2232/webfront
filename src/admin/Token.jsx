@@ -28,8 +28,17 @@ const SOCKET_URL =
 
 export default function Token() {
   const navigate = useNavigate();
-  const [tokens, setTokens] = useState([]);
-  const [isFetching, setIsFetching] = useState(false);
+  const [tokens, setTokens] = useState(() => {
+    // Hydrate from cache immediately so board is never empty on first render
+    try {
+      const cached = localStorage.getItem("cachedTokens");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  // Start in loading state only when there is no cache (first ever visit)
+  const [isFetching, setIsFetching] = useState(() => {
+    return !localStorage.getItem("cachedTokens");
+  });
   const [isResetting, setIsResetting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const socketRef = useRef(null);
@@ -41,9 +50,10 @@ export default function Token() {
       const { data } = await API.get("/orders/tokens");
       const fetchedTokens = data.tokens || [];
       setTokens(fetchedTokens);
-      // Cache data for instant loading next time
-      localStorage.setItem("cachedTokens", JSON.stringify(fetchedTokens));
-      localStorage.setItem("lastTokenFetch", Date.now().toString());
+      try {
+        localStorage.setItem("cachedTokens", JSON.stringify(fetchedTokens));
+        localStorage.setItem("lastTokenFetch", Date.now().toString());
+      } catch {}
     } catch (err) {
       console.error("fetchTokens error:", err);
     } finally {
@@ -83,15 +93,14 @@ export default function Token() {
     const lastFetch = localStorage.getItem("lastTokenFetch");
     const now = Date.now();
 
-    // Hydrate from cache immediately for instant display
-    const cachedTokens = localStorage.getItem("cachedTokens");
-    if (cachedTokens) {
-      try { setTokens(JSON.parse(cachedTokens)); } catch (e) {}
-    }
-
-    // Only hit the network if cache is stale (>5min) or missing
-    if (!lastFetch || (now - parseInt(lastFetch)) > 300000) {
+    // Always fetch on mount to get fresh server data
+    // Cache was already applied in useState initializer above
+    const cacheAge = lastFetch ? now - parseInt(lastFetch) : Infinity;
+    if (cacheAge > 10000) {
+      // Only skip if fetched within last 10s (e.g. hot reload)
       fetchTokens();
+    } else {
+      setIsFetching(false); // cache is fresh, no network needed yet
     }
 
     // Connect socket for real-time updates
@@ -104,26 +113,33 @@ export default function Token() {
       setTokens(prev => {
         const exists = prev.some(t => t._id === order._id);
         if (exists) return prev;
-        return [order, ...prev];
+        const next = [order, ...prev];
+        try { localStorage.setItem("cachedTokens", JSON.stringify(next)); } catch {}
+        return next;
       });
-      // Invalidate cache so next mount gets fresh data
       localStorage.removeItem("lastTokenFetch");
     });
 
     // Order updated (status change, close, etc.) → update in place
     socket.on("orderUpdated", (order) => {
       if (!order.isTakeawayOrder || !order.tokenNumber) return;
-      setTokens(prev => prev.map(t => t._id === order._id ? { ...t, ...order } : t));
+      setTokens(prev => {
+        const next = prev.map(t => t._id === order._id ? { ...t, ...order } : t);
+        try { localStorage.setItem("cachedTokens", JSON.stringify(next)); } catch {}
+        return next;
+      });
     });
 
     // Admin triggered reset → instantly clear board
     socket.on("tokenReset", () => {
       setTokens([]);
+      localStorage.removeItem("cachedTokens");
+      localStorage.removeItem("lastTokenFetch");
       toast("Tokens were reset by admin", { icon: "🔄" });
     });
 
-    // Fallback poll every 8s (lightweight safety net)
-    const poll = setInterval(() => fetchTokens(), 8000);
+    // Lightweight poll every 15s (socket handles real-time; poll is safety net only)
+    const poll = setInterval(() => fetchTokens(), 15000);
 
     return () => {
       socket.disconnect();
@@ -224,7 +240,22 @@ export default function Token() {
         </div>
 
         {/* Token Grid */}
-        {filteredTokens.length === 0 ? (
+        {isFetching && filteredTokens.length === 0 ? (
+          /* Loading skeleton — shown only on first load with no cache */
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-pulse">
+                <div className="h-1.5 w-full bg-slate-200" />
+                <div className="p-6 space-y-4">
+                  <div className="h-12 w-20 bg-slate-100 rounded-xl" />
+                  <div className="h-4 w-full bg-slate-100 rounded-lg" />
+                  <div className="h-4 w-3/4 bg-slate-100 rounded-lg" />
+                  <div className="h-10 w-full bg-slate-100 rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredTokens.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Ticket size={40} className="text-slate-200" />

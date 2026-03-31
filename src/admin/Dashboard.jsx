@@ -94,57 +94,45 @@ export default function Dashboard() {
   // Background sync for core data
   useEffect(() => {
     const syncSystem = async (force = false) => {
-      // Logic: if we synced in last 10s, skip background heavy sync unless forced
+      // Skip if synced within the last 15s (unless forced by interval)
       const now = Date.now();
-      if (!force && now - lastSyncRef.current < 10000) return;
+      if (!force && now - lastSyncRef.current < 15000) return;
       
       setIsSyncing(true);
       try {
-        // Parallel background requests for speed
-        const [tableRes, revenueRes, todayRes, ordersRes] = await Promise.all([
+        // Run stats + tables in parallel (2 calls instead of 3)
+        const [statsRes, tableRes] = await Promise.all([
+          API.get('/orders/stats').catch(() => null),
           API.get("/tables").catch(() => null),
-          // Fetch small batch for revenue & best sellers
-          API.get('/orders?limit=150&status=Paid,Closed').catch(() => null),
-          // Fetch only today counts
-          API.get('/orders?today=true&limit=100').catch(() => null),
-          fetchOrders ? fetchOrders() : Promise.resolve()
         ]);
+
+        if (statsRes?.data) {
+          const { todayCount, totalRevenue, bestSellers } = statsRes.data;
+          
+          if (typeof totalRevenue === 'number') {
+            setTotalRevenue(totalRevenue);
+            localStorage.setItem("dashboard_total_revenue", totalRevenue.toString());
+          }
+          if (typeof todayCount === 'number') {
+            setTodayOrdersCount(todayCount);
+            localStorage.setItem("dashboard_today_count", todayCount.toString());
+          }
+          if (Array.isArray(bestSellers)) {
+            setBestSellers(bestSellers);
+            localStorage.setItem("dashboard_best_sellers", JSON.stringify(bestSellers));
+          }
+          
+          lastSyncRef.current = now;
+          localStorage.setItem("dashboard_last_sync", now.toString());
+        }
 
         if (tableRes?.data) {
           setTables(tableRes.data);
           localStorage.setItem("restaurant_tables_config", JSON.stringify(tableRes.data));
         }
 
-        if (revenueRes?.data) {
-          const finalRevenue = revenueRes.data.reduce((acc, order) => {
-            const value = order.billDetails?.grandTotal || order.totalAmount || 0;
-            return acc + (Number(value) || 0);
-          }, 0);
-          setTotalRevenue(finalRevenue);
-          localStorage.setItem("dashboard_total_revenue", finalRevenue.toString());
-          
-          const itemMap = {};
-          revenueRes.data.forEach(order => {
-            (order.items || []).forEach(item => {
-              const name = item.name || "Unknown";
-              itemMap[name] = (itemMap[name] || 0) + (Number(item.qty) || 0);
-            });
-          });
-          const sellers = Object.entries(itemMap)
-            .map(([name, qty]) => ({ name, qty }))
-            .sort((a, b) => b.qty - a.qty)
-            .slice(0, 5);
-          setBestSellers(sellers);
-          localStorage.setItem("dashboard_best_sellers", JSON.stringify(sellers));
-          
-          lastSyncRef.current = now;
-          localStorage.setItem("dashboard_last_sync", now.toString());
-        }
-
-        if (todayRes?.data && Array.isArray(todayRes.data)) {
-          setTodayOrdersCount(todayRes.data.length);
-          localStorage.setItem("dashboard_today_count", todayRes.data.length.toString());
-        }
+        // Also refresh live orders list in background
+        if (fetchOrders) fetchOrders().catch(() => {});
       } catch (err) {
         console.error("Dashboard sync error:", err);
       } finally {
@@ -153,7 +141,6 @@ export default function Dashboard() {
     };
 
     syncSystem();
-    // Refresh interval every 45s (was 30s) to reduce server load
     const interval = setInterval(() => syncSystem(true), 45000);
     return () => clearInterval(interval);
   }, []);

@@ -52,7 +52,7 @@ export default function OrderSummary() {
   };
 
   const handleRequestBill = async () => {
-    const tableNum = currentTable || (mode === "takeaway" ? TAKEAWAY_TABLE : null);
+    const tableNum = currentTable || (mode === "takeaway" ? TAKEAWAY_TABLE : "TAKEAWAY");
     if (!order?._id || isRequestingBill || order.isBillRequested) return;
     setIsRequestingBill(true);
     try {
@@ -60,14 +60,14 @@ export default function OrderSummary() {
       await API.post("/notifications", {
         table: tableNum,
         type: "BillRequested",
-        message: `Table ${tableNum} has requested their bill.`
+        message: `${tableNum === "TAKEAWAY" ? "Takeaway Order" : `Table ${tableNum}`} has requested their bill.`
       });
 
       // 2. Update the order object in the DB to mark bill as requested
       // This will reset to false when they order more food
       await API.put(`/orders/${order._id}/status`, { isBillRequested: true });
       
-      toast.success("Bill requested! Waiter is arriving.");
+      toast.success(tableNum === "TAKEAWAY" ? "Bill requested! Staff will assist you shortly." : "Bill requested! Waiter is arriving.");
     } catch (err) {
       console.error("bill request error", err);
       toast.error("Failed to request bill");
@@ -491,28 +491,32 @@ export default function OrderSummary() {
 </AnimatePresence>
 
       {/* FLOATING BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
-        <div className="max-w-md mx-auto grid grid-cols-2 gap-3">
-          <motion.button 
-            whileTap={{ scale: 0.95 }}
-            onClick={handleRequestBill}
-            disabled={isRequestingBill || order?.isBillRequested}
-            className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
-              ${order?.isBillRequested 
-                ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
-                : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
-          >
-            {order?.isBillRequested ? (
-              <><CheckCircle size={14} /> Requested</>
-            ) : (
-              <><Receipt size={14} /> Get Bill</>
-            )}
-          </motion.button>
+      <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-4 lg:mb-0 lg:relative lg:p-0">
+        <div className={`max-w-md mx-auto ${mode === "takeaway" ? "flex" : "grid grid-cols-2"} gap-3`}>
+          {mode !== "takeaway" && (
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRequestBill}
+              disabled={isRequestingBill || order?.isBillRequested || order?.paymentStatus === 'paid'}
+              className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
+                ${(order?.isBillRequested || order?.paymentStatus === 'paid')
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
+                  : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
+            >
+              {order?.paymentStatus === 'paid' ? (
+                <><CheckCircle size={14} /> Paid</>
+              ) : order?.isBillRequested ? (
+                <><CheckCircle size={14} /> Requested</>
+              ) : (
+                <><Receipt size={14} /> Get Bill</>
+              )}
+            </motion.button>
+          )}
 
           <motion.div 
             whileHover={{ y: -4 }}
             whileTap={{ scale: 0.98 }}
-            className="relative group"
+            className={`relative group ${mode === "takeaway" ? "w-full" : ""}`}
           >
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
             <Link 
