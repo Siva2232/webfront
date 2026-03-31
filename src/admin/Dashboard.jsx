@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
@@ -68,13 +68,11 @@ export default function Dashboard() {
   });
 
   const [totalRevenue, setTotalRevenue] = useState(() => {
-    const cached = localStorage.getItem("dashboard_total_revenue");
-    return cached ? Number(cached) : 0;
+    return Number(localStorage.getItem("dashboard_total_revenue") || 0);
   });
 
   const [todayOrdersCount, setTodayOrdersCount] = useState(() => {
-    const cached = localStorage.getItem("dashboard_today_count");
-    return cached ? Number(cached) : 0;
+    return Number(localStorage.getItem("dashboard_today_count") || 0);
   });
 
   const [bestSellers, setBestSellers] = useState(() => {
@@ -84,6 +82,9 @@ export default function Dashboard() {
     } catch { return []; }
   });
 
+  // Performance enhancement: Persistent sync tracker to skip heavy refetching if data is fresh
+  const lastSyncRef = useRef(Number(localStorage.getItem("dashboard_last_sync") || 0));
+
   const [reservedTables, setReservedTables] = useState({});
   const [tableAlerts, setTableAlerts] = useState({});
   const [isSyncing, setIsSyncing] = useState(false);
@@ -92,14 +93,20 @@ export default function Dashboard() {
 
   // Background sync for core data
   useEffect(() => {
-    const syncSystem = async () => {
+    const syncSystem = async (force = false) => {
+      // Logic: if we synced in last 10s, skip background heavy sync unless forced
+      const now = Date.now();
+      if (!force && now - lastSyncRef.current < 10000) return;
+      
       setIsSyncing(true);
       try {
         // Parallel background requests for speed
         const [tableRes, revenueRes, todayRes, ordersRes] = await Promise.all([
           API.get("/tables").catch(() => null),
-          API.get('/orders?limit=300&status=Paid,Closed').catch(() => null),
-          API.get('/orders?today=true&limit=200').catch(() => null),
+          // Fetch small batch for revenue & best sellers
+          API.get('/orders?limit=150&status=Paid,Closed').catch(() => null),
+          // Fetch only today counts
+          API.get('/orders?today=true&limit=100').catch(() => null),
           fetchOrders ? fetchOrders() : Promise.resolve()
         ]);
 
@@ -116,7 +123,6 @@ export default function Dashboard() {
           setTotalRevenue(finalRevenue);
           localStorage.setItem("dashboard_total_revenue", finalRevenue.toString());
           
-          // Compute best sellers from same pool to avoid double fetch
           const itemMap = {};
           revenueRes.data.forEach(order => {
             (order.items || []).forEach(item => {
@@ -130,6 +136,9 @@ export default function Dashboard() {
             .slice(0, 5);
           setBestSellers(sellers);
           localStorage.setItem("dashboard_best_sellers", JSON.stringify(sellers));
+          
+          lastSyncRef.current = now;
+          localStorage.setItem("dashboard_last_sync", now.toString());
         }
 
         if (todayRes?.data && Array.isArray(todayRes.data)) {
@@ -144,8 +153,8 @@ export default function Dashboard() {
     };
 
     syncSystem();
-    // Refresh interval every 30s
-    const interval = setInterval(syncSystem, 30000);
+    // Refresh interval every 45s (was 30s) to reduce server load
+    const interval = setInterval(() => syncSystem(true), 45000);
     return () => clearInterval(interval);
   }, []);
 

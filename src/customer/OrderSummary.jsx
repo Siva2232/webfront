@@ -422,38 +422,73 @@ export default function OrderSummary() {
       </main>
 
       {/* Token Popup for Takeaway Orders */}
-      <AnimatePresence>
-        {mode === "takeaway" && order.tokenNumber && showTokenPopup && (
-          <motion.div 
-            initial={{ opacity: 0, x: 100, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 100, scale: 0.9 }}
-            className="fixed top-24 right-4 z-[100] w-48 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-indigo-100 overflow-hidden"
-          >
-            <div className="bg-indigo-600 p-3 flex justify-between items-center text-white">
-              <div className="flex items-center gap-2">
-                <Ticket size={14} className="animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Your Token</span>
+     <AnimatePresence>
+  {mode === "takeaway" && order.tokenNumber && showTokenPopup && (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(10px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      className="fixed top-24 right-6 z-[100] w-56"
+    >
+      {/* Main Ticket Body */}
+      <div className="relative bg-white rounded-3xl shadow-[0_32px_64px_-16px_rgba(79,70,229,0.3)] border border-indigo-50 overflow-hidden">
+        
+        {/* Ticket Header with Mesh Gradient */}
+        <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-4 relative overflow-hidden">
+          {/* Subtle Decorative Circles */}
+          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+          
+          <div className="flex justify-between items-center text-white relative z-10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-md">
+                <Ticket size={16} className="text-white" strokeWidth={3} />
               </div>
-              <button 
-                onClick={() => setShowTokenPopup(false)}
-                className="p-1 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.15em] opacity-90">
+                Order Token
+              </span>
             </div>
-            <div className="p-6 text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block mb-1">Number</span>
-              <p className="text-5xl font-black text-slate-900 tracking-tighter">
-                #{order.tokenNumber}
-              </p>
-              <p className="text-[9px] font-black text-indigo-500 uppercase mt-3 tracking-wider">
-                Show at counter
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button 
+              onClick={() => setShowTokenPopup(false)}
+              className="p-1.5 hover:bg-white/20 rounded-full transition-all active:scale-90"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* The "Perforation" Line Effect */}
+        <div className="relative flex items-center px-0 my-[-1px]">
+          <div className="absolute left-[-8px] w-4 h-4 bg-slate-50 border-r border-indigo-100 rounded-full z-10" />
+          <div className="w-full border-t-2 border-dashed border-indigo-50 mx-4" />
+          <div className="absolute right-[-8px] w-4 h-4 bg-slate-50 border-l border-indigo-100 rounded-full z-10" />
+        </div>
+
+        {/* Token Content */}
+        <div className="p-7 text-center bg-gradient-to-b from-white to-indigo-50/30">
+          <span className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] block mb-2">
+            Queue Number
+          </span>
+          
+          <div className="relative inline-block">
+            <p className="text-6xl font-black text-slate-900 tracking-tighter italic">
+              {order.tokenNumber}
+            </p>
+            {/* Subtle glow behind the number */}
+            <div className="absolute inset-0 bg-indigo-500/5 blur-xl -z-10" />
+          </div>
+
+          <div className="mt-5 py-2 px-4 bg-indigo-50 rounded-2xl inline-flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
+            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+              Ready for pickup
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
 
       {/* FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
