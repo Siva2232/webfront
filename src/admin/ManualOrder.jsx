@@ -282,12 +282,15 @@ export default function ManualOrder() {
     };
 
     try {
-      await addManualOrder(orderData);
+      const response = await addManualOrder(orderData);
       setShowConfirmModal(false);
+      
+      const tokenMsg = response?.tokenNumber ? ` (Token #${response.tokenNumber})` : "";
+      
       toast.success(
         isAddMoreMode 
           ? `Items added to order #${(selectedExistingOrder._id || "").slice(-5)}!`
-          : "Order placed successfully!",
+          : `Order placed successfully!${tokenMsg}`,
         { 
           icon: <CheckCircle size={18} className="text-emerald-500" />,
           duration: 3000,

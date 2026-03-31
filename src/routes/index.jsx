@@ -26,6 +26,7 @@ import KitchenBill from "../admin/KitchenBill";
 import Reservations from "../admin/Reservations";
 import ManualOrder from "../admin/ManualOrder";
 import ManualBill from "../admin/ManualBill";
+import Token from "../admin/Token";
 import AddStaff from "../admin/AddStaff";
 import ExpenseTracker from "../admin/ExpenseTracker"; // temporary redirect component (can be removed later)
 import PurchaseExpense from "../admin/expenses/PurchaseExpense";
@@ -103,6 +104,7 @@ export default function AppRoutes() {
           <Route path="sub-items" element={<SubItemLibrary />} />
           <Route path="orders" element={<Orders />} />
           <Route path="manual-order" element={<ManualOrder />} />
+          <Route path="tokens" element={<Token />} />
           <Route path="products-ordering" element={<AdminProductsOrdering />} />
           <Route path="cart" element={<AdminCart />} />
           <Route path="order-summary" element={<AdminOrderSummary />} />

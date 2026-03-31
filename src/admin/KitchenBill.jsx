@@ -87,6 +87,7 @@ GST: 18AABCT1234H1Z0
 
 ${padLine('Order Ref', '#' + (kb.orderRef || kb._id || '').toString().slice(-8))}
 ${padLine('Table', isTakeawayOrder(kb) ? 'TAKEAWAY' : 'TBL-' + kb.table)}
+${isTakeawayOrder(kb) && kb.tokenNumber ? padLine('Token No', '#' + kb.tokenNumber) : ''}
 ${padLine('Placed At', format(billTimestamp, 'dd/MM/yyyy • hh:mm a'))}
 
 <div class="line"></div>
@@ -195,12 +196,19 @@ ${kb.notes ? `<div class="line"></div><div class="bold">Notes:</div>\n${kb.notes
                     </div>
                   )}
 
-                  {/* Customer Name */}
-                  {kb.customerName && (
-                    <div className="mt-2 text-[10px] font-black uppercase tracking-tight text-slate-500">
-                      Customer: <span className="text-slate-900">{kb.customerName}</span>
-                    </div>
-                  )}
+                  {/* Customer Name & Token */}
+                  <div className="mt-2 flex flex-col items-center gap-1">
+                    {kb.customerName && (
+                      <div className="text-[10px] font-black uppercase tracking-tight text-slate-500">
+                        Customer: <span className="text-slate-900">{kb.customerName}</span>
+                      </div>
+                    )}
+                    {isTakeawayOrder(kb) && kb.tokenNumber && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-lg text-[12px] font-black uppercase shadow-sm">
+                        Token: #{kb.tokenNumber}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Table/Order Info */}

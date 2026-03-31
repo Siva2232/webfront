@@ -110,8 +110,8 @@ GST: 18AABCT1234H1Z0
 <div class="text-center">Cashier: ${cashierName}</div>
 <div class="line"></div>
 
-${pad("Order Ref", "#" + (order._id || "").slice(-6))}
-${pad("Location", order.table === TAKEAWAY_TABLE ? "TAKEAWAY" : "TBL-" + order.table)}
+${pad("Order Ref", "#" + (order._id || "").slice(-8))}
+${pad("Table", (order.table === TAKEAWAY_TABLE || !order.table) ? "TAKEAWAY" : "TBL-" + order.table)}${((order.table === TAKEAWAY_TABLE || !order.table) && order.tokenNumber) ? `\n${pad("Token No", "#" + order.tokenNumber)}` : ""}
 ${pad("Placed At", format(new Date(order.createdAt || order.billedAt), "dd/MM/yyyy • hh:mm a"))}
 
 <div class="line"></div>
@@ -165,8 +165,14 @@ export default function OrderBill() {
 
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
-    // Force a fresh fetch if cache is empty or too old
-    fetchBills();
+    // Only fetch if we don't already have bills or it's been more than 5 minutes
+    const lastFetch = localStorage.getItem("lastBillsFetch");
+    const now = Date.now();
+    
+    if (!billsReady || !bills.length || !lastFetch || (now - parseInt(lastFetch)) > 300000) {
+      fetchBills();
+      localStorage.setItem("lastBillsFetch", now.toString());
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* deduplicated + date-filtered bills using O(N) deduplication */
@@ -625,9 +631,16 @@ const BillCard = React.memo(function BillCard({
             {isTA || isDelivery ? (
               <>
                 <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Order Type</p>
-                <p className="text-xl font-black italic text-slate-900 leading-none">
-                  {isDelivery ? "Delivery" : "Takeaway"}
-                </p>
+                <div className="flex flex-col items-end">
+                  <p className="text-xl font-black italic text-slate-900 leading-none">
+                    {isDelivery ? "Delivery" : "Takeaway"}
+                  </p>
+                  {isTA && order.tokenNumber && (
+                    <div className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded-lg text-[12px] font-black uppercase shadow-sm">
+                      Token #{order.tokenNumber}
+                    </div>
+                  )}
+                </div>
                 {isDelivery && order.deliveryTime && (
                   <p className="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-2">
                     EST. TIME: {order.deliveryTime}

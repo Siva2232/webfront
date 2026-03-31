@@ -46,6 +46,7 @@ const menuItems = [
   { name: "Analytics", icon: BarChart2, path: "reports" },
   { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
   { name: "KOT", icon: Ticket, path: "kitchen-bill" },
+  { name: "Tokens", icon: Ticket, path: "tokens" },
   {
     name: "Manage Menu",
     icon: Menu,
