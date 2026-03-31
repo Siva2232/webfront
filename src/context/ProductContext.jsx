@@ -348,18 +348,38 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  // Patch products state in-memory for a sub-item availability change.
+  // This is synchronous so ProductCard updates with zero lag.
+  const _patchProductsForSubItem = (subItem, isAvailable) => {
+    if (!subItem) return;
+    const { name, type } = subItem;
+    setProducts(prev => prev.map(p => {
+      if (type === 'portion' && p.portions?.some(pt => pt.name === name)) {
+        return { ...p, portions: p.portions.map(pt => pt.name === name ? { ...pt, isAvailable } : pt) };
+      }
+      if (type === 'addonGroup' && p.addonGroups?.some(ag => ag.name === name)) {
+        return { ...p, addonGroups: p.addonGroups.map(ag => ag.name === name ? { ...ag, isAvailable } : ag) };
+      }
+      return p;
+    }));
+  };
+
   const updateSubItemStatus = async (id, isAvailable) => {
+    // Find sub-item before any async work so we can patch products synchronously
+    const subItem = subitems.find(s => s._id === id) || null;
+
+    // Instant optimistic updates — no waiting for API or socket
+    setSubitems(prev => prev.map(s => s._id === id ? { ...s, isAvailable } : s));
+    _patchProductsForSubItem(subItem, isAvailable);
+
     try {
-      // Optimistic update within the global context if needed
-      setSubitems(prev => prev.map(s => s._id === id ? { ...s, isAvailable } : s));
-
       const { data } = await API.patch(`/sub-items/${id}/status`, { isAvailable });
-      // The socket event "subItemUpdated" will usually carry the full data later
-      // But we update here too to stay ahead of the lag
       setSubitems(prev => prev.map(s => s._id === id ? data : s));
-
       return data;
     } catch (error) {
+      // Revert both on failure
+      setSubitems(prev => prev.map(s => s._id === id ? { ...s, isAvailable: !isAvailable } : s));
+      _patchProductsForSubItem(subItem, !isAvailable);
       console.error("Error updating sub-item status:", error);
       throw error;
     }

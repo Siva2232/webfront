@@ -102,7 +102,7 @@ function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) {
 }
 
 export default function SubItemLibrary() {
-  const { subitems, fetchSubitems } = useContext(ProductContext);
+  const { subitems, fetchSubitems, updateSubItemStatus } = useContext(ProductContext);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -270,18 +270,20 @@ export default function SubItemLibrary() {
     // Mark as pending so the subitems sync doesn't overwrite while in-flight
     pendingIds.current.add(item._id);
 
-    // Immediately update local UI
+    // Immediately update local list UI
     setItems(prev =>
       prev.map(it => it._id === item._id ? { ...it, isAvailable: newStatus } : it)
     );
 
     try {
-      await API.patch(`/sub-items/${item._id}/status`, { isAvailable: newStatus });
+      // updateSubItemStatus patches BOTH subitems + products in context instantly
+      // so ProductCard reflects the change with zero socket round-trip lag
+      await updateSubItemStatus(item._id, newStatus);
       toast.success(newStatus ? "Stock In!" : "Stock Out!");
     } catch (err) {
       console.error("Toggle error:", err);
       toast.error("Failed to update status");
-      // Revert UI on failure
+      // Revert local list (context already reverted itself in updateSubItemStatus)
       setItems(prev =>
         prev.map(it => it._id === item._id ? { ...it, isAvailable: !newStatus } : it)
       );
