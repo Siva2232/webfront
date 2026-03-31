@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { useState, useEffect, useMemo, useContext, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import API from "../api/axios";
 import toast from "react-hot-toast";
@@ -52,7 +52,7 @@ function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) {
         </div>
         <div className="flex gap-1.5 shrink-0">
           <button
-            onClick={() => onToggleStatus(item, item.isAvailable !== false ? "out" : "in")}
+            onClick={() => onToggleStatus(item)}
             className={`p-2.5 rounded-xl transition-all shadow-sm ${
               item.isAvailable !== false
                 ? "bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
@@ -106,10 +106,22 @@ export default function SubItemLibrary() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Track IDs of items with a pending optimistic update so the context sync
+  // doesn't overwrite them before the API response settles.
+  const pendingIds = useRef(new Set());
+
   // Sync internal state when context updates (e.g. via real-time sockets)
+  // Preserve any item that currently has a pending toggle in-flight.
   useEffect(() => {
     if (subitems && subitems.length >= 0) {
-      setItems(subitems);
+      setItems(prev => {
+        if (prev.length === 0) return subitems; // initial load
+        return subitems.map(s =>
+          pendingIds.current.has(s._id)
+            ? (prev.find(p => p._id === s._id) || s)  // keep local optimistic copy
+            : s
+        );
+      });
       setLoading(false);
     }
   }, [subitems]);
@@ -136,7 +148,6 @@ export default function SubItemLibrary() {
   });
   const [saving, setSaving] = useState(false);
 
-  const [stockModal, setStockModal] = useState({ show: false, item: null, target: "" });
   const [deleteModal, setDeleteModal] = useState({ show: false, item: null });
   const [outOfStockOnly, setOutOfStockOnly] = useState(false);
   const [searchParams] = useSearchParams();
@@ -252,19 +263,30 @@ export default function SubItemLibrary() {
     }
   };
 
-  // ── Toggle Availability ──
-  const confirmToggleAvailability = async () => {
-    const item = stockModal.item;
-    if (!item) return;
+  // ── Direct (no-modal) stock toggle — optimistic, instant ──
+  const handleDirectToggle = async (item) => {
+    const newStatus = item.isAvailable === false ? true : false;
+
+    // Mark as pending so the subitems sync doesn't overwrite while in-flight
+    pendingIds.current.add(item._id);
+
+    // Immediately update local UI
+    setItems(prev =>
+      prev.map(it => it._id === item._id ? { ...it, isAvailable: newStatus } : it)
+    );
+
     try {
-      const newStatus = item.isAvailable === false ? true : false;
-      const { data } = await API.put(`/sub-items/${item._id}`, { isAvailable: newStatus });
-      setItems((prev) => prev.map((it) => (it._id === item._id ? data : it)));
+      await API.patch(`/sub-items/${item._id}/status`, { isAvailable: newStatus });
       toast.success(newStatus ? "Stock In!" : "Stock Out!");
-      setStockModal({ show: false, item: null, target: "" });
     } catch (err) {
       console.error("Toggle error:", err);
       toast.error("Failed to update status");
+      // Revert UI on failure
+      setItems(prev =>
+        prev.map(it => it._id === item._id ? { ...it, isAvailable: !newStatus } : it)
+      );
+    } finally {
+      pendingIds.current.delete(item._id);
     }
   };
 
@@ -472,7 +494,7 @@ export default function SubItemLibrary() {
                       item={item} 
                       onEdit={openEdit} 
                       onDelete={(it) => setDeleteModal({ show: true, item: it })}
-                      onToggleStatus={(it, target) => setStockModal({ show: true, item: it, target })}
+                      onToggleStatus={handleDirectToggle}
                     />
                   ))}
                 </div>
@@ -498,7 +520,7 @@ export default function SubItemLibrary() {
                       item={item} 
                       onEdit={openEdit} 
                       onDelete={(it) => setDeleteModal({ show: true, item: it })}
-                      onToggleStatus={(it, target) => setStockModal({ show: true, item: it, target })}
+                      onToggleStatus={handleDirectToggle}
                     />
                   ))}
                 </div>
@@ -589,47 +611,6 @@ export default function SubItemLibrary() {
                 >
                   {saving ? "Creating..." : "Save All"}
                 </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {stockModal.show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setStockModal({ show: false, item: null, target: "" })}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6">
-                <h3 className="text-lg font-black mb-2">{stockModal.target === "out" ? "Stock Out" : "Stock In"}</h3>
-                <p className="text-sm text-slate-600 mb-5">
-                  {stockModal.target === "out"
-                    ? "Mark this item as unavailable in the menu?"
-                    : "Mark this item as available in the menu?"}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setStockModal({ show: false, item: null, target: "" })}
-                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl font-bold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmToggleAvailability}
-                    className={`flex-1 px-4 py-2 rounded-xl font-bold text-white ${stockModal.target === "out" ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
-                  >
-                    Confirm
-                  </button>
-                </div>
               </div>
             </motion.div>
           </motion.div>

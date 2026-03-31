@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 
@@ -127,22 +127,37 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, []);
 
-  // Listen for real-time updates from library/sub-item changes
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+  // Force-fresh products fetch (bypasses server cache) — used after socket events
+  const fetchProductsFresh = async () => {
+    try {
+      const [subitemsRes, productsRes] = await Promise.allSettled([
+        API.get("/sub-items"),
+        API.get(`/products?_t=${Date.now()}`),
+      ]);
+      if (subitemsRes.status === "fulfilled") {
+        const data = subitemsRes.value.data;
+        setSubitems(Array.isArray(data) ? data : []);
+      }
+      if (productsRes.status === "fulfilled") {
+        const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
+        setProducts(list);
+        try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
+      }
+    } catch {}
+  };
 
+  // Listen for real-time updates — connect for ALL users (customers need product updates too)
+  useEffect(() => {
     socket.connect();
 
     socket.on("subItemsUpdated", () => {
       console.log("Real-time sync: Sub-items changed, re-fetching...");
-      fetchSubitems();
-      fetchProducts();
+      fetchProductsFresh();
     });
 
     socket.on("productsUpdated", () => {
       console.log("Real-time sync: Library changed, re-fetching products...");
-      fetchProducts();
+      fetchProductsFresh();
     });
 
     socket.on("productUpdated", (updatedProduct) => {
@@ -166,7 +181,12 @@ export const ProductProvider = ({ children }) => {
           if (index !== -1) {
             parsed[index] = updatedProduct;
             localStorage.setItem("products", JSON.stringify(parsed));
+          } else {
+            parsed.push(updatedProduct);
+            localStorage.setItem("products", JSON.stringify(parsed));
           }
+        } else {
+          localStorage.setItem("products", JSON.stringify([updatedProduct]));
         }
       } catch (err) {
         console.error("Local sync error:", err);
@@ -189,6 +209,23 @@ export const ProductProvider = ({ children }) => {
       }
     });
 
+    socket.on("subItemDeleted", ({ id, type, name }) => {
+      console.log("Real-time sync: Sub-item deleted:", name);
+      setSubitems(prev => prev.filter(s => s._id !== id));
+      // Products also update via productsUpdated event which usually follows
+    });
+
+    socket.on("subItemUpdated", (updatedSubItem) => {
+      console.log("Real-time sync: Sub-item updated:", updatedSubItem.name);
+      setSubitems(prev => {
+        const index = prev.findIndex(s => s._id === updatedSubItem._id);
+        if (index === -1) return [...prev, updatedSubItem];
+        const newList = [...prev];
+        newList[index] = updatedSubItem;
+        return newList;
+      });
+    });
+
     socket.on("subItemsUpdated", () => {
       console.log("Real-time sync: Sub-items changed, re-fetching...");
       fetchSubitems();
@@ -197,6 +234,10 @@ export const ProductProvider = ({ children }) => {
     return () => {
       socket.off("productsUpdated");
       socket.off("subItemsUpdated");
+      socket.off("productUpdated");
+      socket.off("productDeleted");
+      socket.off("subItemUpdated");
+      socket.off("subItemDeleted");
       socket.disconnect();
     };
   }, []);
@@ -296,6 +337,34 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const updateSubItem = async (id, updates) => {
+    try {
+      const { data } = await API.put(`/sub-items/${id}`, updates);
+      setSubitems(prev => prev.map(s => s._id === id ? data : s));
+      return data;
+    } catch (error) {
+      console.error("Error updating sub-item:", error);
+      throw error;
+    }
+  };
+
+  const updateSubItemStatus = async (id, isAvailable) => {
+    try {
+      // Optimistic update within the global context if needed
+      setSubitems(prev => prev.map(s => s._id === id ? { ...s, isAvailable } : s));
+
+      const { data } = await API.patch(`/sub-items/${id}/status`, { isAvailable });
+      // The socket event "subItemUpdated" will usually carry the full data later
+      // But we update here too to stay ahead of the lag
+      setSubitems(prev => prev.map(s => s._id === id ? data : s));
+
+      return data;
+    } catch (error) {
+      console.error("Error updating sub-item status:", error);
+      throw error;
+    }
+  };
+
   const deleteProduct = async (id) => {
     try {
       await API.delete(`/products/${id}`);
@@ -329,6 +398,8 @@ export const ProductProvider = ({ children }) => {
     addProduct,
     addCategory,
     updateProduct,
+    updateSubItem,
+    updateSubItemStatus,
     deleteProduct,
     toggleAvailability,
     fetchProducts,
