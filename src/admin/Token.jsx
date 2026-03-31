@@ -17,7 +17,6 @@ import {
   RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
 import StatusBadge from "../components/StatusBadge";
 import { toast } from "react-hot-toast";
 
@@ -81,28 +80,25 @@ export default function Token() {
 
   // ─── Mount: fetch + socket ────────────────────────────────────────────────
   useEffect(() => {
-    // Only fetch if we don't already have tokens or it's been more than 5 minutes
     const lastFetch = localStorage.getItem("lastTokenFetch");
     const now = Date.now();
-    
-    // Check if we have cached tokens to show instantly
+
+    // Hydrate from cache immediately for instant display
     const cachedTokens = localStorage.getItem("cachedTokens");
     if (cachedTokens) {
-      try {
-        setTokens(JSON.parse(cachedTokens));
-      } catch (e) {}
+      try { setTokens(JSON.parse(cachedTokens)); } catch (e) {}
     }
 
-    if (!tokens.length || !lastFetch || (now - parseInt(lastFetch)) > 300000) {
+    // Only hit the network if cache is stale (>5min) or missing
+    if (!lastFetch || (now - parseInt(lastFetch)) > 300000) {
       fetchTokens();
-      localStorage.setItem("lastTokenFetch", now.toString());
     }
 
     // Connect socket for real-time updates
     const socket = io(SOCKET_URL, { transports: ["websocket"] });
     socketRef.current = socket;
 
-    // New takeaway order created → add to board
+    // New takeaway order created → add to board instantly, then sync from server
     socket.on("orderCreated", (order) => {
       if (!order.isTakeawayOrder || !order.tokenNumber) return;
       setTokens(prev => {
@@ -110,6 +106,8 @@ export default function Token() {
         if (exists) return prev;
         return [order, ...prev];
       });
+      // Invalidate cache so next mount gets fresh data
+      localStorage.removeItem("lastTokenFetch");
     });
 
     // Order updated (status change, close, etc.) → update in place
@@ -124,8 +122,8 @@ export default function Token() {
       toast("Tokens were reset by admin", { icon: "🔄" });
     });
 
-    // Fallback poll every 20s in case socket misses an event
-    const poll = setInterval(() => fetchTokens(), 20000);
+    // Fallback poll every 8s (lightweight safety net)
+    const poll = setInterval(() => fetchTokens(), 8000);
 
     return () => {
       socket.disconnect();
@@ -164,7 +162,7 @@ export default function Token() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
+      <header className="top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -236,11 +234,9 @@ export default function Token() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <AnimatePresence>
-              {filteredTokens.map((token) => (
-                <TokenCard key={token._id} token={token} onClose={closeToken} />
-              ))}
-            </AnimatePresence>
+            {filteredTokens.map((token) => (
+              <TokenCard key={token._id} token={token} onClose={closeToken} />
+            ))}
           </div>
         )}
       </main>
@@ -279,11 +275,7 @@ function TokenCard({ token, onClose }) {
   };
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: isClosed ? 0.65 : 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+    <div
       className={`bg-white rounded-3xl border shadow-sm hover:shadow-md transition-all overflow-hidden relative group ${
         isClosed ? "border-slate-200" : "border-slate-100"
       }`}
@@ -380,6 +372,6 @@ function TokenCard({ token, onClose }) {
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

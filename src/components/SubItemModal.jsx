@@ -93,10 +93,13 @@ export default function SubItemModal({
   const handleAdd = () => {
     const configuredItem = {
       ...product,
+      baseProductPrice: product.price,
       selectedPortion: selectedPortion || null,
-      selectedAddons: selectedAddons.map(({ name, price }) => ({
+      selectedAddons: selectedAddons.map(({ name, price, groupName }) => ({
         name,
         price,
+        groupName,
+        qty: 1
       })),
       price: unitPrice, // per-unit price including portion + addons
       qty,
@@ -104,7 +107,7 @@ export default function SubItemModal({
       cartKey: `${product._id || product.id}_${
         selectedPortion || "base"
       }_${selectedAddons
-        .map((a) => a.name)
+        .map((a) => `${a.name}x1`)
         .sort()
         .join("+")}`,
     };

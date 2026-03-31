@@ -139,6 +139,36 @@ export const CartProvider = ({ children }) => {
     );
   };
 
+  const updateCartItem = (cartKey, updateFn) => {
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.cartKey === cartKey) {
+          const updated = updateFn(item);
+          // Recalculate price and cartKey if they change
+          const addonsTotal = (updated.selectedAddons || []).reduce((sum, a) => sum + (a.price || 0) * (a.qty || 1), 0);
+          
+          let pPrice = updated.baseProductPrice || updated.price; // fallback if missing
+          if (updated.hasPortions && updated.selectedPortion) {
+            const pObj = updated.portions?.find(p => p.name === updated.selectedPortion);
+            if (pObj) pPrice = pObj.price;
+          }
+          
+          const newUnitPrice = pPrice + addonsTotal;
+          
+          const newCartKey = `${updated._id || updated.id}_${
+            updated.selectedPortion || "base"
+          }_${(updated.selectedAddons || [])
+            .map((a) => `${a.name}x${a.qty || 1}`)
+            .sort()
+            .join("+")}`;
+
+          return { ...updated, price: newUnitPrice, cartKey: newCartKey };
+        }
+        return item;
+      })
+    );
+  };
+
   const clearCart = () => {
     if (table?.trim()) {
       localStorage.removeItem(getCartKey(table));
@@ -154,6 +184,7 @@ export const CartProvider = ({ children }) => {
         cart,
         addToCart,
         updateQuantity,
+        updateCartItem,
         removeFromCart,
         clearCart,
         totalAmount,

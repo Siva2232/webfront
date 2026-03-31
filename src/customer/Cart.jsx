@@ -127,7 +127,7 @@ function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
 export default function Cart({ hideTable = false }) {
   const {
     cart, table, setTable, clearCart,
-    totalAmount, updateQuantity, removeFromCart,
+    totalAmount, updateQuantity, removeFromCart, updateCartItem,
   } = useCart();
 
   const [searchParams] = useSearchParams();
@@ -438,7 +438,7 @@ export default function Cart({ hideTable = false }) {
                     {/* Items in this segment */}
                     <div className="space-y-4">
                       {items.map((item) => {
-                        const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+                        const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0) * (a.qty || 1), 0) || 0;
                         const basePrice = item.price - addonsTotal;
                         
                         return (
@@ -469,39 +469,89 @@ export default function Cart({ hideTable = false }) {
                                     </h3>
                                     <div className="flex flex-wrap gap-2 items-center">
                                       {item.selectedPortion && (
-                                        <div className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full border border-blue-100">
+                                        <div className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full border border-blue-100 shadow-sm">
                                           <ArrowRight size={10} strokeWidth={3} />
-                                          <span className="text-[9px] font-black uppercase italic tracking-widest">{item.selectedPortion}</span>
+                                          <span className="text-[10px] font-black uppercase italic tracking-widest">{item.selectedPortion}</span>
+                                          <div className="flex items-center gap-1.5 ml-1 border-l border-blue-200 pl-1.5">
+                                            <button 
+                                              onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)}
+                                              className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
+                                            >
+                                              <Minus size={10} strokeWidth={4} />
+                                            </button>
+                                            <span className="text-[10px] font-black">{item.qty}</span>
+                                            <button 
+                                              onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)}
+                                              className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
+                                            >
+                                              <Plus size={10} strokeWidth={4} />
+                                            </button>
+                                          </div>
                                         </div>
                                       )}
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                        ₹{basePrice.toLocaleString()} × {item.qty}
-                                      </span>
+                                      {!item.selectedPortion && (
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                          ₹{basePrice.toLocaleString()} × {item.qty}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="text-right">
                                     <p className="font-black text-slate-900 text-2xl tracking-tighter italic">
-                                      ₹{(basePrice * item.qty).toLocaleString()}
+                                      ₹{(item.price * item.qty).toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
 
-                                {/* Addons Section - Separated like KitchenBill */}
+                                {/* Addons Section - With Count and Adjusters */}
                                 {item.selectedAddons?.length > 0 && (
-                                  <div className="mt-4 p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 space-y-1.5">
+                                  <div className="mt-4 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 space-y-2">
                                     <p className="text-[8px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Selected Extras</p>
                                     {item.selectedAddons.map((a, i) => (
-                                      <div key={i} className="flex justify-between items-center px-1">
-                                        <div className="flex items-center gap-1.5">
-                                          <Plus size={8} className="text-emerald-500" />
-                                          <span className="text-[10px] font-bold text-emerald-800">{a.name}</span>
+                                      <div key={i} className="flex justify-between items-center bg-white/50 p-2 rounded-xl border border-emerald-100/20">
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg">
+                                            <button 
+                                              onClick={() => {
+                                                const currentQty = a.qty || 1;
+                                                if (currentQty > 1) {
+                                                  const newAddons = item.selectedAddons.map((adn, idx) => 
+                                                    idx === i ? { ...adn, qty: currentQty - 1 } : adn
+                                                  );
+                                                  updateCartItem(item.cartKey, (prev) => ({ ...prev, selectedAddons: newAddons }));
+                                                } else {
+                                                  const newAddons = item.selectedAddons.filter((_, idx) => idx !== i);
+                                                  updateCartItem(item.cartKey, (prev) => ({ ...prev, selectedAddons: newAddons }));
+                                                }
+                                              }}
+                                              className="hover:bg-emerald-200 p-0.5 rounded transition-colors"
+                                            >
+                                              <Minus size={10} strokeWidth={3} />
+                                            </button>
+                                            <span className="text-[10px] font-black w-4 text-center">{a.qty || 1}</span>
+                                            <button 
+                                              onClick={() => {
+                                                const newAddons = item.selectedAddons.map((adn, idx) => 
+                                                  idx === i ? { ...adn, qty: (adn.qty || 1) + 1 } : adn
+                                                );
+                                                updateCartItem(item.cartKey, (prev) => ({ ...prev, selectedAddons: newAddons }));
+                                              }}
+                                              className="hover:bg-emerald-200 p-0.5 rounded transition-colors"
+                                            >
+                                              <Plus size={10} strokeWidth={3} />
+                                            </button>
+                                          </div>
+                                          <span className="text-[11px] font-bold text-slate-700 uppercase">{a.name}</span>
                                         </div>
-                                        <span className="text-[9px] font-black text-slate-400">₹{(a.price || 0) * item.qty}</span>
+                                        <div className="flex flex-col items-end">
+                                          <span className="text-[10px] font-black text-emerald-600">₹{((a.price || 0) * (a.qty || 1) * item.qty).toLocaleString()}</span>
+                                          <span className="text-[8px] font-medium text-slate-400">@₹{(a.price || 0)} ea</span>
+                                        </div>
                                       </div>
                                     ))}
-                                    <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-dashed border-emerald-200">
-                                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Item Total</span>
-                                      <span className="text-[14px] font-extrabold text-emerald-800">₹{(item.price * item.qty).toLocaleString()}</span>
+                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-dashed border-emerald-200">
+                                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Variation Total</span>
+                                      <span className="text-sm font-black text-emerald-800">₹{(item.price * item.qty).toLocaleString()}</span>
                                     </div>
                                   </div>
                                 )}

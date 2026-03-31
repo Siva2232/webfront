@@ -45,9 +45,10 @@ import toast from "react-hot-toast";
 const menuItems = [
   { name: "Analytics", icon: BarChart2, path: "reports" },
   { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
+  
   { name: "KOT", icon: Ticket, path: "kitchen-bill" },
-  { name: "Manage Tokens", icon: Ticket, path: "tokens" },
-  {
+  { name: "Bills", icon: Receipt, path: "bill" },
+   {
     name: "Manage Menu",
     icon: Menu,
     path: "menu-manage",
@@ -56,9 +57,10 @@ const menuItems = [
       { name: "Sub Items", icon: Layers, path: "sub-items" },
     ],
   },
+  { name: "Manage Tokens", icon: Ticket, path: "tokens" },
+ 
   { name: "Orders Status", icon: ShoppingCart, path: "orders" },
   { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
-  { name: "Bills", icon: Receipt, path: "bill" },
   { name: "Split Bills", icon: Scissors, path: "manual-bill" },
   {
     name: "Tables & QR",
@@ -81,9 +83,7 @@ const menuItems = [
       { name: "Salary History", tab: "salaryHistory" },
     ],
   },
-  { name: "Add Banners", icon: ImagePlus, path: "banner" },
-  { name: "Add Offers", icon: Sparkles, path: "offers" },
-  {
+   {
     name: "Expense Tracker",
     icon: FileText,
     path: "expense",
@@ -94,6 +94,9 @@ const menuItems = [
       { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
     ],
   },
+  { name: "Add Banners", icon: ImagePlus, path: "banner" },
+  { name: "Add Offers", icon: Sparkles, path: "offers" },
+ 
 ];
 
 export default function AdminLayout() {
@@ -105,6 +108,7 @@ export default function AdminLayout() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [showWaiterPanel, setShowWaiterPanel] = useState(false);
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const waiterRef = useRef(null);
   // ids that have been cleared from the alert list (until refresh)
   const [clearedIds, setClearedIds] = useState([]);
@@ -181,6 +185,12 @@ export default function AdminLayout() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Digital clock update
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
   // Removed auto-open waiter panel: was causing re-renders on every notification change
@@ -504,6 +514,19 @@ const handleClearAllStockAlerts = () => {
           </div>
 
           <div className="flex items-center gap-6 ml-[-0px]">
+            {/* Digital Clock */}
+           <div className="hidden sm:flex flex-col items-end justify-center text-right pr-4 border-r border-slate-200">
+  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-0.5">
+    Current Session
+  </span>
+  <span className="text-2xl font-light tabular-nums tracking-tight text-slate-950 leading-none">
+    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+  </span>
+  <span className="text-[11px] font-medium text-slate-400 mt-1">
+    {currentTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+  </span>
+</div>
+
             {/* Waiter Notifications */}
             <div className="relative" ref={waiterRef}>
               <button

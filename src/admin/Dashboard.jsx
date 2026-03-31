@@ -40,7 +40,7 @@ import * as XLSX from "xlsx";
 
 export default function Dashboard() {
   const { products = [], subitems = [] } = useProducts();
-  const { orders = [] } = useOrders();
+  const { orders = [], fetchOrders } = useOrders();
   const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
   
   const [tables, setTables] = useState(() => {
@@ -49,27 +49,107 @@ export default function Dashboard() {
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
-  const [activeOrdersMap, setActiveOrdersMap] = useState({});
+  
+  // High-performance state initialization from localStorage
+  const [activeOrdersMap, setActiveOrdersMap] = useState(() => {
+    const map = {};
+    try {
+      const cached = localStorage.getItem("cachedOrders");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        parsed.forEach(o => {
+          if (o.status && o.status !== "Closed") {
+            map[`table-${o.table}`] = true;
+          }
+        });
+      }
+    } catch {}
+    return map;
+  });
+
+  const [totalRevenue, setTotalRevenue] = useState(() => {
+    const cached = localStorage.getItem("dashboard_total_revenue");
+    return cached ? Number(cached) : 0;
+  });
+
+  const [todayOrdersCount, setTodayOrdersCount] = useState(() => {
+    const cached = localStorage.getItem("dashboard_today_count");
+    return cached ? Number(cached) : 0;
+  });
+
+  const [bestSellers, setBestSellers] = useState(() => {
+    try {
+      const cached = localStorage.getItem("dashboard_best_sellers");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+
   const [reservedTables, setReservedTables] = useState({});
   const [tableAlerts, setTableAlerts] = useState({});
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const navigate = useNavigate();
 
-  // Fetch Tables
+  // Background sync for core data
   useEffect(() => {
-    const fetchTables = async () => {
+    const syncSystem = async () => {
+      setIsSyncing(true);
       try {
-        const { data } = await API.get("/tables");
-        setTables(data);
-        localStorage.setItem("restaurant_tables_config", JSON.stringify(data));
+        // Parallel background requests for speed
+        const [tableRes, revenueRes, todayRes, ordersRes] = await Promise.all([
+          API.get("/tables").catch(() => null),
+          API.get('/orders?limit=300&status=Paid,Closed').catch(() => null),
+          API.get('/orders?today=true&limit=200').catch(() => null),
+          fetchOrders ? fetchOrders() : Promise.resolve()
+        ]);
+
+        if (tableRes?.data) {
+          setTables(tableRes.data);
+          localStorage.setItem("restaurant_tables_config", JSON.stringify(tableRes.data));
+        }
+
+        if (revenueRes?.data) {
+          const finalRevenue = revenueRes.data.reduce((acc, order) => {
+            const value = order.billDetails?.grandTotal || order.totalAmount || 0;
+            return acc + (Number(value) || 0);
+          }, 0);
+          setTotalRevenue(finalRevenue);
+          localStorage.setItem("dashboard_total_revenue", finalRevenue.toString());
+          
+          // Compute best sellers from same pool to avoid double fetch
+          const itemMap = {};
+          revenueRes.data.forEach(order => {
+            (order.items || []).forEach(item => {
+              const name = item.name || "Unknown";
+              itemMap[name] = (itemMap[name] || 0) + (Number(item.qty) || 0);
+            });
+          });
+          const sellers = Object.entries(itemMap)
+            .map(([name, qty]) => ({ name, qty }))
+            .sort((a, b) => b.qty - a.qty)
+            .slice(0, 5);
+          setBestSellers(sellers);
+          localStorage.setItem("dashboard_best_sellers", JSON.stringify(sellers));
+        }
+
+        if (todayRes?.data && Array.isArray(todayRes.data)) {
+          setTodayOrdersCount(todayRes.data.length);
+          localStorage.setItem("dashboard_today_count", todayRes.data.length.toString());
+        }
       } catch (err) {
-        console.error("Failed to fetch tables", err);
+        console.error("Dashboard sync error:", err);
+      } finally {
+        setIsSyncing(false);
       }
     };
-    fetchTables();
+
+    syncSystem();
+    // Refresh interval every 30s
+    const interval = setInterval(syncSystem, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Sync with live orders
+  // Sync with live orders map after context updates
   useEffect(() => {
     const liveMap = {};
     orders.forEach(o => {
@@ -123,83 +203,6 @@ export default function Dashboard() {
   const unavailableProducts = products.filter((p) => !p.isAvailable);
   const unavailableSubitems = subitems.filter((s) => s.isAvailable === false);
   const totalUnavailableCount = unavailableProducts.length + unavailableSubitems.length;
-
-  const [todayOrdersCount, setTodayOrdersCount] = useState(0);
-
-  useEffect(() => {
-    const getTodayOrders = async () => {
-      try {
-        const resp = await API.get('/orders?today=true&limit=200');
-        if (Array.isArray(resp.data)) {
-          setTodayOrdersCount(resp.data.length);
-        }
-      } catch (err) {
-        console.error('Failed to fetch today orders count', err);
-      }
-    };
-
-    getTodayOrders();
-  }, [orders]);
-
-  
-  // Calculate Actual Total Revenue from active recent orders (fallback)
-  const totalRevenueFromContext = useMemo(() => {
-    return orders.reduce((acc, order) => acc + (order.billDetails?.grandTotal || order.totalAmount || 0), 0);
-  }, [orders]);
-
-  const [totalRevenue, setTotalRevenue] = useState(0);
-
-  // Fetch finalized orders to calculate true revenue (Closed/Paid)
-  useEffect(() => {
-    const fetchRevenue = async () => {
-      try {
-        const resp = await API.get('/orders?limit=500&status=Paid,Closed');
-        if (!Array.isArray(resp.data)) return;
-
-        const finalRevenue = resp.data.reduce((acc, order) => {
-          const value = order.billDetails?.grandTotal || order.totalAmount || 0;
-          return acc + (Number(value) || 0);
-        }, 0);
-
-        if (finalRevenue > 0) {
-          setTotalRevenue(finalRevenue);
-        } else {
-          setTotalRevenue(totalRevenueFromContext);
-        }
-      } catch (err) {
-        console.error('Failed to fetch revenue:', err);
-        setTotalRevenue(totalRevenueFromContext);
-      }
-    };
-    fetchRevenue();
-  }, [totalRevenueFromContext]);
-
-  // Calculate Best Selling Dishes — fetched separately so it doesn't impact Orders page speed
-  const [bestSellers, setBestSellers] = useState([]);
-
-  useEffect(() => {
-    const fetchBestSellers = async () => {
-      try {
-        const resp = await API.get('/orders?limit=500');
-        if (!Array.isArray(resp.data)) return;
-        const itemMap = {};
-        resp.data.forEach(order => {
-          (order.items || []).forEach(item => {
-            const name = item.name || "Unknown";
-            itemMap[name] = (itemMap[name] || 0) + (Number(item.qty) || 0);
-          });
-        });
-        const sellers = Object.entries(itemMap)
-          .map(([name, qty]) => ({ name, qty }))
-          .sort((a, b) => b.qty - a.qty)
-          .slice(0, 5);
-        setBestSellers(sellers);
-      } catch (err) {
-        console.error('Failed to fetch best sellers', err);
-      }
-    };
-    fetchBestSellers();
-  }, []); // only on mount — no dependency on live orders
 
   // Pie chart data for inventory status
   const pieData = useMemo(() => {
@@ -283,19 +286,31 @@ export default function Dashboard() {
             </h1>
           </div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 bg-white p-2.5 pr-8 rounded-[2.2rem] border border-slate-100 shadow-sm"
-          >
-             <div className="bg-indigo-600 text-white p-3.5 rounded-[1.6rem] shadow-lg shadow-indigo-100">
-                <IndianRupee size={22} strokeWidth={2.5} />
-             </div>
-             <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Net Revenue</p>
-                <p className="text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString('en-IN')}</p>
-             </div>
-          </motion.div>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            {isSyncing && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100"
+              >
+                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Syncing System...</span>
+              </motion.div>
+            )}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-4 bg-white p-2.5 pr-8 rounded-[2.2rem] border border-slate-100 shadow-sm"
+            >
+               <div className="bg-indigo-600 text-white p-3.5 rounded-[1.6rem] shadow-lg shadow-indigo-100">
+                  <IndianRupee size={22} strokeWidth={2.5} />
+               </div>
+               <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Net Revenue</p>
+                  <p className="text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString('en-IN')}</p>
+               </div>
+            </motion.div>
+          </div>
         </header>
 
         {/* --- 2. STATS GRID --- */}
@@ -336,7 +351,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-xl font-black flex items-center gap-3">
               <TableIcon className="text-indigo-600" size={24} />
-              Floor Snapshot
+              Kitchen Floor
             </h2>
             <Link to="/admin/tables" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 border-b-2 border-indigo-600 pb-1">
               View All Tables
