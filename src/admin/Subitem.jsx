@@ -149,6 +149,7 @@ export default function SubItemLibrary() {
   const [saving, setSaving] = useState(false);
 
   const [deleteModal, setDeleteModal] = useState({ show: false, item: null });
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ show: false, item: null });
   const [outOfStockOnly, setOutOfStockOnly] = useState(false);
   const [searchParams] = useSearchParams();
   // ── Fetch ──
@@ -263,7 +264,19 @@ export default function SubItemLibrary() {
     }
   };
 
-  // ── Direct (no-modal) stock toggle — optimistic, instant ──
+  const requestToggleStatus = (item) => {
+    setConfirmStatusModal({ show: true, item });
+  };
+
+  const confirmToggleStatus = async () => {
+    const item = confirmStatusModal.item;
+    if (!item) return;
+
+    setConfirmStatusModal({ show: false, item: null });
+    await handleDirectToggle(item);
+  };
+
+  // ── Direct (no-modal) stock toggle (called by modal confirm) — optimistic, instant ──
   const handleDirectToggle = async (item) => {
     const newStatus = item.isAvailable === false ? true : false;
 
@@ -496,7 +509,7 @@ export default function SubItemLibrary() {
                       item={item} 
                       onEdit={openEdit} 
                       onDelete={(it) => setDeleteModal({ show: true, item: it })}
-                      onToggleStatus={handleDirectToggle}
+                      onToggleStatus={requestToggleStatus}
                     />
                   ))}
                 </div>
@@ -522,7 +535,7 @@ export default function SubItemLibrary() {
                       item={item} 
                       onEdit={openEdit} 
                       onDelete={(it) => setDeleteModal({ show: true, item: it })}
-                      onToggleStatus={handleDirectToggle}
+                      onToggleStatus={requestToggleStatus}
                     />
                   ))}
                 </div>
@@ -613,6 +626,49 @@ export default function SubItemLibrary() {
                 >
                   {saving ? "Creating..." : "Save All"}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {confirmStatusModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setConfirmStatusModal({ show: false, item: null })}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <h3 className="text-lg font-black mb-2">
+                  {confirmStatusModal.item?.isAvailable !== false ? "Stock Out" : "Stock In"}
+                </h3>
+                <p className="text-sm text-slate-600 mb-5">
+                  {confirmStatusModal.item?.isAvailable !== false
+                    ? `Mark ${confirmStatusModal.item?.name} as unavailable in the menu?`
+                    : `Mark ${confirmStatusModal.item?.name} as available in the menu?`}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmStatusModal({ show: false, item: null })}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-xl font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmToggleStatus}
+                    className="flex-1 px-4 py-2 rounded-xl font-bold text-white bg-emerald-500 hover:bg-emerald-600"
+                  >
+                    Confirm
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
