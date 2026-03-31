@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
+import { AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import { 
   ChevronLeft, 
@@ -21,7 +22,9 @@ import {
   Package,
   CreditCard,
   CheckCircle,
-  Wallet
+  Wallet,
+  X,
+  Ticket
 } from "lucide-react";
 
 export default function OrderSummary() {
@@ -30,6 +33,7 @@ export default function OrderSummary() {
   const [searchParams] = useSearchParams();
   const [isClosingBill, setIsClosingBill] = useState(false);
   const [isRequestingBill, setIsRequestingBill] = useState(false);
+  const [showTokenPopup, setShowTokenPopup] = useState(true);
   const cheerSoundRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"));
 
   // Get current table & mode from URL
@@ -416,6 +420,40 @@ export default function OrderSummary() {
           Pulse Server Connection: Active 📡
         </p>
       </main>
+
+      {/* Token Popup for Takeaway Orders */}
+      <AnimatePresence>
+        {mode === "takeaway" && order.tokenNumber && showTokenPopup && (
+          <motion.div 
+            initial={{ opacity: 0, x: 100, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 100, scale: 0.9 }}
+            className="fixed top-24 right-4 z-[100] w-48 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-indigo-100 overflow-hidden"
+          >
+            <div className="bg-indigo-600 p-3 flex justify-between items-center text-white">
+              <div className="flex items-center gap-2">
+                <Ticket size={14} className="animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Your Token</span>
+              </div>
+              <button 
+                onClick={() => setShowTokenPopup(false)}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="p-6 text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] block mb-1">Number</span>
+              <p className="text-5xl font-black text-slate-900 tracking-tighter">
+                #{order.tokenNumber}
+              </p>
+              <p className="text-[9px] font-black text-indigo-500 uppercase mt-3 tracking-wider">
+                Show at counter
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-19 lg:mb-0 lg:relative lg:p-0">
