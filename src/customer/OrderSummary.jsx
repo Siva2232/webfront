@@ -95,9 +95,18 @@ export default function OrderSummary() {
     return qs ? `/menu?${qs}` : "/menu";
   })();
 
-  // simplified back link that never includes `table` (avoids triggering
-  // choose‑mode redirect).  takeaway mode is still respected.
-  const backLink = mode === "takeaway" ? "/menu?mode=takeaway" : "/menu";
+  // simplified back link that preserves current table/mode to avoid losing
+  // the Menu header UI (takeaway/dine-in controls) after returning.
+  const backLink = (() => {
+    const params = new URLSearchParams();
+    if (mode === "takeaway") {
+      params.set("mode", "takeaway");
+    } else if (currentTable) {
+      params.set("table", currentTable);
+    }
+    const qs = params.toString();
+    return `/menu${qs ? `?${qs}` : ""}`;
+  })();
 
   // Determine orders to show.  For a table we filter by that table;
   // for takeaway mode we look for either the sentinel value or a missing
@@ -197,6 +206,13 @@ export default function OrderSummary() {
     try {
       await updateOrderStatus(order._id, "Closed");
       toast.success("Bill closed and table released");
+
+      // Reset chooser flow so next time same table sees the choose-mode flow again
+      if (currentTable) {
+        localStorage.removeItem(`tableModeChosen_${currentTable}`);
+      }
+      localStorage.removeItem(`tableModeChosen_${TAKEAWAY_TABLE}`);
+
       // Explicitly clear the current order from view by navigating or local state
       // fetchOrders() will eventually sync, but navigation removes the UI immediateley
       navigate(backLink);

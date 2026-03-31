@@ -31,7 +31,8 @@ import {
   BellRing,
   Receipt,
   ChevronRight,
-  Table as TableIcon
+  Table as TableIcon,
+  HandHelping 
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -118,30 +119,87 @@ export default function Dashboard() {
   const isReserved = (tableId) => !!reservedTables[`table-${tableId}`];
 
   // --- ANALYTICS LOGIC ---
-  const activeOrders = orders.filter((o) => o.status !== "Served").length;
+  const activeOrders = orders.filter((o) => !["Served", "Closed", "Cancelled"].includes(o.status)).length;
   const unavailableProducts = products.filter((p) => !p.isAvailable);
   const unavailableSubitems = subitems.filter((s) => s.isAvailable === false);
   const totalUnavailableCount = unavailableProducts.length + unavailableSubitems.length;
+
+  const [todayOrdersCount, setTodayOrdersCount] = useState(0);
+
+  useEffect(() => {
+    const getTodayOrders = async () => {
+      try {
+        const resp = await API.get('/orders?today=true&limit=200');
+        if (Array.isArray(resp.data)) {
+          setTodayOrdersCount(resp.data.length);
+        }
+      } catch (err) {
+        console.error('Failed to fetch today orders count', err);
+      }
+    };
+
+    getTodayOrders();
+  }, [orders]);
+
   
-  // Calculate Actual Total Revenue from Order History
-  const totalRevenue = useMemo(() => {
-    return orders.reduce((acc, order) => acc + (order.billDetails?.grandTotal || 0), 0);
+  // Calculate Actual Total Revenue from active recent orders (fallback)
+  const totalRevenueFromContext = useMemo(() => {
+    return orders.reduce((acc, order) => acc + (order.billDetails?.grandTotal || order.totalAmount || 0), 0);
   }, [orders]);
 
-  // Calculate Best Selling Dishes
-  const bestSellers = useMemo(() => {
-    const itemMap = {};
-    orders.forEach(order => {
-      order.items?.forEach(item => {
-        itemMap[item.name] = (itemMap[item.name] || 0) + item.qty;
-      });
-    });
+  const [totalRevenue, setTotalRevenue] = useState(0);
 
-    return Object.entries(itemMap)
-      .map(([name, qty]) => ({ name, qty }))
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 5); // Top 5 items
-  }, [orders]);
+  // Fetch finalized orders to calculate true revenue (Closed/Paid)
+  useEffect(() => {
+    const fetchRevenue = async () => {
+      try {
+        const resp = await API.get('/orders?limit=500&status=Paid,Closed');
+        if (!Array.isArray(resp.data)) return;
+
+        const finalRevenue = resp.data.reduce((acc, order) => {
+          const value = order.billDetails?.grandTotal || order.totalAmount || 0;
+          return acc + (Number(value) || 0);
+        }, 0);
+
+        if (finalRevenue > 0) {
+          setTotalRevenue(finalRevenue);
+        } else {
+          setTotalRevenue(totalRevenueFromContext);
+        }
+      } catch (err) {
+        console.error('Failed to fetch revenue:', err);
+        setTotalRevenue(totalRevenueFromContext);
+      }
+    };
+    fetchRevenue();
+  }, [totalRevenueFromContext]);
+
+  // Calculate Best Selling Dishes — fetched separately so it doesn't impact Orders page speed
+  const [bestSellers, setBestSellers] = useState([]);
+
+  useEffect(() => {
+    const fetchBestSellers = async () => {
+      try {
+        const resp = await API.get('/orders?limit=500');
+        if (!Array.isArray(resp.data)) return;
+        const itemMap = {};
+        resp.data.forEach(order => {
+          (order.items || []).forEach(item => {
+            const name = item.name || "Unknown";
+            itemMap[name] = (itemMap[name] || 0) + (Number(item.qty) || 0);
+          });
+        });
+        const sellers = Object.entries(itemMap)
+          .map(([name, qty]) => ({ name, qty }))
+          .sort((a, b) => b.qty - a.qty)
+          .slice(0, 5);
+        setBestSellers(sellers);
+      } catch (err) {
+        console.error('Failed to fetch best sellers', err);
+      }
+    };
+    fetchBestSellers();
+  }, []); // only on mount — no dependency on live orders
 
   // Pie chart data for inventory status
   const pieData = useMemo(() => {
@@ -250,8 +308,8 @@ export default function Dashboard() {
             trend="+12%" 
           />
           <StatCard 
-            label="Order Volume" 
-            value={orders.length} 
+            label="Today's Orders" 
+            value={todayOrdersCount} 
             icon={ShoppingBag} 
             color="emerald" 
             trend="+28%" 
@@ -275,7 +333,7 @@ export default function Dashboard() {
 
         {/* --- 2.5 MINI TABLES GRID --- */}
         <section className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-xl font-black flex items-center gap-3">
               <TableIcon className="text-indigo-600" size={24} />
               Floor Snapshot
@@ -285,37 +343,72 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-rose-300 border border-rose-500"></span>
+              <span className="text-slate-600">Busy</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-400"></span>
+              <span className="text-slate-600">Reserved</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
+              <span className="text-slate-600">Bill Requested</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-indigo-600"></span>
+              <span className="text-slate-600">Waiter Call</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-purple-600"></span>
+              <span className="text-slate-600">Both Bill+Call</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <span className="text-slate-600">Free</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {tables.map((table) => {
               const occupied = isOccupied(table.id);
               const reserved = isReserved(table.id);
               const alert = tableAlerts[`table-${table.id}`];
-              const hasAlert = alert && (alert.waiter || alert.bill);
               const isBillRequested = alert && alert.bill;
+              const isWaiterCalled = alert && alert.waiter;
+              const hasAlert = isBillRequested || isWaiterCalled;
 
               return (
                 <motion.div
                   key={table.id}
                   onClick={() => navigate(`/admin/order-summary?table=${table.id}`)}
                   className={`relative p-3 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-2 h-24
-                    ${isBillRequested
-                      ? "bg-emerald-600 border-emerald-600 text-white animate-pulse shadow-lg shadow-emerald-200"
-                      : hasAlert 
-                        ? "bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg" 
-                        : occupied 
-                          ? "bg-rose-50 border-rose-200 text-rose-700" 
-                          : reserved 
-                            ? "bg-amber-50 border-amber-200 text-amber-700"
-                            : "bg-white border-slate-100 hover:border-slate-300 text-slate-900"}`}
+                    ${isBillRequested && isWaiterCalled
+                      ? "bg-purple-600 border-purple-600 text-white animate-pulse shadow-lg shadow-purple-200"
+                      : isBillRequested
+                        ? "bg-emerald-600 border-emerald-600 text-white animate-pulse shadow-lg shadow-emerald-200"
+                        : hasAlert
+                          ? "bg-indigo-600 border-indigo-600 text-white animate-pulse shadow-lg"
+                          : occupied
+                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                            : reserved
+                              ? "bg-amber-50 border-amber-200 text-amber-700"
+                              : "bg-white border-slate-100 hover:border-slate-300 text-slate-900"}`}
                 >
                   <div className="text-[10px] font-black uppercase tracking-tighter opacity-60">
                     T{table.id}
                   </div>
-                  
-                  <div className="flex items-center justify-center">
-                    {isBillRequested ? (
+
+                  <div className="flex items-center justify-center gap-1">
+                    {isBillRequested && isWaiterCalled ? (
+                      <>
+                        <Receipt size={14} strokeWidth={2.5} />
+                        <HandHelping size={14} />
+                      </>
+                    ) : isBillRequested ? (
                       <Receipt size={18} strokeWidth={2.5} />
-                    ) : hasAlert ? (
+                    ) : isWaiterCalled ? (
                       <BellRing size={16} />
                     ) : occupied ? (
                       <LayoutGrid size={16} />
@@ -325,9 +418,9 @@ export default function Dashboard() {
                       <Circle size={6} fill="currentColor" className="text-emerald-500" />
                     )}
                   </div>
-                  
+
                   <div className="text-[8px] font-black uppercase tracking-[0.1em]">
-                    {isBillRequested ? "BILL" : hasAlert ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
+                    {isBillRequested && isWaiterCalled ? "BILL + CALL" : isBillRequested ? "BILL" : isWaiterCalled ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
                   </div>
                 </motion.div>
               );

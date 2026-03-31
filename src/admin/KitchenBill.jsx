@@ -148,15 +148,6 @@ ${kb.notes ? `<div class="line"></div><div class="bold">Notes:</div>\n${kb.notes
         </div>
       </header>
 
-      {/* Stats Bar */}
-      <div className="max-w-7xl mx-auto px-4 mt-6 no-print">
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          <StatBadge label="Pending" count={kitchenBills.filter(kb => kb.status === "Pending").length} icon={Clock} color="slate" />
-          <StatBadge label="Preparing" count={kitchenBills.filter(kb => kb.status === "Preparing").length} icon={Flame} color="amber" />
-          {/* <StatBadge label="Cooking" count={kitchenBills.filter(kb => kb.status === "Cooking").length} icon={Coffee} color="orange" /> */}
-          <StatBadge label="Ready" count={kitchenBills.filter(kb => kb.status === "Ready").length} icon={BellRing} color="indigo" />
-        </div>
-      </div>
 
       <main className="max-w-7xl mx-auto p-4 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {sortedBills.map((kb, index) => {

@@ -42,6 +42,59 @@ import { useProducts } from "../context/ProductContext";
 import { useUI } from "../context/UIContext";
 import toast from "react-hot-toast";
 
+const menuItems = [
+  { name: "Analytics", icon: BarChart2, path: "reports" },
+  { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
+  { name: "KOT", icon: Ticket, path: "kitchen-bill" },
+  {
+    name: "Manage Menu",
+    icon: Menu,
+    path: "menu-manage",
+    children: [
+      { name: "Menu Item", icon: Package, path: "products" },
+      { name: "Sub Items", icon: Layers, path: "sub-items" },
+    ],
+  },
+  { name: "Orders Status", icon: ShoppingCart, path: "orders" },
+  { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
+  { name: "Bills", icon: Receipt, path: "bill" },
+  { name: "Split Bills", icon: Scissors, path: "manual-bill" },
+  {
+    name: "Tables & QR",
+    icon: Table,
+    path: "tables",
+    children: [
+      { name: "Tables", path: "tables", icon: Table },
+      { name: "QR Generator", path: "qr-generator", icon: QrCode },
+      { name: "Reservations", path: "reservations", icon: CalendarDays },
+    ],
+  },
+  {
+    name: "Staff",
+    icon: Users,
+    path: "staff",
+    children: [
+      { name: "Overview", tab: "overview" },
+      { name: "Create Staff", tab: "create" },
+      { name: "Salaries", tab: "salary" },
+      { name: "Salary History", tab: "salaryHistory" },
+    ],
+  },
+  { name: "Add Banners", icon: ImagePlus, path: "banner" },
+  { name: "Add Offers", icon: Sparkles, path: "offers" },
+  {
+    name: "Expense Tracker",
+    icon: FileText,
+    path: "expense",
+    children: [
+      { name: "Purchase", tab: "purchase", path: "expense/purchase" },
+      { name: "Utility", tab: "utility", path: "expense/utility" },
+      { name: "Direct Expense", tab: "direct", path: "expense/direct" },
+      { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
+    ],
+  },
+];
+
 export default function AdminLayout() {
   const { products = [], subitems = [] } = useProducts();
   const { notifications = [], notificationsLoading, markNotificationAsRead, fetchNotifications } = useUI();
@@ -62,60 +115,6 @@ export default function AdminLayout() {
 
   // track which top‑level menu has its submenu open (if any)
   const [openSubmenu, setOpenSubmenu] = useState(null);
-
-  const menuItems = [
-    { name: "Analytics", icon: BarChart2, path: "reports" },
-    { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
-    { name: "KOT", icon: Ticket, path: "kitchen-bill" },
-    {
-      name: "Manage Menu",
-      icon: Menu,
-      path: "menu-manage",
-      children: [
-        { name: "Menu Item", icon: Package, path: "products" },
-        { name: "Sub Items", icon: Layers, path: "sub-items" },
-      ],
-    },
-    { name: "Orders Status", icon: ShoppingCart, path: "orders" },
-    { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
-    { name: "Bills", icon: Receipt, path: "bill" },
-    { name: "Split Bills", icon: Scissors, path: "manual-bill" },
-    {
-      name: "Tables & QR",
-      icon: Table,
-      path: "tables",
-      children: [
-        { name: "Tables", path: "tables", icon: Table },
-        { name: "QR Generator", path: "qr-generator", icon: QrCode },
-        { name: "Reservations", path: "reservations", icon: CalendarDays },
-      ],
-    },
-    {
-      name: "Staff",
-      icon: Users,
-      path: "staff",
-      // submenu entries use `tab` to control the staff page's active tab
-      children: [
-        { name: "Overview", tab: "overview" },
-        { name: "Create Staff", tab: "create" },
-        { name: "Salaries", tab: "salary" },
-        { name: "Salary History", tab: "salaryHistory" },
-      ],
-    },
-    { name: "Add Banners", icon: ImagePlus, path: "banner" },
-    { name: "Add Offers", icon: Sparkles, path: "offers" },
-    {
-      name: "Expense Tracker",
-      icon: FileText,
-      path: "expense",
-      children: [
-        { name: "Purchase", tab: "purchase", path: "expense/purchase" },
-        { name: "Utility", tab: "utility", path: "expense/utility" },
-        { name: "Direct Expense", tab: "direct", path: "expense/direct" },
-        { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
-      ],
-    },
-  ];
 
   // Count out-of-stock products and subitems, excluding any cleared by user
   const outOfStockProducts = products.filter(
@@ -183,12 +182,7 @@ export default function AdminLayout() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // open waiter notification panel automatically when there are new calls
-  useEffect(() => {
-    if (notifications.length > 0) {
-      setShowWaiterPanel(true);
-    }
-  }, [notifications.length]);
+  // Removed auto-open waiter panel: was causing re-renders on every notification change
 
   // automatically expand the submenu for current path
   useEffect(() => {

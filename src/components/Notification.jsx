@@ -24,6 +24,26 @@ const SOCKET_URL =
     ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
     : "http://localhost:5000");
 
+// MODULE-LEVEL SINGLETONS — created once, never recreated on component re-mount
+// This prevents creating new socket/audio on every navigation
+const _notifSocket = io(SOCKET_URL, {
+  transports: ["websocket", "polling"],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  autoConnect: false,
+});
+
+const _waiterAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/937/937-preview.mp3");
+_waiterAudio.preload = "auto";
+const _billAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2575/2575-preview.mp3");
+_billAudio.preload = "auto";
+const _orderAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3");
+_orderAudio.preload = "auto";
+
+let _audioUnlocked = false;
+let _socketListenersAttached = false;
+
 export default function Notification({ targetPath = "/admin/orders" }) {
   // toast for pop‑ups
   const navigate = useNavigate();
@@ -107,79 +127,30 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const seenOrderIds = useRef(new Set());
   const pulseTimeout = useRef(null);
   const containerRef = useRef(null);
-  const socketRef = useRef(null);
-  
-  /* 🔊 SOUND LOGIC */
-  const waiterAudioRef = useRef(null);
-  const billAudioRef = useRef(null);
-  const orderAudioRef = useRef(null);
-  const audioUnlocked = useRef(false);
 
-  // Create and preload audio
-  useEffect(() => {
-    // Happy Bells for Waiter Calls
-    const waiterAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/937/937-preview.mp3");
-    waiterAudio.preload = "auto";
-    waiterAudio.load();
-    waiterAudioRef.current = waiterAudio;
-
-    // Software Interface sound for Bills
-    const billAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2575/2575-preview.mp3");
-    billAudio.preload = "auto";
-    billAudio.load();
-    billAudioRef.current = billAudio;
-
-    // Standard Ding for Orders
-    const orderAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2847/2847-preview.mp3");
-    orderAudio.preload = "auto";
-    orderAudio.load();
-    orderAudioRef.current = orderAudio;
-  }, []);
-
-  // Unlock audio on first user interaction (required by browser autoplay policy)
+  // Audio unlock — runs once, guards with module-level flag
   useEffect(() => {
     const unlock = () => {
-      if (audioUnlocked.current) return;
-      
-      [waiterAudioRef, billAudioRef, orderAudioRef].forEach(ref => {
-        if (ref.current) {
-          const p = ref.current.play();
-          if (p && p.then) {
-            p.then(() => {
-              ref.current.pause();
-              ref.current.currentTime = 0;
-            }).catch(() => {});
-          }
-        }
+      if (_audioUnlocked) return;
+      [_waiterAudio, _billAudio, _orderAudio].forEach(audio => {
+        const p = audio.play();
+        if (p && p.then) p.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
       });
-      audioUnlocked.current = true;
+      _audioUnlocked = true;
     };
     const events = ["click", "touchstart", "keydown"];
     events.forEach(e => document.addEventListener(e, unlock, { once: false, capture: true }));
     return () => events.forEach(e => document.removeEventListener(e, unlock, { capture: true }));
   }, []);
 
-  // Reliable play helper
+  // Reliable play helper — uses module-level audio singletons
   const playSound = (type = 'order') => {
-    let audio;
-    if (type === 'bill') {
-      audio = billAudioRef.current;
-    } else if (type === 'waiter') {
-      audio = waiterAudioRef.current;
-    } else {
-      audio = orderAudioRef.current;
-    }
-    
+    const audio = type === 'bill' ? _billAudio : type === 'waiter' ? _waiterAudio : _orderAudio;
     if (!audio) return;
     try {
       audio.currentTime = 0;
       const p = audio.play();
-      if (p && p.then) {
-        p.catch(() => {
-          const clone = audio.cloneNode();
-          clone.play().catch(() => {});
-        });
-      }
+      if (p && p.then) p.catch(() => { const c = audio.cloneNode(); c.play().catch(() => {}); });
     } catch {}
   };
 
@@ -224,7 +195,6 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   // This ensures notifications work even if OrderContext socket has issues
   useEffect(() => {
     // Track recently handled notification IDs to prevent double-fire
-    // (direct socket + UIContext window event can both fire for the same notification)
     const recentNotifIds = new Set();
     const dedup = (id, fn) => {
       if (recentNotifIds.has(id)) return;
@@ -233,15 +203,9 @@ export default function Notification({ targetPath = "/admin/orders" }) {
       fn();
     };
 
-    // Create dedicated socket for notifications
-    const notifSocket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
-    
-    socketRef.current = notifSocket;
+    // Use module-level singleton — no new socket created on re-mount
+    const notifSocket = _notifSocket;
+    if (!notifSocket.connected) notifSocket.connect();
     
     notifSocket.on("connect", () => {
       console.log("[Notification] Socket connected");
@@ -320,9 +284,10 @@ export default function Notification({ targetPath = "/admin/orders" }) {
       window.removeEventListener("orderItemsAdded", handleWindowEvent);
       window.removeEventListener("billRequested", handleBillRequestEvent);
       window.removeEventListener("waiterCall", handleWaiterCallEvent);
+      // Only remove specific listeners — don't disconnect the singleton socket
       notifSocket.off("orderItemsAdded");
       notifSocket.off("newNotification");
-      notifSocket.disconnect();
+      notifSocket.off("connect");
     };
   }, []);
 

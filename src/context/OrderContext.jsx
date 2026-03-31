@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
@@ -73,7 +73,8 @@ export const OrderProvider = ({ children }) => {
     }
 
     try {
-      const { data } = await API.get("/orders?limit=40&status=Pending,New,Preparing,Ready,Served");
+      // Fetch active orders only — keeps the Orders page fast
+      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served,Paid");
       setOrders((prev) => {
         // Merge strategy: incoming data from server is the "source of truth",
         // but we preserve any very recent optimistic updates that haven't hit the DB yet.
@@ -173,7 +174,7 @@ export const OrderProvider = ({ children }) => {
   };
 
   // fetch bills (invoices) - for admin billing screen
-  const fetchBills = async () => {
+  const fetchBills = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
     if (_billsFetchInFlight.current) return;
@@ -238,7 +239,7 @@ export const OrderProvider = ({ children }) => {
       setBillsReady(true);
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // mark a bill as paid on the server and update local cache
   const markBillPaid = async (id) => {

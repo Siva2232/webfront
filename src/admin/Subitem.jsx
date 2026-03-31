@@ -372,7 +372,14 @@ export default function SubItemLibrary() {
         items: validatedItems,
       };
       const { data } = await API.post("/sub-items", payload);
-      setItems((prev) => [...prev, ...data]);
+      
+      // Update local state and fetch fresh data to ensure we have the correct structure
+      if (fetchSubitems) {
+        await fetchSubitems();
+      } else {
+        setItems((prev) => [...prev, ...data]);
+      }
+      
       toast.success(`Created ${data.length} ${tab === 'portion' ? 'portion(s)' : 'add-on(s)'} under ${bulkForm.category}!`);
       setShowBulkModal(false);
     } catch (err) {

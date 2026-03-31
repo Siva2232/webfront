@@ -71,11 +71,20 @@ export default function Menu() {
     // (marked via ?from=chooser).  otherwise we want the guest to make a
     // choice even if the cart context already grabbed the table from the URL.
     if (urlTable && !mode && !isTakeaway && from !== "chooser") {
-      navigate(`/choose-mode?table=${urlTable}`, { replace: true });
+      if (localStorage.getItem(`tableModeChosen_${urlTable}`)) {
+        setTable(urlTable);
+        navigate(`/menu?table=${urlTable}`, { replace: true });
+      } else {
+        navigate(`/choose-mode?table=${urlTable}`, { replace: true });
+      }
       return;
     }
 
     if (mode === "takeaway") {
+      if (!localStorage.getItem(`tableModeChosen_${TAKEAWAY_TABLE}`)) {
+        navigate(`/choose-mode?mode=takeaway`, { replace: true });
+        return;
+      }
       // don't prompt for a table; CartContext initialiser already set the
       // special TAKEAWAY_TABLE value but in case the user navigated here
       // after the fact we'll ensure it again and wipe any manual input.

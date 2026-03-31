@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { Utensils, ShoppingCart, Receipt, ChefHat, Bell, HandHelping, CheckCircle2, Phone, X } from "lucide-react";
 import { TAKEAWAY_TABLE } from "../context/CartContext";
 import API from "../api/axios";
 import { useUI } from "../context/UIContext";
+import { useOrders } from "../context/OrderContext";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
@@ -20,9 +21,33 @@ export default function Navbar({ title }) {
   const [isNoOffersModalOpen, setIsNoOffersModalOpen] = useState(false);
 
   const { offers } = useUI();
+  const { orders } = useOrders();
 
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");
+
+  // Track if a bill was requested for the current set of orders
+  const [lastBillRequestedOrderCount, setLastBillRequestedOrderCount] = useState(() => {
+    return parseInt(localStorage.getItem(`lastBillCount_${currentTable}`) || "0");
+  });
+
+  // Logic: Bill button is enabled if there are active orders for this table
+  // AND the number of orders is greater than what was active during the last request.
+  const canRequestBill = useMemo(() => {
+    if (!currentTable || mode === "takeaway") return false;
+    
+    // Find active orders for this table
+    const tableOrders = (orders || []).filter(o => 
+      String(o.table) === String(currentTable) && 
+      !["Cancelled", "Closed"].includes(o.status)
+    );
+
+    const activeCount = tableOrders.length;
+    if (activeCount === 0) return false;
+
+    // Enabled if more orders exist now than when bill was last pushed
+    return activeCount > lastBillRequestedOrderCount;
+  }, [orders, currentTable, mode, lastBillRequestedOrderCount]);
 
   const handleCallWaiter = async () => {
     if (!currentTable || mode === "takeaway" || waiterCooldown > 0) return;
@@ -46,7 +71,7 @@ export default function Navbar({ title }) {
   };
 
   const handleRequestBill = async () => {
-    if (!currentTable || mode === "takeaway" || billCooldown > 0) return;
+    if (!currentTable || mode === "takeaway") return;
 
     setIsRequestingBill(true);
     try {
@@ -57,7 +82,16 @@ export default function Navbar({ title }) {
       });
       setSuccessMessage({ title: "Bill Requested", sub: "Your bill is being prepared" });
       setShowCallSuccess(true);
-      setBillCooldown(180); // 3 minutes
+      
+      // Clear bill button state until a new order is made
+      const activeCount = (orders || []).filter(o => 
+        String(o.table) === String(currentTable) && 
+        !["Cancelled", "Closed"].includes(o.status)
+      ).length;
+      
+      setLastBillRequestedOrderCount(activeCount);
+      localStorage.setItem(`lastBillCount_${currentTable}`, activeCount.toString());
+
       setTimeout(() => setShowCallSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to request bill:", error);
@@ -68,14 +102,26 @@ export default function Navbar({ title }) {
 
   useEffect(() => {
     let interval;
-    if (waiterCooldown > 0 || billCooldown > 0) {
+    if (waiterCooldown > 0) {
       interval = setInterval(() => {
         setWaiterCooldown((prev) => (prev > 0 ? prev - 1 : 0));
-        setBillCooldown((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [waiterCooldown, billCooldown]);
+  }, [waiterCooldown]);
+
+  // If all table orders are closed/cancelled, reset the last count
+  useEffect(() => {
+    if (!currentTable) return;
+    const tableOrders = (orders || []).filter(o => 
+      String(o.table) === String(currentTable) && 
+      !["Cancelled", "Closed"].includes(o.status)
+    );
+    if (tableOrders.length === 0 && lastBillRequestedOrderCount > 0) {
+      setLastBillRequestedOrderCount(0);
+      localStorage.removeItem(`lastBillCount_${currentTable}`);
+    }
+  }, [orders, currentTable, lastBillRequestedOrderCount]);
 
   const getLinkWithTable = (path) => {
     // if we know this is a takeaway order, preserve that on nav
@@ -142,16 +188,16 @@ export default function Navbar({ title }) {
               {currentTable && mode !== "takeaway" && (
                 <button
                   onClick={handleRequestBill}
-                  disabled={isRequestingBill || billCooldown > 0}
+                  disabled={isRequestingBill || !canRequestBill}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
-                    isRequestingBill || billCooldown > 0
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-500 opacity-80 cursor-not-allowed"
+                    isRequestingBill || !canRequestBill
+                      ? "bg-slate-50 border-slate-100 text-slate-300 opacity-60 cursor-not-allowed"
                       : "bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:text-emerald-500 shadow-sm"
                   }`}
                 >
                   <Receipt size={20} className={isRequestingBill ? "animate-pulse" : ""} />
                   <span className="text-sm font-bold uppercase tracking-wider text-center min-w-[80px]">
-                    {isRequestingBill ? "Requesting..." : billCooldown > 0 ? `${Math.floor(billCooldown / 60)}:${(billCooldown % 60).toString().padStart(2, '0')}` : "Get Bill"}
+                    {isRequestingBill ? "Requesting..." : "Get Bill"}
                   </span>
                 </button>
               )}
@@ -235,20 +281,18 @@ export default function Navbar({ title }) {
             <div className="relative mr-1">
               <button
                 onClick={handleRequestBill}
-                disabled={isRequestingBill || billCooldown > 0}
+                disabled={isRequestingBill || !canRequestBill}
                 className={`p-2 rounded-full transition-all flex flex-col items-center justify-center min-w-[32px] ${
-                  isRequestingBill || billCooldown > 0 ? "bg-emerald-100 text-emerald-600 animate-pulse opacity-80" : "text-slate-700 bg-slate-50 border border-slate-100"
+                  isRequestingBill || !canRequestBill ? "bg-slate-100 text-slate-300 opacity-50" : "text-slate-700 bg-slate-50 border border-slate-100"
                 }`}
               >
-                {billCooldown > 0 ? (
-                  <span className="text-[10px] font-black">{Math.ceil(billCooldown / 60)}m</span>
-                ) : (
-                  <Receipt size={20} strokeWidth={2.5} />
-                )}
+                <Receipt size={20} strokeWidth={2.5} />
               </button>
-              <span className="absolute -top-2 right-0 translate-x-1 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full bg-emerald-500 text-white shadow-lg">
-                Bill
-              </span>
+              {canRequestBill && (
+                <span className="absolute -top-2 right-0 translate-x-1 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full bg-emerald-500 text-white shadow-lg">
+                  Bill
+                </span>
+              )}
             </div>
           )}
 

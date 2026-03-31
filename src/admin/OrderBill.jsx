@@ -43,14 +43,15 @@ const computeBillStats = (order) => {
 
   const sessions = order.paymentSessions || [];
   const paidAmount = sessions.filter(isPaid).reduce((a, s) => a + (s.amount || 0), 0);
-  const unpaidAmount = Math.max(0, (order.totalAmount || 0) - paidAmount);
+  const totalDue = order.totalAmount || order.billDetails?.grandTotal || 0;
+  const unpaidAmount = Math.max(0, totalDue - paidAmount);
   const onlineSessions = sessions.filter((s) => s.method === "online");
   const allOnlinePaid =
     onlineSessions.length > 0 && onlineSessions.every(isPaid);
   const hasUnpaidCod =
-    unpaidAmount > 0 && sessions.some((s) => s.method === "cod");
+    unpaidAmount > 1 && sessions.some((s) => s.method === "cod");
   const allCodPaid =
-    sessions.some((s) => s.method === "cod") && unpaidAmount <= 0;
+    sessions.some((s) => s.method === "cod") && unpaidAmount <= 1;
 
   return { subtotal, tax, grandTotal, sessions, paidAmount, unpaidAmount, allOnlinePaid, hasUnpaidCod, allCodPaid };
 };
@@ -154,6 +155,7 @@ export default function OrderBill() {
   const navigate = useNavigate();
 
   const [closedBillIds, setClosedBillIds] = useState(new Set());
+  const [paidBillIds, setPaidBillIds] = useState(new Set());
   const [closeBillModal, setCloseBillModal] = useState(null); // { order }
   const [markPaidModal, setMarkPaidModal] = useState(null);
   const [printModalOrder, setPrintModalOrder] = useState(null);
@@ -165,7 +167,7 @@ export default function OrderBill() {
   useEffect(() => {
     // Force a fresh fetch if cache is empty or too old
     fetchBills();
-  }, [fetchBills]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* deduplicated + date-filtered bills using O(N) deduplication */
   const filteredBills = useMemo(() => {
@@ -213,15 +215,22 @@ export default function OrderBill() {
   /* mark paid — close modal & toast instantly, sync to server in background */
   const handleConfirmMarkPaid = useCallback(async () => {
     if (!markPaidModal) return;
-    const { billId, amount } = markPaidModal;
     setMarkPaidModal(null);
-    toast.success(`\u20b9${amount.toLocaleString()} collected!`, {
+    const billId = markPaidModal.billId;
+    const amount = markPaidModal.amount;
+    
+    // Immediately track as paid locally so the card updates without waiting
+    setPaidBillIds(prev => new Set(prev).add(billId));
+    
+    toast.success(`₹${amount.toLocaleString()} collected!`, {
       icon: <CheckCircle size={18} className="text-emerald-500" />,
       duration: 3000,
     });
     try {
       await markBillPaid(billId);
     } catch (err) {
+      // Revert on failure
+      setPaidBillIds(prev => { const next = new Set(prev); next.delete(billId); return next; });
       const msg = err?.response?.data?.message || err?.message || "Payment sync failed";
       toast.error(msg);
     }
@@ -237,15 +246,23 @@ export default function OrderBill() {
     if (!closeBillModal) return;
     const order = closeBillModal.order;
     const billId = order._id || order.id;
-    const orderId = order.orderRef; // Correctly reference the order ID if needed, but closeBill uses billId
     setCloseBillModal(null);
+    
+    // Optimistic Update: Add to closed IDs immediately
     setClosedBillIds((prev) => new Set(prev).add(billId));
-    toast.success("Order closed & table freed!");
+    
+    toast.success("Order closed & table freed!", { duration: 3000 });
+    
     try {
       await closeBill(billId);
+      // On success, no need to do anything, the ID is already in closedBillIds
     } catch (err) {
       // Revert optimistic close on failure
-      setClosedBillIds((prev) => { const next = new Set(prev); next.delete(billId); return next; });
+      setClosedBillIds((prev) => { 
+        const next = new Set(prev); 
+        next.delete(billId); 
+        return next; 
+      });
       const msg = err?.response?.data?.message || err?.message || "Failed to close bill";
       toast.error(msg);
     }
@@ -334,17 +351,23 @@ export default function OrderBill() {
 
       {/* Bills Grid */}
       <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {uniqueBills.map((order, index) => (
-          <BillCard
-            key={order._id || order.id || index}
-            order={order}
-            isClosed={order.status === "Closed" || closedBillIds.has(order.orderRef || order._id || order.id)}
-            isClosing={false}
-            onPrint={setPrintModalOrder}
-            onClose={handleCloseBill}
-            onMarkPaid={setMarkPaidModal}
-          />
-        ))}
+        {uniqueBills.map((order, index) => {
+          const billId = order._id || order.id || index;
+          const orderRefId = order.orderRef || order._id || order.id;
+          
+          return (
+            <BillCard
+              key={billId}
+              order={order}
+              isClosed={order.status === "Closed" || closedBillIds.has(billId) || closedBillIds.has(orderRefId)}
+              isMarkedPaid={paidBillIds.has(billId) || paidBillIds.has(orderRefId)}
+              isClosing={false}
+              onPrint={setPrintModalOrder}
+              onClose={handleCloseBill}
+              onMarkPaid={setMarkPaidModal}
+            />
+          );
+        })}
       </main>
 
       {/* Load More Button */}
@@ -491,6 +514,7 @@ function ModalOverlay({ onClose, children }) {
 const BillCard = React.memo(function BillCard({
   order,
   isClosed,
+  isMarkedPaid,
   isClosing,
   onPrint,
   onClose,
@@ -501,17 +525,25 @@ const BillCard = React.memo(function BillCard({
     tax,
     grandTotal,
     sessions,
-    unpaidAmount,
+    unpaidAmount: rawUnpaidAmount,
     allOnlinePaid,
-    hasUnpaidCod,
-    allCodPaid,
+    hasUnpaidCod: rawHasUnpaidCod,
+    allCodPaid: rawAllCodPaid,
   } = useMemo(() => computeBillStats(order), [order]);
+
+  // Override when locally marked paid — eliminates all glitch/flicker
+  // and ensure we stay in sync with the closed status
+  const isActuallyClosed = isClosed || order.status === "Closed";
+  const unpaidAmount = (isMarkedPaid || isActuallyClosed) ? 0 : rawUnpaidAmount;
+  const hasUnpaidCod = (isMarkedPaid || isActuallyClosed) ? false : rawHasUnpaidCod;
+  const allCodPaid = (isMarkedPaid || isActuallyClosed) ? true : rawAllCodPaid;
 
   const ts = order.createdAt || order.billedAt;
   const orderTimestamp = ts ? new Date(ts) : new Date();
   const isTA = order.table === TAKEAWAY_TABLE || !order.table || order.table === "TAKEAWAY";
   const isDelivery = order.table === DELIVERY_TABLE || order.table === "DELIVERY";
-  const orderId = order.orderRef || order._id || order.id;
+  const billId = order._id || order.id;
+  const orderId = order.orderRef || billId;
 
   return (
     <div className="relative group w-full">
@@ -525,7 +557,7 @@ const BillCard = React.memo(function BillCard({
 
       {/* Receipt */}
       <div
-        id={`bill-${order._id || order.id || ""}`}
+        id={`bill-${billId || ""}`}
         className="bg-white text-slate-900 border border-slate-200 relative overflow-hidden print:border-none shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)]"
       >
         {/* Branding */}
@@ -569,10 +601,10 @@ const BillCard = React.memo(function BillCard({
                 )}
               </div>
             ) : (
-              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${order.paymentMethod === "online" || order.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>
-                {order.paymentMethod === "online" || order.paymentStatus === "paid" ? <CheckCircle size={12} /> : <Wallet size={12} />}
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${(order.paymentMethod === "online" || order.paymentStatus === "paid" || isMarkedPaid) ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>
+                {(order.paymentMethod === "online" || order.paymentStatus === "paid" || isMarkedPaid) ? <CheckCircle size={12} /> : <Wallet size={12} />}
                 <span className="text-[9px] font-black uppercase tracking-wider">
-                  {order.paymentMethod === "online" || order.paymentStatus === "paid" ? "Online Paid" : "Cash Pending"}
+                  {(order.paymentMethod === "online" || order.paymentStatus === "paid" || isMarkedPaid) ? "Online Paid" : "Cash Pending"}
                 </span>
               </div>
             )}
@@ -586,7 +618,7 @@ const BillCard = React.memo(function BillCard({
               <Hash size={8} /> Order Ref
             </p>
             <p className="text-[10px] font-black text-slate-900 uppercase">
-              #{(order._id || order.id || "").slice(-10)}
+              #{(orderId || "").slice(-10)}
             </p>
           </div>
           <div className="p-6 text-right space-y-1">
@@ -740,16 +772,10 @@ const BillCard = React.memo(function BillCard({
                   })}
 
                   {unpaidAmount > 0 && hasUnpaidCod && (
-                    <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
-                      <div className="flex justify-between items-center font-black text-xs uppercase transition-all gap-2">
+                    <div className="pt-2 border-t border-slate-200">
+                      <div className="flex justify-between items-center font-black text-xs uppercase">
                         <span className="text-rose-600">Total Unpaid (Collect Cash)</span>
                         <span className="text-rose-600 animate-pulse">₹{unpaidAmount.toLocaleString()}</span>
-                        <button
-                          onClick={() => onMarkPaid({ billId: order._id || order.id, amount: unpaidAmount })}
-                          className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase hover:bg-indigo-700 transition"
-                        >
-                          Mark Paid
-                        </button>
                       </div>
                     </div>
                   )}
@@ -781,7 +807,7 @@ const BillCard = React.memo(function BillCard({
       </div>
 
       {/* Closed Badge */}
-      {isClosed && (
+      {isActuallyClosed && (
         <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 no-print">
           <div className="px-5 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 shadow-xl">
             <CheckCircle size={12} /> Closed
@@ -789,30 +815,42 @@ const BillCard = React.memo(function BillCard({
         </div>
       )}
 
-      {/* Close / Free Table Button */}
-      <div className="mt-4 flex justify-center no-print">
-        {isClosed ? (
-          <div className="px-6 py-2.5 bg-slate-100 text-slate-400 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-slate-200">
-            <CheckCircle size={14} /> Table Freed
+      {/* Action Buttons */}
+      <div className="mt-4 flex flex-col gap-2 no-print px-1">
+        {isActuallyClosed ? (
+          <div className="flex justify-center">
+            <div className="px-6 py-2.5 bg-slate-100 text-slate-400 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-slate-200">
+              <CheckCircle size={14} /> Table Freed
+            </div>
           </div>
         ) : (
-          <button
-            onClick={() => onClose(order)}
-            disabled={isClosing || hasUnpaidCod}
-            className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
-              hasUnpaidCod
-                ? "bg-slate-300 text-slate-500 shadow-slate-100 cursor-not-allowed"
-                : "bg-rose-500 text-white hover:bg-rose-600 shadow-rose-100"
-            }`}
-          >
-            {isClosing ? (
-              <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Closing...</>
-            ) : hasUnpaidCod ? (
-              <><Wallet size={14} /> Collect Payment First</>
-            ) : (
-              <><CheckCircle size={14} /> Close & Free Table</>
+          <>
+            {hasUnpaidCod && (
+              <button
+                onClick={() => onMarkPaid({ billId: order._id || order.id, amount: unpaidAmount })}
+                className="w-full px-6 py-2.5 bg-emerald-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-100"
+              >
+                <Wallet size={14} /> Mark Paid · ₹{unpaidAmount.toLocaleString()}
+              </button>
             )}
-          </button>
+            <button
+              onClick={() => onClose(order)}
+              disabled={isClosing || hasUnpaidCod}
+              className={`w-full px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
+                hasUnpaidCod
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  : "bg-rose-500 text-white hover:bg-rose-600 shadow-rose-100"
+              }`}
+            >
+              {isClosing ? (
+                <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Closing...</>
+              ) : hasUnpaidCod ? (
+                <><CheckCircle size={14} /> Close & Free Table <span className="opacity-60 font-medium normal-case text-[9px]">(mark paid first)</span></>
+              ) : (
+                <><CheckCircle size={14} /> Close & Free Table</>
+              )}
+            </button>
+          </>
         )}
       </div>
     </div>

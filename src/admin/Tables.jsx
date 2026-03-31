@@ -251,6 +251,16 @@ export default function Tables() {
         )}
       </div>
 
+      {/* Status legend */}
+      <div className="max-w-7xl mx-auto mb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs font-black">
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-rose-300 border border-rose-500"></span>Busy</span>
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-400"></span>Reserved</span>
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700"></span>Bill Requested</span>
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-indigo-600 border border-indigo-700"></span>Waiter Called</span>
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-purple-600 border border-purple-700"></span>Bill + Call</span>
+        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600"></span>Free</span>
+      </div>
+
       {/* Grid: 2 on Mobile, 3 on Small Tablets, 6 on Desktops */}
       <div className="max-w-7xl mx-auto">
         <motion.div 
@@ -264,7 +274,8 @@ export default function Tables() {
               const resInfo = reserved ? reservedTables[`table-${table.id}`] : null;
               const alert = tableAlerts[`table-${table.id}`];
               const isBillRequested = alert && alert.bill;
-              const hasAlert = alert && (alert.waiter || alert.bill);
+              const isWaiterCalled = alert && alert.waiter;
+              const hasAlert = isBillRequested || isWaiterCalled;
 
               return (
                 <motion.div
@@ -289,17 +300,19 @@ export default function Tables() {
                   {/* Status Badge */}
                   <div className="flex justify-between items-center mb-3 sm:mb-4">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight border
-                      ${isBillRequested
-                        ? "bg-emerald-600 text-white border-emerald-600 animate-pulse"
-                        : hasAlert
-                          ? "bg-indigo-600 text-white border-indigo-600 animate-pulse"
-                          : occupied 
-                            ? "bg-rose-50 text-rose-700 border-rose-200" 
-                            : reserved 
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
-                      <Circle size={6} fill="currentColor" className={isBillRequested ? "text-white" : hasAlert ? "text-white" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
-                      {isBillRequested ? "BILL" : hasAlert ? "CALLED" : occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
+                      ${isBillRequested && isWaiterCalled
+                        ? "bg-purple-600 text-white border-purple-600 animate-pulse"
+                        : isBillRequested
+                          ? "bg-emerald-600 text-white border-emerald-600 animate-pulse"
+                          : isWaiterCalled
+                            ? "bg-indigo-600 text-white border-indigo-600 animate-pulse"
+                            : occupied
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : reserved
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                      <Circle size={6} fill="currentColor" className={isBillRequested || isWaiterCalled ? "text-white" : occupied ? "text-rose-500" : reserved ? "text-amber-500" : "text-emerald-500"} />
+                      {isBillRequested && isWaiterCalled ? "BILL + CALL" : isBillRequested ? "BILL" : isWaiterCalled ? "CALL" : occupied ? "BUSY" : reserved ? "RESERVED" : "FREE"}
                     </div>
 
                     <div className="flex gap-1">
@@ -326,18 +339,25 @@ export default function Tables() {
 
                   {/* Icon Area */}
                   <div className={`w-10 h-10 sm:w-12 sm:h-12 mx-auto rounded-xl flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300
-                    ${isBillRequested
-                      ? "bg-emerald-600 text-white scale-110 shadow-lg shadow-emerald-200"
-                      : hasAlert
-                        ? "bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200"
-                        : occupied 
-                          ? "bg-rose-500 text-white scale-105" 
-                          : reserved
-                            ? "bg-amber-500 text-white"
-                            : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
-                    {isBillRequested ? (
+                    ${isBillRequested && isWaiterCalled
+                      ? "bg-purple-600 text-white scale-110 shadow-lg shadow-purple-200"
+                      : isBillRequested
+                        ? "bg-emerald-600 text-white scale-110 shadow-lg shadow-emerald-200"
+                        : isWaiterCalled
+                          ? "bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-200"
+                          : occupied 
+                            ? "bg-rose-500 text-white scale-105" 
+                            : reserved
+                              ? "bg-amber-500 text-white"
+                              : "bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white"}`}>
+                    {isBillRequested && isWaiterCalled ? (
+                      <div className="flex items-center gap-1">
+                        <Receipt size={16} strokeWidth={2.2} />
+                        <BellRing size={16} strokeWidth={2.2} />
+                      </div>
+                    ) : isBillRequested ? (
                        <Receipt size={22} strokeWidth={2.5} className="animate-bounce" />
-                    ) : hasAlert ? (
+                    ) : isWaiterCalled ? (
                        <BellRing size={20} strokeWidth={2.5} className="animate-ring" />
                     ) : reserved && !occupied ? (
                        <CalendarCheck size={20} strokeWidth={1.8} />

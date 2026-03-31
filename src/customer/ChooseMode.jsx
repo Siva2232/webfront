@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
-import { useCart } from "../context/CartContext";
+import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { Utensils, ShoppingBag, MapPin } from "lucide-react";
 
 export default function ChooseMode() {
@@ -12,15 +12,23 @@ export default function ChooseMode() {
   const { setTable } = useCart();
 
   useEffect(() => {
+    // Once user selected mode for this table in current visit, skip chooser.
+    if (table && localStorage.getItem(`tableModeChosen_${table}`)) {
+      setTable(table);
+      navigate(`/menu?table=${table}`, { replace: true });
+      return;
+    }
+
     if (mode === "takeaway") {
       navigate(`/menu?mode=takeaway&from=chooser`, { replace: true });
     } else if (!table) {
       navigate("/menu", { replace: true });
     }
-  }, [mode, table, navigate]);
+  }, [mode, table, navigate, setTable]);
 
   const chooseDineIn = () => {
     if (table) {
+      localStorage.setItem(`tableModeChosen_${table}`, "true");
       setTable(table);
       navigate(`/menu?table=${table}&from=chooser`);
     } else {
@@ -29,6 +37,7 @@ export default function ChooseMode() {
   };
 
   const chooseTakeaway = () => {
+    localStorage.setItem(`tableModeChosen_${TAKEAWAY_TABLE}`, "true");
     navigate(`/menu?mode=takeaway&from=chooser`);
   };
 
