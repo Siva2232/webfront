@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Banknote, Plus, Send, Download, Edit2, Loader2, Search,
   ChevronDown, X, RefreshCw, CheckCircle2, Clock, IndianRupee,
-  Users, Zap, Save, FileText, Mail
+  Users, Zap, Save, FileText, Mail, Info
 } from "lucide-react";
 import {
   getPayrolls, generatePayroll, generatePayrollAll, updatePayroll,
@@ -17,8 +17,12 @@ const MONTHS = [
 
 function StatusBadge({ status }) {
   return status === "paid"
-    ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Paid</span>
-    : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Pending</span>;
+    ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-wider">
+        <CheckCircle2 className="w-3 h-3" /> Paid
+      </span>
+    : <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-wider">
+        <Clock className="w-3 h-3" /> Pending
+      </span>;
 }
 
 export default function AdminPayroll() {
@@ -68,7 +72,6 @@ export default function AdminPayroll() {
   const paidCount = payrolls.filter(p => p.status === "paid").length;
   const pendingCount = payrolls.filter(p => p.status === "pending").length;
 
-  // Staff that don't have payroll yet this month
   const staffWithoutPayroll = allStaff.filter(s => !payrolls.find(p => (p.staff?._id || p.staff) === s._id));
 
   const handleGenerate = async () => {
@@ -87,7 +90,7 @@ export default function AdminPayroll() {
   };
 
   const handleBulkGenerate = async () => {
-    if (!window.confirm(`Generate payroll for all ${staffWithoutPayroll.length} staff without payroll this month?`)) return;
+    if (!window.confirm(`Generate payroll for all ${staffWithoutPayroll.length} staff?`)) return;
     setBulkGenerating(true);
     try {
       await generatePayrollAll({ month, year });
@@ -142,168 +145,173 @@ export default function AdminPayroll() {
   const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i);
 
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Payroll Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{MONTHS[month - 1]} {year}</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Payroll Hub</h1>
+          <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            Manage and generate staff compensation for {MONTHS[month - 1]} {year}
+          </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={load} className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-500">
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center gap-3">
+          <button onClick={load} className="p-2.5 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 transition-all shadow-sm active:scale-95">
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {staffWithoutPayroll.length > 0 && (
             <button onClick={handleBulkGenerate} disabled={bulkGenerating}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-colors">
-              {bulkGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-              Generate All ({staffWithoutPayroll.length})
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-black text-white rounded-2xl text-sm font-bold disabled:opacity-50 transition-all shadow-lg active:scale-95">
+              {bulkGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-400" />}
+              Auto-Generate ({staffWithoutPayroll.length})
             </button>
           )}
           <button onClick={() => { setGenForm({ staffId: "", bonus: 0, overtime: 0 }); setGenerateModal(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-            <Plus className="w-4 h-4" />Generate Payroll
+            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95">
+            <Plus className="w-5 h-5" /> Manual Entry
           </button>
         </div>
       </div>
 
-      {/* Month/Year selector + summary */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select value={month} onChange={e => setMonth(Number(e.target.value))}
-              className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm text-slate-700 outline-none">
-              {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select value={year} onChange={e => setYear(Number(e.target.value))}
-              className="appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 pr-8 text-sm text-slate-700 outline-none">
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+      {/* Analytics & Controls Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-center gap-6 shadow-sm">
+           <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Period Selection</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <select value={month} onChange={e => setMonth(Number(e.target.value))}
+                      className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition-colors">
+                      {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                  <div className="relative flex-1">
+                    <select value={year} onChange={e => setYear(Number(e.target.value))}
+                      className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition-colors">
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+           </div>
         </div>
 
-        <div className="flex gap-4 flex-wrap ml-2">
-          {[
-            { label: "Total Records", value: payrolls.length, color: "text-slate-700" },
-            { label: "Paid", value: paidCount, color: "text-emerald-600" },
-            { label: "Pending", value: pendingCount, color: "text-amber-600" },
-            { label: "Total Payout", value: `₹${totalNetSalary.toLocaleString("en-IN")}`, color: "text-indigo-700 font-semibold" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="text-center">
-              <p className={`text-lg font-bold ${color}`}>{value}</p>
-              <p className="text-xs text-slate-400">{label}</p>
-            </div>
-          ))}
+        <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden relative">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+            {[
+              { label: "Total Staff", value: payrolls.length, icon: Users, color: "text-slate-900" },
+              { label: "Paid Trans.", value: paidCount, icon: CheckCircle2, color: "text-emerald-600" },
+              { label: "Outstanding", value: pendingCount, icon: Clock, color: "text-amber-600" },
+              { label: "Total Payout", value: `₹${totalNetSalary.toLocaleString("en-IN")}`, icon: Banknote, color: "text-indigo-600" },
+            ].map((item, idx) => (
+              <div key={idx} className={`p-1 ${idx !== 3 ? 'md:border-r border-slate-100' : ''}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <item.icon className={`w-4 h-4 ${item.color} opacity-70`} />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.label}</span>
+                </div>
+                <p className={`text-xl font-black ${item.color}`}>{item.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-1 min-w-[200px] bg-white border border-slate-200 rounded-xl px-3 py-2">
-          <Search className="w-4 h-4 text-slate-400" />
+      {/* Filter Section */}
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full group">
+          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-indigo-500" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search staff…"
-            className="bg-transparent text-sm outline-none w-full text-slate-700 placeholder-slate-400" />
-          {search && <button onClick={() => setSearch("")}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
+            placeholder="Search by staff name or role..."
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-12 pr-12 py-3.5 text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-50 shadow-sm transition-all" />
+          {search && <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full"><X className="w-4 h-4 text-slate-400" /></button>}
         </div>
-        <div className="relative">
+        <div className="relative w-full md:w-56">
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-8 text-sm text-slate-700 outline-none">
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
+            className="w-full appearance-none bg-white border border-slate-200 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-50 shadow-sm transition-all">
+            <option value="">All Statuses</option>
+            <option value="pending">Pending Only</option>
+            <option value="paid">Paid Only</option>
           </select>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
       </div>
 
       {/* Payroll Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-indigo-400" /></div>
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
+            <p className="text-slate-400 font-bold animate-pulse uppercase tracking-widest text-xs">Syncing Payroll Data...</p>
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <Banknote className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No payroll records for {MONTHS[month - 1]} {year}</p>
+          <div className="text-center py-24">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+              <FileText className="w-10 h-10 text-slate-200" />
+            </div>
+            <h3 className="text-slate-800 font-bold text-lg">No Records Found</h3>
+            <p className="text-slate-400 text-sm mt-1">There are no payroll entries for the selected period.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-[11px] font-bold text-slate-500 whitespace-nowrap">
-                  <th className="px-5 py-4 text-left">Staff Name / Role</th>
-                  <th className="px-5 py-4 text-left font-bold">Base Salary (₹)</th>
-                  <th className="px-5 py-4 text-left">Absent Days</th>
-                  <th className="px-5 py-4 text-left">Deduction (₹)</th>
-                  <th className="px-5 py-4 text-left">Bonus (₹)</th>
-                  <th className="px-5 py-4 text-left">Overtime (₹)</th>
-                  <th className="px-5 py-4 text-left font-bold">Net Salary (₹)</th>
-                  <th className="px-5 py-4 text-left">Payment Status</th>
-                  <th className="px-5 py-4 text-center">Actions</th>
+                <tr className="bg-slate-50/50 border-b border-slate-100 uppercase tracking-[0.1em] text-[10px] font-black text-slate-400">
+                  <th className="px-8 py-5 text-left">Member Profile</th>
+                  <th className="px-6 py-5 text-left">Base Pay</th>
+                  <th className="px-6 py-5 text-left">Absence</th>
+                  <th className="px-6 py-5 text-left">Deductions</th>
+                  <th className="px-6 py-5 text-left">Add-ons (Bonus/OT)</th>
+                  <th className="px-6 py-5 text-left">Net Amount</th>
+                  <th className="px-6 py-5 text-left">Status</th>
+                  <th className="px-8 py-5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-50">
                 {filtered.map(p => (
-                  <tr key={p._id} className="hover:bg-slate-50/80 transition-all duration-200 group">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-100 flex items-center justify-center text-indigo-600 text-sm font-bold flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                  <tr key={p._id} className="hover:bg-indigo-50/30 transition-all group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center text-slate-700 text-base font-black shadow-sm group-hover:scale-110 transition-transform">
                           {p.staff?.name?.charAt(0)?.toUpperCase() || "?"}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 leading-tight">{p.staff?.name || "—"}</p>
-                          <p className="text-[11px] text-slate-400 font-medium uppercase mt-0.5 tracking-tight">{p.staff?.designation || p.staff?.department || "General Staff"}</p>
+                          <p className="font-black text-slate-900 leading-none">{p.staff?.name || "—"}</p>
+                          <p className="text-[11px] text-slate-400 font-bold uppercase mt-1.5 tracking-wider">{p.staff?.designation || "General Staff"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                        <span className="text-slate-400 font-medium text-xs">₹</span>
-                        {Number(p.baseSalary || 0).toLocaleString("en-IN")}
+                    <td className="px-6 py-5 font-bold text-slate-600">₹{Number(p.baseSalary || 0).toLocaleString("en-IN")}</td>
+                    <td className="px-6 py-5">
+                      <div className={`px-3 py-1 inline-flex items-center gap-1.5 rounded-lg text-xs font-black ${p.absentDays > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-50 text-slate-400'}`}>
+                        {p.absentDays || 0} D
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <div className={`px-2.5 py-1 inline-flex items-center gap-1.5 rounded-lg text-xs font-bold ${p.absentDays > 0 ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-50 text-slate-500'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${p.absentDays > 0 ? 'bg-rose-500' : 'bg-slate-300'}`}></div>
-                        {p.absentDays || 0} days
+                    <td className="px-6 py-5 font-bold text-rose-500">-₹{Number(p.leaveDeduction || 0).toLocaleString("en-IN")}</td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col gap-0.5 font-bold text-[13px]">
+                        <span className="text-emerald-600">+₹{Number(p.bonus || 0).toLocaleString("en-IN")} <small className="text-[10px] text-slate-400 font-bold uppercase ml-1">Bonus</small></span>
+                        <span className="text-emerald-600">+₹{Number(p.overtime || 0).toLocaleString("en-IN")} <small className="text-[10px] text-slate-400 font-bold uppercase ml-1">OT</small></span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 font-bold text-rose-500 tabular-nums">
-                      <span className="text-[10px] mr-0.5 font-medium opacity-70">₹</span>
-                      {Number(p.leaveDeduction || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4 font-bold text-emerald-600 tabular-nums">
-                      <span className="text-[10px] mr-0.5 font-medium opacity-70">₹</span>
-                      {Number(p.bonus || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4 font-bold text-emerald-600 tabular-nums">
-                      <span className="text-[10px] mr-0.5 font-medium opacity-70">₹</span>
-                      {Number(p.overtime || 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4 bg-indigo-50/30">
-                      <div className="flex items-center gap-1.5 font-black text-indigo-700 text-base tabular-nums">
-                        <span className="text-[11px] font-bold">₹</span>
-                        {Number(p.netSalary || 0).toLocaleString("en-IN")}
+                    <td className="px-6 py-5">
+                      <div className="px-4 py-2 bg-indigo-50 rounded-2xl inline-block">
+                        <span className="text-indigo-700 font-black text-lg tracking-tight">₹{Number(p.netSalary || 0).toLocaleString("en-IN")}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4"><StatusBadge status={p.status} /></td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(p)} title="Edit Payroll"
-                          className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-100/50 rounded-xl transition-all shadow-sm bg-white border border-slate-100">
-                          <Edit2 className="w-4 h-4" />
+                    <td className="px-6 py-5"><StatusBadge status={p.status} /></td>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex items-center justify-end gap-2 group-hover:translate-x-0 transition-all">
+                        <button onClick={() => openEdit(p)} className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" title="Edit">
+                          <Edit2 className="w-4.5 h-4.5" />
                         </button>
-                        <button onClick={() => handleSendPayslip(p._id, p.staff?.name)} disabled={sending === p._id} title="Send Email"
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-100/50 rounded-xl transition-all shadow-sm bg-white border border-slate-100 disabled:opacity-50">
-                          {sending === p._id ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <Mail className="w-4 h-4" />}
+                        <button onClick={() => handleSendPayslip(p._id, p.staff?.name)} disabled={sending === p._id} className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors disabled:opacity-30" title="Send Email">
+                          {sending === p._id ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : <Mail className="w-4.5 h-4.5" />}
                         </button>
-                        <button onClick={() => handleDownloadPDF(p._id)} title="Download PDF"
-                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/50 rounded-xl transition-all shadow-sm bg-white border border-slate-100">
-                          <Download className="w-4 h-4" />
+                        <button onClick={() => handleDownloadPDF(p._id)} className="p-2.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors" title="Download">
+                          <Download className="w-4.5 h-4.5" />
                         </button>
                       </div>
                     </td>
@@ -317,115 +325,141 @@ export default function AdminPayroll() {
 
       {/* Generate Single Modal */}
       {generateModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-lg font-bold text-slate-800">Generate Payroll</h2>
-              <button onClick={() => setGenerateModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-8 border-b border-slate-100">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create Entry</h2>
+              <button onClick={() => setGenerateModal(false)} className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 transition-colors">
+                <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-sm text-slate-600">
-                Generating for <strong>{MONTHS[month - 1]} {year}</strong>
+            <div className="p-8 space-y-5">
+              <div className="bg-indigo-600 text-white p-4 rounded-2xl flex items-center gap-3 shadow-lg shadow-indigo-100">
+                <div className="p-2 bg-white/20 rounded-xl"><Clock className="w-5 h-5" /></div>
+                <p className="text-sm font-bold uppercase tracking-widest">{MONTHS[month - 1]} {year} Cycle</p>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Staff Member *</label>
-                <select value={genForm.staffId} onChange={e => setGenForm(p => ({ ...p, staffId: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 bg-white">
-                  <option value="">Select staff…</option>
-                  {allStaff.map(s => (
-                    <option key={s._id} value={s._id}>{s.name} — ₹{Number(s.baseSalary || 0).toLocaleString("en-IN")}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Bonus (₹)</label>
-                  <input type="number" min={0} value={genForm.bonus}
-                    onChange={e => setGenForm(p => ({ ...p, bonus: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Select Staff Member</label>
+                  <select value={genForm.staffId} onChange={e => setGenForm(p => ({ ...p, staffId: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold text-slate-800 outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-400 transition-all">
+                    <option value="">Select an employee...</option>
+                    {allStaff.map(s => (
+                      <option key={s._id} value={s._id}>{s.name} (₹{s.baseSalary})</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Overtime (₹)</label>
-                  <input type="number" min={0} value={genForm.overtime}
-                    onChange={e => setGenForm(p => ({ ...p, overtime: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Bonus</label>
+                    <input type="number" min={0} value={genForm.bonus}
+                      onChange={e => setGenForm(p => ({ ...p, bonus: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-50 transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Overtime</label>
+                    <input type="number" min={0} value={genForm.overtime}
+                      onChange={e => setGenForm(p => ({ ...p, overtime: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-50 transition-all" />
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-slate-400">Net Salary = Base Salary – Leave Deduction + Bonus + Overtime</p>
             </div>
-            <div className="flex gap-3 p-6 border-t border-slate-200">
+            <div className="flex gap-4 p-8 bg-slate-50/50">
               <button onClick={() => setGenerateModal(false)}
-                className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
-                Cancel
+                className="flex-1 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">
+                Discard
               </button>
               <button onClick={handleGenerate} disabled={generating}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
-                Generate
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-black disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 active:scale-95">
+                {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm & Save"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (Styled similarly) */}
       {editModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-8 border-b border-slate-100">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Edit Payroll</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{editModal.staff?.name} · {MONTHS[month - 1]} {year}</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit Payroll</h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1.5">{editModal.staff?.name}</p>
               </div>
-              <button onClick={() => setEditModal(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                <X className="w-5 h-5" />
+              <button onClick={() => setEditModal(null)} className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 transition-colors">
+                <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 rounded-xl p-4">
-                <div><span className="text-slate-400">Base Salary</span><p className="font-semibold text-slate-700 mt-0.5">₹{Number(editModal.baseSalary || 0).toLocaleString("en-IN")}</p></div>
-                <div><span className="text-slate-400">Absent Days</span><p className="font-semibold text-slate-700 mt-0.5">{editModal.absentDays || 0}</p></div>
-                <div><span className="text-slate-400">Deduction</span><p className="font-semibold text-rose-600 mt-0.5">₹{Number(editModal.leaveDeduction || 0).toLocaleString("en-IN")}</p></div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Base</p>
+                  <p className="text-[13px] font-black text-slate-700">₹{editModal.baseSalary}</p>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Absents</p>
+                  <p className="text-[13px] font-black text-slate-700">{editModal.absentDays || 0}</p>
+                </div>
+                <div className="bg-rose-50 p-3 rounded-2xl text-center">
+                  <p className="text-[10px] font-black text-rose-400 uppercase tracking-tighter">Loss</p>
+                  <p className="text-[13px] font-black text-rose-600">₹{editModal.leaveDeduction}</p>
+                </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Bonus (₹)</label>
-                  <input type="number" min={0} value={editForm.bonus}
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Adjustment Bonus</label>
+                  <input type="number" value={editForm.bonus}
                     onChange={e => setEditForm(p => ({ ...p, bonus: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-50 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Overtime (₹)</label>
-                  <input type="number" min={0} value={editForm.overtime}
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Overtime Pay</label>
+                  <input type="number" value={editForm.overtime}
                     onChange={e => setEditForm(p => ({ ...p, overtime: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-50 transition-all" />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
-                <select value={editForm.status} onChange={e => setEditForm(p => ({ ...p, status: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 bg-white">
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                </select>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-2 ml-1">Payment Lifecycle</label>
+                <div className="flex gap-2">
+                   {['pending', 'paid'].map((stat) => (
+                     <button
+                       key={stat}
+                       onClick={() => setEditForm(p => ({ ...p, status: stat }))}
+                       className={`flex-1 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+                         editForm.status === stat 
+                         ? 'bg-slate-900 text-white shadow-lg' 
+                         : 'bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-100'
+                       }`}
+                     >
+                       {stat}
+                     </button>
+                   ))}
+                </div>
               </div>
-              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-sm">
-                Estimated Net: <strong className="text-indigo-700">
-                  ₹{Math.max(0, Number(editModal.baseSalary || 0) - Number(editModal.leaveDeduction || 0) + Number(editForm.bonus || 0) + Number(editForm.overtime || 0)).toLocaleString("en-IN")}
-                </strong>
+
+              <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-5 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">New Net Payable</p>
+                  <h3 className="text-2xl font-black text-emerald-700 tracking-tighter">
+                    ₹{Math.max(0, Number(editModal.baseSalary || 0) - Number(editModal.leaveDeduction || 0) + Number(editForm.bonus || 0) + Number(editForm.overtime || 0)).toLocaleString("en-IN")}
+                  </h3>
+                </div>
+                <Banknote className="w-10 h-10 text-emerald-200" />
               </div>
             </div>
-            <div className="flex gap-3 p-6 border-t border-slate-200">
+            <div className="flex gap-4 p-8 bg-slate-50/50 border-t border-slate-100">
               <button onClick={() => setEditModal(null)}
-                className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
+                className="flex-1 px-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-black text-slate-600 hover:bg-slate-100 transition-colors shadow-sm">
                 Cancel
               </button>
               <button onClick={handleSaveEdit} disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save Changes
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-black disabled:opacity-50 transition-all shadow-lg shadow-indigo-200 active:scale-95">
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Changes"}
               </button>
             </div>
           </div>

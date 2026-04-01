@@ -53,6 +53,15 @@ import AdminLeaves from "../admin/hr/AdminLeaves";
 import AdminShifts from "../admin/hr/AdminShifts";
 import AdminPayroll from "../admin/hr/AdminPayroll";
 
+/* Accounting / Mini Tally — admin pages */
+import AccountingDashboard from "../admin/accounting/AccountingDashboard";
+import Ledgers from "../admin/accounting/Ledgers";
+import Transactions from "../admin/accounting/Transactions";
+import Expenses from "../admin/accounting/Expenses";
+import Income from "../admin/accounting/Income";
+import Reports from "../admin/accounting/Reports";
+import Recurring from "../admin/accounting/Recurring";
+
 /* Customer Pages */
 import Menu from "../customer/Menu";
 import Cart from "../customer/Cart";
@@ -137,6 +146,18 @@ export default function AppRoutes() {
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="shifts" element={<AdminShifts />} />
             <Route path="payroll" element={<AdminPayroll />} />
+          </Route>
+
+          {/* Accounting / Mini Tally — inside AdminLayout */}
+          <Route path="accounting">
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AccountingDashboard />} />
+            <Route path="ledgers" element={<Ledgers />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="expenses/new" element={<Expenses />} />
+            <Route path="income/new" element={<Income />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="recurring" element={<Recurring />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

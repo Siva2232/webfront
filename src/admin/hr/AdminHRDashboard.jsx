@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Users, CalendarCheck2, CalendarX2, Banknote, TrendingUp,
   Clock4, AlertCircle, CheckCircle2, XCircle, ChevronRight,
-  UserCheck, UserX, Loader2
+  UserCheck, UserX, Loader2, ArrowUpRight
 } from "lucide-react";
 import { getAllStaff, getAttendance, getLeaves, getPayrolls } from "../../api/hrApi";
 import toast from "react-hot-toast";
@@ -62,144 +62,170 @@ export default function AdminHRDashboard() {
   }, []);
 
   const statCards = [
-    { label: "Total Staff", value: stats.staff, icon: Users, color: "bg-indigo-50 text-indigo-600", border: "border-indigo-100", link: "/admin/hr/staff" },
-    { label: "Present Today", value: stats.presentToday, icon: UserCheck, color: "bg-emerald-50 text-emerald-600", border: "border-emerald-100", link: "/admin/hr/attendance" },
-    { label: "Absent Today", value: stats.absentToday, icon: UserX, color: "bg-rose-50 text-rose-600", border: "border-rose-100", link: "/admin/hr/attendance" },
-    { label: "Pending Leaves", value: stats.pendingLeaves, icon: CalendarX2, color: "bg-amber-50 text-amber-600", border: "border-amber-100", link: "/admin/hr/leaves" },
-    { label: "Payroll Paid", value: stats.paidPayroll, icon: CheckCircle2, color: "bg-teal-50 text-teal-600", border: "border-teal-100", link: "/admin/hr/payroll" },
-    { label: "Payroll Pending", value: stats.pendingPayroll, icon: Banknote, color: "bg-violet-50 text-violet-600", border: "border-violet-100", link: "/admin/hr/payroll" },
+    { label: "Total Staff", value: stats.staff, icon: Users, color: "text-indigo-600 bg-indigo-50", border: "border-indigo-100", link: "/admin/hr/staff" },
+    { label: "Present Today", value: stats.presentToday, icon: UserCheck, color: "text-emerald-600 bg-emerald-50", border: "border-emerald-100", link: "/admin/hr/attendance" },
+    { label: "Absent Today", value: stats.absentToday, icon: UserX, color: "text-rose-600 bg-rose-50", border: "border-rose-100", link: "/admin/hr/attendance" },
+    { label: "Pending Leaves", value: stats.pendingLeaves, icon: CalendarX2, color: "text-amber-600 bg-amber-50", border: "border-amber-100", link: "/admin/hr/leaves" },
+    { label: "Payroll Paid", value: stats.paidPayroll, icon: CheckCircle2, color: "text-teal-600 bg-teal-50", border: "border-teal-100", link: "/admin/hr/payroll" },
+    { label: "Payroll Pending", value: stats.pendingPayroll, icon: Banknote, color: "text-violet-600 bg-violet-50", border: "border-violet-100", link: "/admin/hr/payroll" },
   ];
 
   const quickLinks = [
-    { label: "Manage Staff", icon: Users, path: "/admin/hr/staff", desc: "Add, edit, or remove staff members" },
-    { label: "Mark Attendance", icon: CalendarCheck2, path: "/admin/hr/attendance", desc: "Record daily attendance" },
-    { label: "Leave Requests", icon: CalendarX2, path: "/admin/hr/leaves", desc: "Review and approve leaves" },
-    { label: "Manage Shifts", icon: Clock4, path: "/admin/hr/shifts", desc: "Create and assign shifts" },
-    { label: "Run Payroll", icon: Banknote, path: "/admin/hr/payroll", desc: "Generate and send payslips" },
+    { label: "Manage Staff", icon: Users, path: "/admin/hr/staff", desc: "Add or edit staff" },
+    { label: "Attendance", icon: CalendarCheck2, path: "/admin/hr/attendance", desc: "Daily records" },
+    { label: "Leave Requests", icon: CalendarX2, path: "/admin/hr/leaves", desc: "Review leaves" },
+    { label: "Manage Shifts", icon: Clock4, path: "/admin/hr/shifts", desc: "Create schedules" },
+    { label: "Run Payroll", icon: Banknote, path: "/admin/hr/payroll", desc: "Generate payslips" },
   ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-50/50">
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+        <p className="mt-4 text-slate-500 font-medium animate-pulse">Loading Dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">HR Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-        </p>
+    <div className="min-h-screen bg-slate-50/30 p-4 md:p-8 space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">HR Management</h1>
+          <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
+            <CalendarCheck2 className="w-4 h-4" />
+            {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          </p>
+        </div>
+        <div className="flex gap-3">
+            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all">Export Report</button>
+            <Link to="/admin/hr/staff" className="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-semibold text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 transition-all">Add Staff</Link>
+        </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <Link key={card.label} to={card.link}
-              className={`bg-white border ${card.border} rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition-shadow`}>
-              <div className={`w-10 h-10 rounded-lg ${card.color} flex items-center justify-center`}>
-                <Icon className="w-5 h-5" />
+              className={`group bg-white border ${card.border} rounded-2xl p-5 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 transform hover:-translate-y-1`}>
+              <div className="flex justify-between items-start mb-4">
+                <div className={`w-12 h-12 rounded-xl ${card.color} flex items-center justify-center transition-transform group-hover:scale-110`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">{card.value}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{card.label}</p>
+                <p className="text-3xl font-bold text-slate-900 tracking-tight">{card.value}</p>
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider text-[10px] mt-1">{card.label}</p>
               </div>
             </Link>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Links */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-indigo-500" />Quick Actions
-          </h2>
-          <div className="space-y-2">
+      {/* Main Content Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Quick Actions - 3 Columns */}
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-50 bg-slate-50/50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-indigo-500" /> Quick Operations
+            </h2>
+          </div>
+          <div className="p-4 space-y-1">
             {quickLinks.map((link) => {
               const Icon = link.icon;
               return (
                 <Link key={link.path} to={link.path}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4" />
+                  className="flex items-center gap-4 p-3.5 rounded-xl hover:bg-indigo-50/50 transition-all group">
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center flex-shrink-0 transition-all">
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 group-hover:text-indigo-600">{link.label}</p>
-                    <p className="text-xs text-slate-400 truncate">{link.desc}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-700 group-hover:text-indigo-700">{link.label}</p>
+                    <p className="text-xs text-slate-400 font-medium">{link.desc}</p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-400" />
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                 </Link>
               );
             })}
           </div>
         </div>
 
-        {/* Recent Staff */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-500" />Staff Members
+        {/* Staff Members - 4 Columns */}
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <div className="p-5 flex items-center justify-between border-b border-slate-50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-500" /> Staff Overview
             </h2>
-            <Link to="/admin/hr/staff" className="text-xs text-indigo-600 hover:underline">View all</Link>
+            <Link to="/admin/hr/staff" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 bg-indigo-50 rounded-md">View All</Link>
           </div>
-          {recentStaff.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">No staff found</div>
-          ) : (
-            <div className="space-y-3">
-              {recentStaff.map((s) => (
-                <div key={s._id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {s.name?.charAt(0)?.toUpperCase()}
+          <div className="p-5">
+            {recentStaff.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Users className="w-10 h-10 text-slate-200 mb-2" />
+                <p className="text-slate-400 text-sm font-medium">No staff members</p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {recentStaff.map((s) => (
+                  <div key={s._id} className="flex items-center gap-4 group cursor-default">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white text-sm font-bold ring-2 ring-white shadow-sm transition-transform group-hover:scale-110">
+                      {s.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{s.name}</p>
+                      <p className="text-xs text-slate-500 font-medium truncate italic">{s.designation || s.department || s.role}</p>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${s.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                      {s.status}
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{s.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{s.designation || s.department || s.role}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-                    {s.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Pending Leaves */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-500" />Pending Leaves
+        {/* Pending Leaves - 4 Columns */}
+        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <div className="p-5 flex items-center justify-between border-b border-slate-50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" /> Pending Requests
             </h2>
-            <Link to="/admin/hr/leaves" className="text-xs text-indigo-600 hover:underline">View all</Link>
+            <Link to="/admin/hr/leaves" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 bg-indigo-50 rounded-md">Review</Link>
           </div>
-          {pendingLeaves.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">No pending leaves</div>
-          ) : (
-            <div className="space-y-3">
-              {pendingLeaves.map((leave) => (
-                <div key={leave._id} className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{leave.staff?.name || "Staff"}</p>
-                      <p className="text-xs text-slate-500">{leave.leaveType} · {leave.totalDays} day{leave.totalDays !== 1 ? "s" : ""}</p>
+          <div className="p-5">
+            {pendingLeaves.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <CheckCircle2 className="w-10 h-10 text-emerald-100 mb-2" />
+                <p className="text-slate-400 text-sm font-medium">All caught up!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingLeaves.map((leave) => (
+                  <div key={leave._id} className="p-4 bg-white border border-slate-100 rounded-xl hover:border-amber-200 hover:bg-amber-50/30 transition-all shadow-sm">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">{leave.staff?.name || "Employee"}</p>
+                        <p className="text-[11px] font-bold text-amber-600 uppercase mt-0.5">{leave.leaveType} • {leave.totalDays} Day(s)</p>
+                      </div>
+                      <div className="flex flex-col items-end">
+                         <span className="text-[10px] font-bold text-slate-400">PENDING</span>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium whitespace-nowrap">
-                      Pending
-                    </span>
+                    <p className="text-xs text-slate-500 line-clamp-1 italic bg-slate-50 p-2 rounded-md border border-slate-100">"{leave.reason}"</p>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 truncate">{leave.reason}</p>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );

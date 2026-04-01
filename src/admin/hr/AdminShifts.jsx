@@ -1,16 +1,41 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Clock4, Plus, Edit2, Trash2, Users, X, Save, Loader2,
-  Search, Sun, Sunset, Moon, ChevronDown, RefreshCw, UserMinus
+  Search, Sun, Sunset, Moon, ChevronDown, RefreshCw, UserMinus,
+  Calendar, ArrowRight, UserPlus
 } from "lucide-react";
-import { getShifts, createShift, updateShift, deleteShift, assignStaffToShift, getAllStaff } from "../../api/hrApi";
+import { getShifts, createShift, updateShift, deleteShift, getAllStaff } from "../../api/hrApi";
 import toast from "react-hot-toast";
 
-const SHIFT_COLORS = {
-  morning: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: Sun, badge: "bg-amber-100 text-amber-700" },
-  evening: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: Sunset, badge: "bg-orange-100 text-orange-700" },
-  night:   { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", icon: Moon, badge: "bg-indigo-100 text-indigo-700" },
-  custom:  { bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-700", icon: Clock4, badge: "bg-slate-100 text-slate-600" },
+const SHIFT_THEMES = {
+  morning: { 
+    bg: "bg-amber-50/50", 
+    border: "border-amber-200/60", 
+    text: "text-amber-700", 
+    accent: "bg-amber-100",
+    icon: Sun 
+  },
+  evening: { 
+    bg: "bg-orange-50/50", 
+    border: "border-orange-200/60", 
+    text: "text-orange-700", 
+    accent: "bg-orange-100",
+    icon: Sunset 
+  },
+  night: { 
+    bg: "bg-indigo-50/50", 
+    border: "border-indigo-200/60", 
+    text: "text-indigo-700", 
+    accent: "bg-indigo-100",
+    icon: Moon 
+  },
+  custom: { 
+    bg: "bg-slate-50/50", 
+    border: "border-slate-200/60", 
+    text: "text-slate-700", 
+    accent: "bg-slate-100",
+    icon: Clock4 
+  },
 };
 
 const EMPTY_FORM = { name: "", shiftType: "morning", startTime: "08:00", endTime: "16:00", description: "" };
@@ -24,7 +49,7 @@ export default function AdminShifts() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
-  const [assignModal, setAssignModal] = useState(null); // shift being assigned
+  const [assignModal, setAssignModal] = useState(null); 
   const [assignSearch, setAssignSearch] = useState("");
   const [assigning, setAssigning] = useState(false);
 
@@ -38,7 +63,7 @@ export default function AdminShifts() {
       setShifts(Array.isArray(shiftsRes.data) ? shiftsRes.data : shiftsRes.data?.shifts || []);
       setAllStaff(Array.isArray(staffRes.data) ? staffRes.data : staffRes.data?.staff || []);
     } catch {
-      toast.error("Failed to load shifts");
+      toast.error("Database sync failed");
     } finally {
       setLoading(false);
     }
@@ -46,186 +71,128 @@ export default function AdminShifts() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); };
-  const openEdit = (s) => {
-    setEditing(s);
-    setForm({ name: s.name || "", shiftType: s.shiftType || "morning", startTime: s.startTime || "08:00", endTime: s.endTime || "16:00", description: s.description || "" });
-    setShowModal(true);
-  };
-
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { toast.error("Shift name is required"); return; }
     setSaving(true);
     try {
-      const payload = { ...form };
-      if (!payload.type) payload.type = form.shiftType; // Ensure backend gets 'type'
-
       if (editing) {
-        await updateShift(editing._id, payload);
-        toast.success("Shift updated");
+        await updateShift(editing._id, form);
+        toast.success("Shift Configuration Updated");
       } else {
-        await createShift(payload);
-        toast.success("Shift created");
+        await createShift(form);
+        toast.success("New Shift Protocol Created");
       }
       setShowModal(false);
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to save shift");
+      toast.error(err?.response?.data?.message || "Operation failed");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this shift?")) return;
-    setDeleting(id);
-    try {
-      await deleteShift(id);
-      toast.success("Shift deleted");
-      setShifts(prev => prev.filter(s => s._id !== id));
-    } catch {
-      toast.error("Failed to delete shift");
-    } finally {
-      setDeleting(null);
-    }
-  };
-
   const handleAssign = async (staffId, add) => {
     if (!assignModal) return;
-    const shift = assignModal;
-    // Normalized current staff list
-    const currentStaffRaw = shift.assignedStaff || shift.staff || [];
-    const currentStaffIds = currentStaffRaw.map(s => String(typeof s === "object" ? s._id : s));
-    
-    const newStaff = add
-      ? [...new Set([...currentStaffIds, String(staffId)])]
-      : currentStaffIds.filter(id => id !== String(staffId));
-
     setAssigning(true);
+    const currentIds = (assignModal.assignedStaff || []).map(s => String(typeof s === "object" ? s._id : s));
+    const newStaff = add ? [...new Set([...currentIds, staffId])] : currentIds.filter(id => id !== staffId);
+
     try {
-      // Send as both staff and assignedStaff to be safe
-      const res = await updateShift(shift._id, { assignedStaff: newStaff, staff: newStaff });
+      const res = await updateShift(assignModal._id, { assignedStaff: newStaff });
       const updated = res.data?.shift || res.data;
-      
-      // Update local state with the newly populated shift
-      setShifts(prev => prev.map(s => s._id === shift._id ? updated : s));
+      setShifts(prev => prev.map(s => s._id === assignModal._id ? updated : s));
       setAssignModal(updated);
-      toast.success(add ? "Staff assigned" : "Staff removed");
-    } catch (err) {
-      console.error("Assign error:", err);
-      toast.error(err?.response?.data?.message || "Failed to update shift assignment");
+      toast.success(add ? "Staff Assigned" : "Staff Removed");
+    } catch {
+      toast.error("Assignment update failed");
     } finally {
       setAssigning(false);
     }
   };
 
-  const filteredAssignStaff = allStaff.filter(s => {
-    const q = assignSearch.toLowerCase();
-    return !q || s.name?.toLowerCase().includes(q) || s.department?.toLowerCase().includes(q);
-  });
-
   return (
-    <div className="p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-8 bg-slate-50/30 min-h-screen space-y-8">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Shift Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{shifts.length} shifts configured</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Shift Operations</h1>
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Resource Allocation & Scheduling</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={load} className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-500">
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center gap-3">
+          <button onClick={load} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all">
+            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
           </button>
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm">
-            <Plus className="w-4 h-4" />New Shift
+          <button onClick={() => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); }}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-slate-200">
+            <Plus size={18} /> Add Shift
           </button>
         </div>
       </div>
 
-      {/* Shift Grid */}
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-indigo-400" /></div>
-      ) : shifts.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-slate-200 rounded-xl text-slate-400">
-          <Clock4 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No shifts created yet</p>
-          <button onClick={openCreate}
-            className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700">
-            Create First Shift
-          </button>
+        <div className="flex flex-col items-center justify-center py-32 space-y-4">
+          <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Initialising Shift Records</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {shifts.map(shift => {
-            const cfg = SHIFT_COLORS[shift.shiftType] || SHIFT_COLORS[shift.type] || SHIFT_COLORS.custom;
-            const Icon = cfg.icon;
-            const assignedStaff = (shift.assignedStaff || shift.staff || []).map(s => typeof s === "object" ? s : allStaff.find(a => a._id === s)).filter(Boolean);
+            const theme = SHIFT_THEMES[shift.shiftType] || SHIFT_THEMES.custom;
+            const Icon = theme.icon;
+            const staffList = (shift.assignedStaff || []).map(s => typeof s === "object" ? s : allStaff.find(a => a._id === s)).filter(Boolean);
+
             return (
-              <div key={shift._id} className={`bg-white border ${cfg.border} rounded-xl p-5 space-y-4`}>
-                {/* Shift header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl ${cfg.bg} ${cfg.text} flex items-center justify-center`}>
-                      <Icon className="w-5 h-5" />
+              <div key={shift._id} className="group bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all duration-300">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl ${theme.bg} ${theme.text} flex items-center justify-center shadow-inner`}>
+                      <Icon size={24} />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800">{shift.name}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>
-                        {shift.shiftType || shift.type}
+                      <h3 className="font-black text-slate-800 tracking-tight">{shift.name}</h3>
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${theme.accent} ${theme.text}`}>
+                        {shift.shiftType}
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(shift)}
-                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-amber-600">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(shift._id)} disabled={deleting === shift._id}
-                      className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-rose-600 disabled:opacity-50">
-                      {deleting === shift._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => { setEditing(shift); setForm(shift); setShowModal(true); }} className="p-2 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-lg"><Edit2 size={16} /></button>
+                    <button onClick={() => deleteShift(shift._id)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg"><Trash2 size={16} /></button>
                   </div>
                 </div>
 
-                {/* Time */}
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Clock4 className="w-4 h-4 text-slate-400" />
-                  <span className="font-mono font-medium">{shift.startTime}</span>
-                  <span className="text-slate-300">→</span>
-                  <span className="font-mono font-medium">{shift.endTime}</span>
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock4 size={14} className="text-slate-400" />
+                    <span className="text-sm font-black text-slate-700 font-mono tracking-tighter">{shift.startTime}</span>
+                  </div>
+                  <ArrowRight size={14} className="text-slate-300" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-700 font-mono tracking-tighter">{shift.endTime}</span>
+                  </div>
                 </div>
 
-                {/* Description */}
-                {shift.description && (
-                  <p className="text-xs text-slate-500">{shift.description}</p>
-                )}
-
-                {/* Assigned staff */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />{assignedStaff.length} staff assigned
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Users size={12} /> Personnel ({staffList.length})
                     </p>
-                    <button onClick={() => { setAssignModal(shift); setAssignSearch(""); }}
-                      className="text-xs text-indigo-600 hover:underline">Manage</button>
+                    <button onClick={() => setAssignModal(shift)} className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Manage</button>
                   </div>
-                  {assignedStaff.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {assignedStaff.slice(0, 5).map(s => (
-                        <div key={s._id} title={s.name}
-                          className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-xs font-bold">
-                          {s.name?.charAt(0)?.toUpperCase()}
-                        </div>
-                      ))}
-                      {assignedStaff.length > 5 && (
-                        <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold">
-                          +{assignedStaff.length - 5}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  
+                  <div className="flex -space-x-2 overflow-hidden">
+                    {staffList.slice(0, 6).map((s, i) => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-indigo-500 flex items-center justify-center text-[10px] font-black text-white shadow-sm" title={s.name}>
+                        {s.name?.charAt(0)}
+                      </div>
+                    ))}
+                    {staffList.length > 6 && (
+                      <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600 shadow-sm">
+                        +{staffList.length - 6}
+                      </div>
+                    )}
+                    {staffList.length === 0 && <p className="text-xs text-slate-400 italic py-1">No staff assigned</p>}
+                  </div>
                 </div>
               </div>
             );
@@ -233,58 +200,44 @@ export default function AdminShifts() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Modern Creation Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-lg font-bold text-slate-800">{editing ? "Edit Shift" : "Create Shift"}</h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Name *</label>
-                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. Morning Shift A"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <form onSubmit={handleSave}>
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{editing ? "Update Shift" : "New Shift"}</h2>
+                <button type="button" onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X size={20} /></button>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Type</label>
-                <select value={form.shiftType} onChange={e => setForm(p => ({ ...p, shiftType: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 bg-white">
-                  {["morning", "evening", "night", "custom"].map(t => (
-                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-8 space-y-6">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Start Time</label>
-                  <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Label</label>
+                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full mt-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all" placeholder="e.g. ICU Night Shift" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">End Time</label>
-                  <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                    <select value={form.shiftType} onChange={e => setForm({...form, shiftType: e.target.value})} className="w-full mt-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none appearance-none">
+                      {["morning", "evening", "night", "custom"].map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start</label>
+                      <input type="time" value={form.startTime} onChange={e => setForm({...form, startTime: e.target.value})} className="mt-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End</label>
+                      <input type="time" value={form.endTime} onChange={e => setForm({...form, endTime: e.target.value})} className="mt-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                  rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-300 text-slate-700 resize-none" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium disabled:opacity-50">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {editing ? "Save Changes" : "Create Shift"}
+              <div className="p-8 pt-0 flex gap-4">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Discard</button>
+                <button type="submit" className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-100 flex items-center justify-center gap-2">
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+                  {editing ? "Save Changes" : "Initialise"}
                 </button>
               </div>
             </form>
@@ -292,54 +245,44 @@ export default function AdminShifts() {
         </div>
       )}
 
-      {/* Assign Staff Modal */}
+      {/* Assignment Side-Sheet Concept */}
       {assignModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[60] flex justify-end">
+          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Assign Staff</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{assignModal.name} · {assignModal.startTime}–{assignModal.endTime}</p>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">Assign Staff</h2>
+                <p className="text-xs font-bold text-indigo-500 mt-1 uppercase tracking-widest">{assignModal.name}</p>
               </div>
-              <button onClick={() => setAssignModal(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500">
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setAssignModal(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X size={20} /></button>
             </div>
-            <div className="p-4 border-b border-slate-100">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-slate-400" />
-                <input value={assignSearch} onChange={e => setAssignSearch(e.target.value)}
-                  placeholder="Search staff…"
-                  className="bg-transparent text-sm outline-none w-full text-slate-700 placeholder-slate-400" />
+            
+            <div className="p-6">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <input value={assignSearch} onChange={e => setAssignSearch(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/5 transition-all" placeholder="Filter by name or department..." />
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 p-4 space-y-2">
-              {filteredAssignStaff.map(s => {
-                const assignedIds = (assignModal.assignedStaff || assignModal.staff || []).map(a => typeof a === "object" ? a._id : String(a));
-                const isAssigned = assignedIds.includes(String(s._id));
+
+            <div className="flex-1 overflow-y-auto px-6 space-y-2">
+              {allStaff.filter(s => s.name.toLowerCase().includes(assignSearch.toLowerCase())).map(s => {
+                const isAssigned = (assignModal.assignedStaff || []).some(id => String(typeof id === 'object' ? id._id : id) === String(s._id));
                 return (
-                  <div key={s._id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                      {s.name?.charAt(0)?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700">{s.name}</p>
-                      <p className="text-xs text-slate-400">{s.department || s.designation || s.role}</p>
+                  <div key={s._id} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-colors group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-500">{s.name.charAt(0)}</div>
+                      <div>
+                        <p className="text-sm font-black text-slate-800">{s.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">{s.department}</p>
+                      </div>
                     </div>
                     <button onClick={() => handleAssign(s._id, !isAssigned)} disabled={assigning}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                        isAssigned
-                          ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
-                          : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                      }`}>
-                      {isAssigned ? "Remove" : "Assign"}
+                      className={`p-2 rounded-xl transition-all ${isAssigned ? "bg-rose-50 text-rose-500" : "bg-indigo-50 text-indigo-500 opacity-0 group-hover:opacity-100"}`}>
+                      {isAssigned ? <UserMinus size={18} /> : <UserPlus size={18} />}
                     </button>
                   </div>
                 );
               })}
-              {filteredAssignStaff.length === 0 && (
-                <p className="text-center py-8 text-slate-400 text-sm">No staff found</p>
-              )}
             </div>
           </div>
         </div>

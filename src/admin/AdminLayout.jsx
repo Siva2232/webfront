@@ -43,6 +43,12 @@ import {
   CalendarX2,
   Clock4,
   Banknote,
+  BookOpen,
+  TrendingUp,
+  TrendingDown,
+  ArrowLeftRight,
+  PieChart,
+  Repeat,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useUI } from "../context/UIContext";
@@ -92,6 +98,20 @@ const menuItems = [
       { name: "Leaves", icon: CalendarX2, path: "hr/leaves" },
       { name: "Shifts", icon: Clock4, path: "hr/shifts" },
       { name: "Payroll", icon: Banknote, path: "hr/payroll" },
+    ],
+  },
+  {
+    name: "Accounting",
+    icon: BookOpen,
+    path: "accounting",
+    children: [
+      { name: "Dashboard", icon: LayoutDashboard, path: "accounting/dashboard" },
+      { name: "Ledgers", icon: BookOpen, path: "accounting/ledgers" },
+      { name: "Transactions", icon: ArrowLeftRight, path: "accounting/transactions" },
+      { name: "Add Expense", icon: TrendingDown, path: "accounting/expenses/new" },
+      { name: "Add Income", icon: TrendingUp, path: "accounting/income/new" },
+      { name: "Reports", icon: PieChart, path: "accounting/reports" },
+      { name: "Recurring", icon: Repeat, path: "accounting/recurring" },
     ],
   },
 ];
