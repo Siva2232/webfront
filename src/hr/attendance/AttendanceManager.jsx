@@ -62,8 +62,12 @@ export default function AttendanceManager() {
 
   const saveBulk = async () => {
     try {
-      const entries = Object.entries(bulkStatuses).map(([staffId, status]) => ({
-        staff: staffId, date, status,
+      const entries = staff.map((s) => ({
+        staff: s._id,
+        date,
+        status: bulkStatuses[s._id] || 'present',
+        ...(bulkStatuses[`${s._id}_in`] ? { checkIn: bulkStatuses[`${s._id}_in`] } : {}),
+        ...(bulkStatuses[`${s._id}_out`] ? { checkOut: bulkStatuses[`${s._id}_out`] } : {}),
       }));
       await markAttendance(entries);
       toast.success('Attendance saved');

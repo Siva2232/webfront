@@ -190,6 +190,7 @@ export default function AdminAttendance() {
   const presentCount = Object.values(attendanceMap).filter(a => a.status === "present").length;
   const absentCount = Object.values(attendanceMap).filter(a => a.status === "absent").length;
   const leaveCount = Object.values(attendanceMap).filter(a => a.status === "leave").length;
+  const halfDayCount = Object.values(attendanceMap).filter(a => a.status === "half-day").length;
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-6">
@@ -279,6 +280,7 @@ export default function AdminAttendance() {
                 { label: "Present", count: presentCount, bg: "bg-emerald-500" },
                 { label: "Absent", count: absentCount, bg: "bg-rose-500" },
                 { label: "Leave", count: leaveCount, bg: "bg-amber-500" },
+                { label: "Half Day", count: halfDayCount, bg: "bg-purple-500" },
               ].map(c => (
                 <div key={c.label} className="flex items-center gap-3 px-4 py-2 rounded-2xl border border-slate-200 bg-white min-w-fit shadow-sm">
                   <div className={`w-2 h-2 rounded-full ${c.bg}`} />
