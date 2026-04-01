@@ -23,7 +23,11 @@ export default function Income() {
           income: allLedgers.data.filter((l) => l.type === "income"),
           asset: allLedgers.data.filter((l) => l.type === "asset"),
         });
-        setCategories(cats.data);
+        const incomeCats = cats.data.income || cats.data;
+        setCategories(Array.isArray(incomeCats) ? incomeCats : []);
+        if (Array.isArray(incomeCats) && incomeCats.length > 0) {
+          setForm(prev => ({ ...prev, category: incomeCats[0]._id }));
+        }
       })
       .catch(() => toast.error("Failed to load accounting data"))
       .finally(() => setLoading(false));
@@ -91,7 +95,7 @@ export default function Income() {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12}/> Income Category</label>
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-100 transition-all">
-                  <option value="">Select Category</option>
+                  <option value="">{categories.length > 0 ? "Select Category" : "No income categories found"}</option>
                   {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
                 </select>
               </div>

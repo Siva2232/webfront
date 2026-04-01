@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Search, RefreshCw, X, Filter, Calendar, ChevronRight, ChevronDown, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { getTransactions, deleteTransaction } from "../../api/accountingApi";
 import toast from "react-hot-toast";
@@ -68,9 +68,9 @@ export default function Transactions() {
            <button onClick={() => load(page)} className="p-4 bg-white border border-slate-100 text-slate-400 rounded-2xl hover:text-indigo-600 transition-all shadow-sm active:scale-95">
              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
            </button>
-           <button className="flex items-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95">
+           {/* <button className="flex items-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95">
              <Plus size={16} strokeWidth={3} /> New Entry
-           </button>
+           </button> */}
         </div>
       </div>
 

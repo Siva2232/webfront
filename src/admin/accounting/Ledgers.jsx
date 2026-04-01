@@ -11,7 +11,7 @@ const TYPE_CONFIG = {
   expense: { color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
 };
 
-const EMPTY = { name: "", type: "asset", group: "", openingBalance: 0, description: "" };
+const EMPTY = { name: "", type: "", group: "", openingBalance: 0, description: "" };
 const fmt = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
 export default function Ledgers() {
@@ -45,6 +45,7 @@ export default function Ledgers() {
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error("Name is required");
+    if (!form.type) return toast.error("Account type is required");
     setSaving(true);
     try {
       if (modal.mode === "add") {
@@ -212,13 +213,14 @@ export default function Ledgers() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type *</label>
                   <select 
                     value={form.type} 
                     onChange={(e) => setForm({ ...form, type: e.target.value })} 
-                    className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-100"
+                    className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-100 placeholder:text-slate-300"
                   >
-                    {TYPES.map((t) => <option key={t} value={t} className="capitalize">{t}</option>)}
+                    <option value="" disabled>Select Type</option>
+                    {TYPES.map((t) => <option key={t} value={t} className="capitalize text-slate-800 font-bold">{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">

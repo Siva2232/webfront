@@ -61,6 +61,7 @@ import Expenses from "../admin/accounting/Expenses";
 import Income from "../admin/accounting/Income";
 import Reports from "../admin/accounting/Reports";
 import Recurring from "../admin/accounting/Recurring";
+import AccountCategories from "../admin/accounting/AccountCategories";
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -158,6 +159,7 @@ export default function AppRoutes() {
             <Route path="income/new" element={<Income />} />
             <Route path="reports" element={<Reports />} />
             <Route path="recurring" element={<Recurring />} />
+            <Route path="categories" element={<AccountCategories />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

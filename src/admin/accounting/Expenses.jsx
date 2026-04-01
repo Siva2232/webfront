@@ -27,6 +27,10 @@ export default function Expenses() {
         asset: allLedgers.data.filter((l) => l.type === "asset") 
       });
       setCategories(cats.data);
+
+      if (!form.category && cats.data?.length > 0) {
+        setForm((prev) => ({ ...prev, category: cats.data[0]._id }));
+      }
     }).catch(() => toast.error("Failed to load accounting data"))
       .finally(() => setLoading(false));
   }, []);
@@ -91,8 +95,12 @@ export default function Expenses() {
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12}/> Category</label>
                 <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-100">
-                  <option value="">Select Category</option>
-                  {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+                  <option value="" disabled={categories.length > 0}>Select Category</option>
+                  {categories.length === 0 ? (
+                    <option value="" disabled>No categories found. Create one in Accounting > Categories.</option>
+                  ) : (
+                    categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)
+                  )}
                 </select>
               </div>
             </div>

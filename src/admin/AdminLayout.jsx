@@ -110,6 +110,7 @@ const menuItems = [
       { name: "Transactions", icon: ArrowLeftRight, path: "accounting/transactions" },
       { name: "Add Expense", icon: TrendingDown, path: "accounting/expenses/new" },
       { name: "Add Income", icon: TrendingUp, path: "accounting/income/new" },
+      { name: "Categories", icon: Layers, path: "accounting/categories" },
       { name: "Reports", icon: PieChart, path: "accounting/reports" },
       { name: "Recurring", icon: Repeat, path: "accounting/recurring" },
     ],
@@ -216,12 +217,22 @@ export default function AdminLayout() {
 
   // automatically expand the submenu for current path
   useEffect(() => {
+    const parent = menuItems.find(
+      (item) =>
+        item.children &&
+        item.children.some((child) => location.pathname.startsWith(`/admin/${child.path}`))
+    );
+
+    if (parent) {
+      setOpenSubmenu(parent.name);
+      return;
+    }
+
+    // fall back to exact path support for older HR routes
     if (location.pathname.startsWith("/admin/products") || location.pathname.startsWith("/admin/sub-items")) {
       setOpenSubmenu("Manage Menu");
     } else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator") || location.pathname.startsWith("/admin/reservations")) {
       setOpenSubmenu("Tables & QR");
-    } else if (location.pathname.startsWith("/admin/hr")) {
-      setOpenSubmenu("HR Management");
     } else {
       setOpenSubmenu(null);
     }
