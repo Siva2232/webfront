@@ -17,6 +17,8 @@ import Reservations from "../admin/Reservations";
 import WaiterProducts from "../waiter/WaiterProducts";
 import WaiterCart from "../waiter/WaiterCart";
 import WaiterOrderSummary from "../waiter/WaiterOrderSummary";
+import WaiterAttendance from "../waiter/WaiterAttendance";
+import WaiterLeaves from "../waiter/WaiterLeaves";
 
 const ProtectedWaiterLogin = ({ children }) => {
   const isLoggedIn = localStorage.getItem("isWaiterLoggedIn") === "true";
@@ -36,6 +38,8 @@ export default function WaiterRoutes() {
       <Route element={<ProtectedWaiterRoute />}>        <Route path="" element={<WaiterLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<WaiterDashboard />} />
+          <Route path="attendance" element={<WaiterAttendance />} />
+          <Route path="leaves" element={<WaiterLeaves />} />
           <Route path="tables" element={<Tables />} />
           <Route path="products" element={<WaiterProducts />} />
           <Route path="panel" element={<WaiterCart />} />

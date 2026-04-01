@@ -27,17 +27,31 @@ import Reservations from "../admin/Reservations";
 import ManualOrder from "../admin/ManualOrder";
 import ManualBill from "../admin/ManualBill";
 import Token from "../admin/Token";
-import AddStaff from "../admin/AddStaff";
-import ExpenseTracker from "../admin/ExpenseTracker"; // temporary redirect component (can be removed later)
-import PurchaseExpense from "../admin/expenses/PurchaseExpense";
-import UtilityExpense from "../admin/expenses/UtilityExpense";
-import DirectExpense from "../admin/expenses/DirectExpense";
-import IndirectExpense from "../admin/expenses/IndirectExpense";
 import AdminProductsOrdering from "../admin/AdminProducts";
 import AdminCart from "../admin/AdminCart";
 import AdminOrderSummary from "../admin/AdminOrderSummary";
 import KitchenRoutes from "./KitchenRoutes";
 import WaiterRoutes from "./WaiterRoutes"; // added for waiter panel
+
+/* HR Module — standalone portal (staff login, self-service) */
+import HRLogin from "../hr/HRLogin";
+import HRLayout from "../hr/HRLayout";
+import HRDashboard from "../hr/HRDashboard";
+import StaffList from "../hr/staff/StaffList";
+import StaffProfile from "../hr/staff/StaffProfile";
+import AttendanceManager from "../hr/attendance/AttendanceManager";
+import LeaveManager from "../hr/leaves/LeaveManager";
+import ShiftManager from "../hr/shifts/ShiftManager";
+import PayrollManager from "../hr/payroll/PayrollManager";
+import StaffPortal from "../hr/portal/StaffPortal";
+
+/* HR Module — dedicated admin pages (inside AdminLayout) */
+import AdminHRDashboard from "../admin/hr/AdminHRDashboard";
+import AdminStaff from "../admin/hr/AdminStaff";
+import AdminAttendance from "../admin/hr/AdminAttendance";
+import AdminLeaves from "../admin/hr/AdminLeaves";
+import AdminShifts from "../admin/hr/AdminShifts";
+import AdminPayroll from "../admin/hr/AdminPayroll";
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -112,16 +126,38 @@ export default function AppRoutes() {
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="banner" element={<BannerPanel />} />
-          <Route path="staff" element={<AddStaff />} />
-          {/* legacy single tracker route redirects to purchase for compatibility */}
-          <Route path="expense" element={<Navigate to="expense/purchase" replace />} />
-          <Route path="expense/purchase" element={<PurchaseExpense />} />
-          <Route path="expense/utility" element={<UtilityExpense />} />
-          <Route path="expense/direct" element={<DirectExpense />} />
-          <Route path="expense/indirect" element={<IndirectExpense />} />
           <Route path="reports" element={<Analytics />} />
+
+          {/* HR Management — dedicated admin-specific pages inside AdminLayout */}
+          <Route path="hr">
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminHRDashboard />} />
+            <Route path="staff" element={<AdminStaff />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="leaves" element={<AdminLeaves />} />
+            <Route path="shifts" element={<AdminShifts />} />
+            <Route path="payroll" element={<AdminPayroll />} />
+          </Route>
+
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
+      </Route>
+
+      {/* ── HR Module Routes ── */}
+      <Route path="/hr/login" element={<HRLogin />} />
+      {/* Staff self-service portal (role=staff) */}
+      <Route path="/hr/portal" element={<StaffPortal />} />
+      {/* Admin/Manager HR panel */}
+      <Route path="/hr" element={<HRLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<HRDashboard />} />
+        <Route path="staff" element={<StaffList />} />
+        <Route path="staff/:id" element={<StaffProfile />} />
+        <Route path="attendance" element={<AttendanceManager />} />
+        <Route path="leaves" element={<LeaveManager />} />
+        <Route path="shifts" element={<ShiftManager />} />
+        <Route path="payroll" element={<PayrollManager />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
       {/* Fallback */}

@@ -22,9 +22,17 @@ const API = axios.create({
   baseURL,
 });
 
-// Add a request interceptor to include the auth token
+// Add a request interceptor to include the auth token.
+// For HR routes: prefer hrToken (HR staff JWT); if not present, fall back to
+// admin token so POS admins can access HR endpoints directly without a separate login.
 API.interceptors.request.use((req) => {
-  const token = localStorage.getItem("token");
+  const isHRRoute = req.url && req.url.startsWith('/hr/');
+  let token;
+  if (isHRRoute) {
+    token = localStorage.getItem("hrToken") || localStorage.getItem("token");
+  } else {
+    token = localStorage.getItem("token");
+  }
   if (token) {
     req.headers.Authorization = `Bearer ${token}`;
   }
@@ -38,16 +46,30 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // If unauthorized, clear local storage for all roles and redirect to login
-      localStorage.removeItem("token");
-      localStorage.removeItem("userInfo");
-      localStorage.removeItem("isAdminLoggedIn");
-      localStorage.removeItem("isKitchenLoggedIn");
-      
-      // We can't use useNavigate here as it's not a component, 
-      // but we can use window.location
-      if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/menu")) {
-        window.location.href = "/login";
+      const isHRRoute = error.config?.url?.startsWith('/hr/');
+      if (isHRRoute) {
+        // Don't redirect to HR login if the user is in an admin, waiter, or kitchen panel
+        // — they use their own POS token which is still valid.
+        const path = window.location.pathname;
+        const skipRedirect =
+          path.startsWith('/admin/hr') ||
+          path.startsWith('/waiter/') ||
+          path.startsWith('/kitchen/');
+        if (!skipRedirect) {
+          localStorage.removeItem("hrToken");
+          if (!path.includes("/hr/login")) {
+            window.location.href = "/hr/login";
+          }
+        }
+      } else {
+        // Regular admin/POS session expired
+        localStorage.removeItem("token");
+        localStorage.removeItem("userInfo");
+        localStorage.removeItem("isAdminLoggedIn");
+        localStorage.removeItem("isKitchenLoggedIn");
+        if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/menu")) {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);

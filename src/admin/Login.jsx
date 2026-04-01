@@ -73,6 +73,7 @@ export default function Login() {
         navigate("/admin/dashboard", { replace: true });
       } else if (data.isKitchen) {
         toast.success("Kitchen access granted");
+        // Also log into HR portal session if possible, but for now just navigate
         navigate("/kitchen/dashboard", { replace: true });
       } else if (data.isWaiter) {
         toast.success("Waiter access granted");

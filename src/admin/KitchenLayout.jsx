@@ -14,6 +14,8 @@ import {
   Menu,
   ChevronDown,
   Ticket,
+  CheckCircle2,
+  CalendarX2
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -25,11 +27,14 @@ export default function KitchenLayout() {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
+  const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
+
   const menuItems = [
-    { name: "Dashboard", icon: BarChart2, path: "dashboard" },
-    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
-    { name: "Orders", icon: ShoppingCart, path: "orders" },
-    { name: "Bill", icon: Receipt, path: "bill" },
+    { name: "Dashboard", icon: BarChart2, path: "/kitchen/dashboard" },
+    { name: "Attendance", icon: CheckCircle2, path: "/kitchen/attendance" },
+    { name: "Leave Requests", icon: CalendarX2, path: "/kitchen/leaves" },
+    { name: "Orders", icon: ShoppingCart, path: "/kitchen/orders" },
+    { name: "KOT", icon: Ticket, path: "/kitchen/kot" },
   ];
 
   const handleLogout = () => {
@@ -129,7 +134,7 @@ export default function KitchenLayout() {
             return (
               <NavLink
                 key={item.path}
-                to={`/kitchen/${item.path}`}
+                to={item.path}
                 onClick={closeMobileMenu}
                 className={({ isActive }) => `
                   ${baseClasses}
@@ -208,11 +213,11 @@ export default function KitchenLayout() {
                 className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Kitchen" alt="avatar" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'Kitchen'}`} alt="avatar" />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-bold text-slate-800 leading-none">Kitchen User</p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-1">Staff</p>
+                  <p className="text-sm font-bold text-slate-800 leading-none">{user.name || 'Kitchen User'}</p>
+                  <p className="text-[10px] font-medium text-slate-400 mt-1">{user.role || 'Staff'}</p>
                 </div>
                 <ChevronDown
                   size={14}
@@ -230,7 +235,7 @@ export default function KitchenLayout() {
                   >
                     <div className="p-4 border-b border-slate-50">
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
-                      <p className="text-sm font-bold text-slate-800">kitchen@demo.com</p>
+                      <p className="text-sm font-bold text-slate-800">{user.email || 'kitchen@demo.com'}</p>
                     </div>
                     <button
                       onClick={handleLogout}

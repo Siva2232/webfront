@@ -37,6 +37,12 @@ import {
   Loader2,
   CalendarDays,
   Scissors,
+  Building2,
+  UserCheck,
+  CalendarCheck2,
+  CalendarX2,
+  Clock4,
+  Banknote,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import { useUI } from "../context/UIContext";
@@ -72,31 +78,22 @@ const menuItems = [
       { name: "Reservations", path: "reservations", icon: CalendarDays },
     ],
   },
-  {
-    name: "Staff",
-    icon: Users,
-    path: "staff",
-    children: [
-      { name: "Overview", tab: "overview" },
-      { name: "Create Staff", tab: "create" },
-      { name: "Salaries", tab: "salary" },
-      { name: "Salary History", tab: "salaryHistory" },
-    ],
-  },
-   {
-    name: "Expense Tracker",
-    icon: FileText,
-    path: "expense",
-    children: [
-      { name: "Purchase", tab: "purchase", path: "expense/purchase" },
-      { name: "Utility", tab: "utility", path: "expense/utility" },
-      { name: "Direct Expense", tab: "direct", path: "expense/direct" },
-      { name: "Indirect Expense", tab: "indirect", path: "expense/indirect" },
-    ],
-  },
+ 
   { name: "Add Banners", icon: ImagePlus, path: "banner" },
   { name: "Add Offers", icon: Sparkles, path: "offers" },
- 
+  {
+    name: "HR Management",
+    icon: Building2,
+    path: "hr",
+    children: [
+      { name: "HR Dashboard", icon: LayoutDashboard, path: "hr/dashboard" },
+      { name: "Staff", icon: UserCheck, path: "hr/staff" },
+      { name: "Attendance", icon: CalendarCheck2, path: "hr/attendance" },
+      { name: "Leaves", icon: CalendarX2, path: "hr/leaves" },
+      { name: "Shifts", icon: Clock4, path: "hr/shifts" },
+      { name: "Payroll", icon: Banknote, path: "hr/payroll" },
+    ],
+  },
 ];
 
 export default function AdminLayout() {
@@ -110,6 +107,8 @@ export default function AdminLayout() {
   const [showWaiterPanel, setShowWaiterPanel] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const waiterRef = useRef(null);
+  
+  const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
   // ids that have been cleared from the alert list (until refresh)
   const [clearedIds, setClearedIds] = useState([]);
 
@@ -197,21 +196,12 @@ export default function AdminLayout() {
 
   // automatically expand the submenu for current path
   useEffect(() => {
-    if (
-      location.pathname.startsWith("/admin/staff") ||
-      location.pathname.startsWith("/admin/expense") ||
-      location.pathname.startsWith("/admin/products") ||
-      location.pathname.startsWith("/admin/sub-items") ||
-      location.pathname.startsWith("/admin/tables") ||
-      location.pathname.startsWith("/admin/qr-generator") ||
-      location.pathname.startsWith("/admin/reservations")
-    ) {
-      if (location.pathname.startsWith("/admin/staff")) setOpenSubmenu("Staff");
-      else if (location.pathname.startsWith("/admin/expense")) setOpenSubmenu("Expense Tracker");
-      else if (location.pathname.startsWith("/admin/products") || location.pathname.startsWith("/admin/sub-items"))
-        setOpenSubmenu("Manage Menu");
-      else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator") || location.pathname.startsWith("/admin/reservations"))
-        setOpenSubmenu("Tables & QR");
+    if (location.pathname.startsWith("/admin/products") || location.pathname.startsWith("/admin/sub-items")) {
+      setOpenSubmenu("Manage Menu");
+    } else if (location.pathname.startsWith("/admin/tables") || location.pathname.startsWith("/admin/qr-generator") || location.pathname.startsWith("/admin/reservations")) {
+      setOpenSubmenu("Tables & QR");
+    } else if (location.pathname.startsWith("/admin/hr")) {
+      setOpenSubmenu("HR Management");
     } else {
       setOpenSubmenu(null);
     }
@@ -794,11 +784,11 @@ const handleClearAllStockAlerts = () => {
                 className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="avatar" />
+                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'Admin'}`} alt="avatar" />
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-bold text-slate-800 leading-none">Alex Rivera</p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-1">Super Admin</p>
+                  <p className="text-sm font-bold text-slate-800 leading-none">{user.name || 'Alex Rivera'}</p>
+                  <p className="text-[10px] font-medium text-slate-400 mt-1">{user.role || 'Super Admin'}</p>
                 </div>
                 <ChevronDown
                   size={14}
@@ -817,7 +807,7 @@ const handleClearAllStockAlerts = () => {
                   >
                     <div className="p-4 border-b border-slate-50">
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
-                      <p className="text-sm font-bold text-slate-800">admin@luxehub.com</p>
+                      <p className="text-sm font-bold text-slate-800">{user.email || 'admin@luxehub.com'}</p>
                     </div>
                     <button
                       className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-all duration-200 group"

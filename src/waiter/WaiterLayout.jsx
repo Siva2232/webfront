@@ -16,7 +16,8 @@ import {
   HandHelping,
   CheckCircle2,
   BellRing,
-  CalendarDays
+  CalendarDays,
+  CalendarX2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUI } from "../context/UIContext";
@@ -31,6 +32,8 @@ export default function WaiterLayout() {
 
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+
+  const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
   const notifRef = useRef(null);
   const audioRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"));
 
@@ -73,12 +76,14 @@ export default function WaiterLayout() {
   }, [notifications, markNotificationAsRead]);
 
   const menuItems = [
-    { name: "Dashboard", icon: BarChart2, path: "dashboard" },
-    { name: "Tables", icon: ShoppingCart, path: "tables" },
-    { name: "Reservations", icon: CalendarDays, path: "reservations" },
-    { name: "Kitchen Bill", icon: Ticket, path: "kitchen-bill" },
-    { name: "Orders", icon: ShoppingCart, path: "orders" },
-    { name: "Bill", icon: Receipt, path: "bill" },
+    { name: "Dashboard", icon: BarChart2, path: "/waiter/dashboard" },
+    { name: "Attendance", icon: CheckCircle2, path: "/waiter/attendance" },
+    { name: "Leave Requests", icon: CalendarX2, path: "/waiter/leaves" },
+    { name: "Tables", icon: ShoppingCart, path: "/waiter/tables" },
+    { name: "Reservations", icon: CalendarDays, path: "/waiter/reservations" },
+    { name: "Kitchen Bill", icon: Ticket, path: "/waiter/kitchen-bill" },
+    { name: "Orders", icon: ShoppingCart, path: "/waiter/orders" },
+    { name: "Bill", icon: Receipt, path: "/waiter/bill" },
   ];
 
   const handleLogout = () => {
@@ -181,7 +186,7 @@ export default function WaiterLayout() {
             return (
               <NavLink
                 key={item.path}
-                to={`/waiter/${item.path}`}
+                to={item.path}
                 onClick={closeMobileMenu}
                 className={({ isActive }) => `
                   ${baseClasses}
@@ -363,11 +368,11 @@ export default function WaiterLayout() {
               className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
             >
               <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Waiter" alt="avatar" />
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'Waiter'}`} alt="avatar" />
               </div>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-bold text-slate-800 leading-none">Waiter User</p>
-                <p className="text-[10px] font-medium text-slate-400 mt-1">Staff</p>
+                <p className="text-sm font-bold text-slate-800 leading-none">{user.name || 'Waiter User'}</p>
+                <p className="text-[10px] font-medium text-slate-400 mt-1">{user.role || 'Staff'}</p>
               </div>
               <ChevronDown
                 size={14}
@@ -385,7 +390,7 @@ export default function WaiterLayout() {
                 >
                   <div className="p-4 border-b border-slate-50">
                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
-                    <p className="text-sm font-bold text-slate-800">waiter@demo.com</p>
+                    <p className="text-sm font-bold text-slate-800">{user.email || 'waiter@demo.com'}</p>
                   </div>
                   <button
                     onClick={handleLogout}

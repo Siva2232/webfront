@@ -8,6 +8,7 @@ import "./index.css";
 import { ProductProvider } from "./context/ProductContext";
 import { OrderProvider } from "./context/OrderContext";
 import { CartProvider } from "./context/CartContext";
+import { HRProvider } from "./context/HRContext";
 import { SalesProvider } from "./context/SalesContext";
 import { UIProvider } from "./context/UIContext";
 
@@ -19,7 +20,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <ProductProvider>
           <OrderProvider>
             <CartProvider>
-              <App />
+              <HRProvider>
+                <App />
+              </HRProvider>
             </CartProvider>
           </OrderProvider>
         </ProductProvider>

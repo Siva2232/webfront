@@ -12,6 +12,8 @@ import KitchenDashboard from "../admin/KitchenDashboard";
 import Orders from "../admin/Orders";
 import KitchenBill from "../admin/KitchenBill";
 import OrderBill from "../admin/OrderBill";
+import KitchenAttendance from "../admin/KitchenAttendance";
+import KitchenLeaves from "../admin/KitchenLeaves";
 
 // we no longer have a separate kitchen login page; forward to the shared system login
 const ProtectedKitchenLogin = ({ children }) => {
@@ -34,8 +36,11 @@ export default function KitchenRoutes() {
         <Route path="" element={<KitchenLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<KitchenDashboard />} />
+          <Route path="attendance" element={<KitchenAttendance />} />
+          <Route path="leaves" element={<KitchenLeaves />} />
           <Route path="orders" element={<Orders />} />
-          <Route path="kitchen-bill" element={<KitchenBill />} />
+          <Route path="kot" element={<KitchenBill embedded />} />
+          <Route path="kitchen-bill" element={<KitchenBill embedded />} />
           <Route path="bill" element={<OrderBill />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>
