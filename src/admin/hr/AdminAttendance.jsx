@@ -25,7 +25,7 @@ export default function AdminAttendance() {
   const [search, setSearch] = useState("");
   const [attendanceMap, setAttendanceMap] = useState({});
   const [activeTab, setActiveTab] = useState("attendance");
-  const [locConfig, setLocConfig] = useState({ lat: "", lng: "", radius: 10, label: "" });
+  const [locConfig, setLocConfig] = useState({ lat: "", lng: "", radius: 100, label: "" });
   const [locConfigSaving, setLocConfigSaving] = useState(false);
   const [fetchingGPS, setFetchingGPS] = useState(false);
 
@@ -80,7 +80,7 @@ export default function AdminAttendance() {
           setLocConfig({
             lat: data.lat ?? "",
             lng: data.lng ?? "",
-            radius: data.radius ?? 10,
+            radius: data.radius ?? 100,
             label: data.label ?? ""
           });
         }
@@ -152,7 +152,7 @@ export default function AdminAttendance() {
       await setAttendanceLocation({
         lat: Number(locConfig.lat),
         lng: Number(locConfig.lng),
-        radius: Number(locConfig.radius) || 10,
+        radius: Number(locConfig.radius) || 100,
         label: locConfig.label
       });
       toast.success("Work location saved");
@@ -503,13 +503,13 @@ export default function AdminAttendance() {
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Allowed Radius (metres)</label>
                 <input
                   type="number"
-                  min="1"
-                  max="500"
+                  min="10"
+                  max="5000"
                   value={locConfig.radius}
                   onChange={e => setLocConfig(p => ({ ...p, radius: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
                 />
-                <p className="text-xs text-slate-400 mt-1">Staff must be within this distance. Default: 10m</p>
+                <p className="text-xs text-slate-400 mt-1">Recommended: 100–200m for indoor/outdoor GPS reliability. Min 10m.</p>
               </div>
             </div>
 
