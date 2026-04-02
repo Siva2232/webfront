@@ -92,27 +92,53 @@ export default function AdminAttendance() {
     if (!navigator.geolocation) return toast.error("Geolocation not supported");
 
     setFetchingGPS(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocConfig(p => ({
-          ...p,
-          lat: pos.coords.latitude.toFixed(6),
-          lng: pos.coords.longitude.toFixed(6)
-        }));
+    // Use watchPosition to get the most accurate fix (lowest accuracy value)
+    let bestPos = null;
+    let watchId = null;
+
+    const finalise = (pos) => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      setLocConfig(p => ({
+        ...p,
+        lat: pos.coords.latitude.toFixed(6),
+        lng: pos.coords.longitude.toFixed(6)
+      }));
+      setFetchingGPS(false);
+      toast.success(`Location fetched (±${Math.round(pos.coords.accuracy)}m accuracy)`);
+    };
+
+    const timer = setTimeout(() => {
+      if (bestPos) {
+        finalise(bestPos);
+      } else {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        toast.error('GPS signal too weak. Move to an open area and try again.');
         setFetchingGPS(false);
-        toast.success("Location fetched from your device");
+      }
+    }, 20000);
+
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+          bestPos = pos;
+        }
+        if (pos.coords.accuracy <= 20) {
+          clearTimeout(timer);
+          finalise(pos);
+        }
       },
       (err) => {
-        console.error("GPS Error:", err);
-        const msg = err.code === 1 
-          ? "Permission denied. Please allow location access in browser settings."
-          : err.code === 2 
-            ? "Position unavailable. Ensure GPS is on."
-            : "Request timed out. Try again.";
+        clearTimeout(timer);
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        const msg = err.code === 1
+          ? 'Permission denied. Please allow location access in browser settings.'
+          : err.code === 2
+          ? 'Position unavailable. Ensure GPS is on.'
+          : 'Request timed out. Try again.';
         toast.error(msg);
         setFetchingGPS(false);
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
     );
   };
 

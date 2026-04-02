@@ -70,8 +70,8 @@ export default function SelfieAttendance() {
       // 1. First trigger location to ensure it's allowed
       navigator.geolocation.getCurrentPosition(
         (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {},
-        { enableHighAccuracy: true, timeout: 5000 }
+        (err) => console.warn('GPS not available for attendance:', err.message),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
 
       // 2. Initialize camera
