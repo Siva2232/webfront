@@ -18,6 +18,7 @@ import WaiterProducts from "../waiter/WaiterProducts";
 import WaiterCart from "../waiter/WaiterCart";
 import WaiterOrderSummary from "../waiter/WaiterOrderSummary";
 import WaiterAttendance from "../waiter/WaiterAttendance";
+import WaiterAttendanceHistory from "../waiter/WaiterAttendanceHistory";
 import WaiterLeaves from "../waiter/WaiterLeaves";
 
 const ProtectedWaiterLogin = ({ children }) => {
@@ -39,6 +40,7 @@ export default function WaiterRoutes() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<WaiterDashboard />} />
           <Route path="attendance" element={<WaiterAttendance />} />
+          <Route path="attendance-history" element={<WaiterAttendanceHistory />} />
           <Route path="leaves" element={<WaiterLeaves />} />
           <Route path="tables" element={<Tables />} />
           <Route path="products" element={<WaiterProducts />} />

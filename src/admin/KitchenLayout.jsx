@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Ticket,
   CheckCircle2,
+  CalendarDays,
   CalendarX2
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -32,6 +33,7 @@ export default function KitchenLayout() {
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "/kitchen/dashboard" },
     { name: "Attendance", icon: CheckCircle2, path: "/kitchen/attendance" },
+    { name: "Attendance History", icon: CalendarDays, path: "/kitchen/attendance-history" },
     { name: "Leave Requests", icon: CalendarX2, path: "/kitchen/leaves" },
     { name: "Orders", icon: ShoppingCart, path: "/kitchen/orders" },
     { name: "KOT", icon: Ticket, path: "/kitchen/kot" },

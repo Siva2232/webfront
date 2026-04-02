@@ -78,6 +78,7 @@ export default function WaiterLayout() {
   const menuItems = [
     { name: "Dashboard", icon: BarChart2, path: "/waiter/dashboard" },
     { name: "Attendance", icon: CheckCircle2, path: "/waiter/attendance" },
+    { name: "Attendance History", icon: CalendarDays, path: "/waiter/attendance-history" },
     { name: "Leave Requests", icon: CalendarX2, path: "/waiter/leaves" },
     { name: "Tables", icon: ShoppingCart, path: "/waiter/tables" },
     { name: "Reservations", icon: CalendarDays, path: "/waiter/reservations" },
