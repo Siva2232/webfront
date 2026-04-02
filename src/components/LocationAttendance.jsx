@@ -98,7 +98,11 @@ export default function LocationAttendance() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { loadAttendance(); }, [loadAttendance]);
+  useEffect(() => { 
+    loadAttendance(); 
+    window.addEventListener('attendanceUpdated', loadAttendance);
+    return () => window.removeEventListener('attendanceUpdated', loadAttendance);
+  }, [loadAttendance]);
 
   // ── start continuous live-position watch ──────────────────────
   useEffect(() => {

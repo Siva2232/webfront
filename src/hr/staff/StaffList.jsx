@@ -37,6 +37,11 @@ export default function StaffList() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    window.addEventListener('staffUpdated', load);
+    return () => window.removeEventListener('staffUpdated', load);
+  }, [load]);
+
   const handleDelete = async () => {
     try {
       await deleteStaff(deleteId);

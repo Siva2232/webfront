@@ -43,6 +43,11 @@ export default function AttendanceManager() {
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
+  useEffect(() => {
+    window.addEventListener('attendanceUpdated', loadRecords);
+    return () => window.removeEventListener('attendanceUpdated', loadRecords);
+  }, [loadRecords]);
+
   const shiftDate = (delta) => {
     const d = new Date(date);
     d.setDate(d.getDate() + delta);

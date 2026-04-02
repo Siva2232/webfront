@@ -34,7 +34,11 @@ export default function Ledgers() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [typeFilter]);
+  useEffect(() => { 
+    load(); 
+    window.addEventListener('transactionsUpdated', load);
+    return () => window.removeEventListener('transactionsUpdated', load);
+  }, [typeFilter]);
 
   const openAdd = () => { setForm(EMPTY); setModal({ mode: "add" }); };
   const openEdit = (l) => { 

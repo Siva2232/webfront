@@ -23,7 +23,11 @@ export default function WaiterLeaves() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+    window.addEventListener('leavesUpdated', load);
+    return () => window.removeEventListener('leavesUpdated', load);
+  }, []);
 
   const onApply = async (e) => {
     e.preventDefault();

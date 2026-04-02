@@ -206,6 +206,32 @@ export const UIProvider = ({ children }) => {
       fetchReservations();
     });
 
+    // HR & Accounting Real-time Sync
+    socket.on("staffUpdate", () => {
+      window.dispatchEvent(new CustomEvent("staffUpdated"));
+    });
+    socket.on("staffDelete", () => {
+      window.dispatchEvent(new CustomEvent("staffUpdated"));
+    });
+    socket.on("leaveUpdate", () => {
+      window.dispatchEvent(new CustomEvent("leavesUpdated"));
+    });
+    socket.on("leaveDelete", () => {
+      window.dispatchEvent(new CustomEvent("leavesUpdated"));
+    });
+    socket.on("attendanceUpdate", () => {
+      window.dispatchEvent(new CustomEvent("attendanceUpdated"));
+    });
+    socket.on("attendanceDelete", () => {
+      window.dispatchEvent(new CustomEvent("attendanceUpdated"));
+    });
+    socket.on("transactionUpdate", () => {
+      window.dispatchEvent(new CustomEvent("transactionsUpdated"));
+    });
+    socket.on("transactionDelete", () => {
+      window.dispatchEvent(new CustomEvent("transactionsUpdated"));
+    });
+
     socket.on("disconnect", () => {
       // optional: console.debug("Socket disconnected");
     });

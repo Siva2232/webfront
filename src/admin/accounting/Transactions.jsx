@@ -43,7 +43,11 @@ export default function Transactions() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [typeFilter]);
+  useEffect(() => { 
+    load(); 
+    window.addEventListener('transactionsUpdated', () => load(page));
+    return () => window.removeEventListener('transactionsUpdated', () => load(page));
+  }, [typeFilter, page]);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();

@@ -40,6 +40,11 @@ export default function LeaveManager() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    window.addEventListener('leavesUpdated', load);
+    return () => window.removeEventListener('leavesUpdated', load);
+  }, [load]);
+
   const handleApprove = async (id) => {
     try {
       await updateLeave(id, { status: 'approved', reviewNote });

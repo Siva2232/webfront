@@ -58,7 +58,11 @@ export default function AccountingDashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+    window.addEventListener('transactionsUpdated', load);
+    return () => window.removeEventListener('transactionsUpdated', load);
+  }, []);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[80vh] space-y-4">
