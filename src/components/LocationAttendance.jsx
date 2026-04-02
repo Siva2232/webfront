@@ -90,7 +90,8 @@ export default function LocationAttendance() {
     try {
       const { data } = await getMyAttendance();
       const records = data?.records || data || [];
-      const today = new Date().toISOString().split('T')[0];
+      // Use IST date for today-matching (server stores dates in IST)
+      const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const rec   = records.find((r) => r.date?.startsWith(today));
       setTodayRecord(rec || null);
       setHistoryRecords(records.slice().reverse());
