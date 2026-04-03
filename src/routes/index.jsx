@@ -45,6 +45,19 @@ import ShiftManager from "../hr/shifts/ShiftManager";
 import PayrollManager from "../hr/payroll/PayrollManager";
 import StaffPortal from "../hr/portal/StaffPortal";
 
+/* Accounting Module — inside AdminLayout */
+import AccountingLayout from "../admin/accounting/AccountingLayout";
+import AccDashboard from "../admin/accounting/AccDashboard";
+import AccParties from "../admin/accounting/AccParties";
+import AccAccounts from "../admin/accounting/AccAccounts";
+import AccOrders from "../admin/accounting/AccOrders";
+import AccPurchases from "../admin/accounting/AccPurchases";
+import AccExpenses from "../admin/accounting/AccExpenses";
+import AccLoans from "../admin/accounting/AccLoans";
+import AccPayments from "../admin/accounting/AccPayments";
+import AccLedger from "../admin/accounting/AccLedger";
+import AccReports from "../admin/accounting/AccReports";
+
 /* HR Module — dedicated admin pages (inside AdminLayout) */
 import AdminHRDashboard from "../admin/hr/AdminHRDashboard";
 import AdminStaff from "../admin/hr/AdminStaff";
@@ -52,16 +65,6 @@ import AdminAttendance from "../admin/hr/AdminAttendance";
 import AdminLeaves from "../admin/hr/AdminLeaves";
 import AdminShifts from "../admin/hr/AdminShifts";
 import AdminPayroll from "../admin/hr/AdminPayroll";
-
-/* Accounting / Mini Tally — admin pages */
-import AccountingDashboard from "../admin/accounting/AccountingDashboard";
-import Ledgers from "../admin/accounting/Ledgers";
-import Transactions from "../admin/accounting/Transactions";
-import Expenses from "../admin/accounting/Expenses";
-import Income from "../admin/accounting/Income";
-import Reports from "../admin/accounting/Reports";
-import Recurring from "../admin/accounting/Recurring";
-import AccountCategories from "../admin/accounting/AccountCategories";
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -149,17 +152,19 @@ export default function AppRoutes() {
             <Route path="payroll" element={<AdminPayroll />} />
           </Route>
 
-          {/* Accounting / Mini Tally — inside AdminLayout */}
-          <Route path="accounting">
+          {/* Accounting Module — inside AdminLayout */}
+          <Route path="accounting" element={<AccountingLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AccountingDashboard />} />
-            <Route path="ledgers" element={<Ledgers />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="expenses/new" element={<Expenses />} />
-            <Route path="income/new" element={<Income />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="recurring" element={<Recurring />} />
-            <Route path="categories" element={<AccountCategories />} />
+            <Route path="dashboard" element={<AccDashboard />} />
+            <Route path="parties" element={<AccParties />} />
+            <Route path="accounts" element={<AccAccounts />} />
+            <Route path="orders" element={<AccOrders />} />
+            <Route path="purchases" element={<AccPurchases />} />
+            <Route path="expenses" element={<AccExpenses />} />
+            <Route path="loans" element={<AccLoans />} />
+            <Route path="payments" element={<AccPayments />} />
+            <Route path="ledger" element={<AccLedger />} />
+            <Route path="reports" element={<AccReports />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
