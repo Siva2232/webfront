@@ -6,8 +6,7 @@ export default function ProtectedKitchenRoute() {
   const token = localStorage.getItem("token");
 
   if (!isLoggedIn || !token) {
-    toast.error("Please log in to access kitchen features");
-    return <Navigate to="/kitchen/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

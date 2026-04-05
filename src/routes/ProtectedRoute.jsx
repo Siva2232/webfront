@@ -6,7 +6,6 @@ export default function ProtectedRoute() {
   const token = localStorage.getItem("token");
 
   if (!isLoggedIn || !token) {
-    toast.error("Please log in to continue");
     return <Navigate to="/login" replace />;
   }
 

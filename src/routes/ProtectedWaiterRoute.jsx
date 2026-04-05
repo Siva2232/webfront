@@ -6,8 +6,7 @@ export default function ProtectedWaiterRoute() {
   const token = localStorage.getItem("token");
 
   if (!isLoggedIn || !token) {
-    toast.error("Please log in to access waiter panel");
-    return <Navigate to="/waiter/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

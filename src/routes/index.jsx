@@ -76,10 +76,14 @@ import TakeawayCart from "../customer/TakeawayCart";
 
 /* Optional: Prevent logged-in users from seeing login */
 const ProtectedLogin = ({ children }) => {
-  const isLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
-  if (isLoggedIn) {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
+  const isAdminLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
+  const isKitchenLoggedIn = localStorage.getItem("isKitchenLoggedIn") === "true";
+  const isWaiterLoggedIn = localStorage.getItem("isWaiterLoggedIn") === "true";
+
+  if (isAdminLoggedIn) return <Navigate to="/admin/dashboard" replace />;
+  if (isKitchenLoggedIn) return <Navigate to="/kitchen/dashboard" replace />;
+  if (isWaiterLoggedIn) return <Navigate to="/waiter/dashboard" replace />;
+
   return children;
 };
 
