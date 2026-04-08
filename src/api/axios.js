@@ -25,6 +25,8 @@ const API = axios.create({
 // Add a request interceptor to include the auth token.
 // For HR routes: prefer hrToken (HR staff JWT); if not present, fall back to
 // admin token so POS admins can access HR endpoints directly without a separate login.
+// Also appends restaurantId query param for all requests (used by tenantMiddleware
+// on public routes; ignored for authenticated routes where JWT carries the tenant).
 API.interceptors.request.use((req) => {
   const isHRRoute = req.url && req.url.startsWith('/hr/');
   let token;
@@ -36,6 +38,15 @@ API.interceptors.request.use((req) => {
   if (token) {
     req.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Append restaurantId to every request if available (from URL or localStorage)
+  const urlParams = new URLSearchParams(window.location.search);
+  const restaurantId =
+    urlParams.get('restaurantId') || localStorage.getItem('restaurantId');
+  if (restaurantId && !req.params?.restaurantId) {
+    req.params = { ...req.params, restaurantId };
+  }
+
   return req;
 }, (error) => {
   return Promise.reject(error);

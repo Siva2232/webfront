@@ -11,23 +11,29 @@ import { CartProvider } from "./context/CartContext";
 import { HRProvider } from "./context/HRContext";
 import { SalesProvider } from "./context/SalesContext";
 import { UIProvider } from "./context/UIContext";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-    <SalesProvider>
-      <UIProvider>
-        <ProductProvider>
-          <OrderProvider>
-            <CartProvider>
-              <HRProvider>
-                <App />
-              </HRProvider>
-            </CartProvider>
-          </OrderProvider>
-        </ProductProvider>
-      </UIProvider>
-      </SalesProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <SalesProvider>
+            <UIProvider>
+              <ProductProvider>
+                <OrderProvider>
+                  <CartProvider>
+                    <HRProvider>
+                      <App />
+                    </HRProvider>
+                  </CartProvider>
+                </OrderProvider>
+              </ProductProvider>
+            </UIProvider>
+          </SalesProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

@@ -623,9 +623,15 @@ export const OrderProvider = ({ children }) => {
     socket.connect();
     console.log("OrderContext: Socket initializing...");
 
+    // Join restaurant-specific room so we only receive events for our restaurant
+    const rid = localStorage.getItem('restaurantId');
+    if (rid) socket.emit('joinRoom', rid);
+
     // Re-fetch bills when socket reconnects (covers missed events during disconnect)
     socket.on("connect", () => {
       console.log("OrderContext: Socket connected successfully");
+      const r = localStorage.getItem('restaurantId');
+      if (r) socket.emit('joinRoom', r);
       const t = localStorage.getItem("token");
       if (t) fetchBills();
     });

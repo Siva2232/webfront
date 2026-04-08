@@ -1,4 +1,15 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
+
+/* Feature Guard — blocks direct URL access to disabled features */
+const FeatureGuard = ({ feature, children }) => {
+  const { branding } = useTheme();
+  const features = branding?.features || {};
+  if (features[feature] === false) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return children;
+};
 
 /* Layouts */
 import AdminLayout from "../admin/AdminLayout";
@@ -7,6 +18,17 @@ import CustomerLayout from "../customer/CustomerLayout";
 /* Auth */
 import Login from "../admin/Login";
 import ProtectedRoute from "./ProtectedRoute";
+
+/* Super Admin */
+import SuperAdminLogin    from "../superadmin/SuperAdminLogin";
+import SuperAdminLayout   from "../superadmin/SuperAdminLayout";
+import SuperAdminDashboard from "../superadmin/SuperAdminDashboard";
+import RestaurantList     from "../superadmin/RestaurantList";
+import PlanManager        from "../superadmin/PlanManager";
+import SuperAdminAnalytics from "../superadmin/SuperAdminAnalytics";
+
+/* Admin Subscription Page */
+import SubscriptionPage from "../admin/SubscriptionPage";
 
 /* Admin Pages */
 import Dashboard from "../admin/Dashboard";
@@ -143,10 +165,11 @@ export default function AppRoutes() {
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="banner" element={<BannerPanel />} />
-          <Route path="reports" element={<Analytics />} />
+          <Route path="reports"      element={<Analytics />} />
+          <Route path="subscription" element={<SubscriptionPage />} />
 
-          {/* HR Management — dedicated admin-specific pages inside AdminLayout */}
-          <Route path="hr">
+          {/* HR Management — guarded by hr feature flag */}
+          <Route path="hr" element={<FeatureGuard feature="hr"><div><Outlet /></div></FeatureGuard>}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminHRDashboard />} />
             <Route path="staff" element={<AdminStaff />} />
@@ -156,8 +179,8 @@ export default function AppRoutes() {
             <Route path="payroll" element={<AdminPayroll />} />
           </Route>
 
-          {/* Accounting Module — inside AdminLayout */}
-          <Route path="accounting" element={<AccountingLayout />}>
+          {/* Accounting Module — guarded by accounting feature flag */}
+          <Route path="accounting" element={<FeatureGuard feature="accounting"><AccountingLayout /></FeatureGuard>}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AccDashboard />} />
             <Route path="parties" element={<AccParties />} />
@@ -194,6 +217,17 @@ export default function AppRoutes() {
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/menu" replace />} />
+
+      {/* ── Super Admin Routes ── */}
+      <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+      <Route path="/superadmin" element={<SuperAdminLayout />}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard"   element={<SuperAdminDashboard />} />
+        <Route path="restaurants" element={<RestaurantList />} />
+        <Route path="plans"       element={<PlanManager />} />
+        <Route path="analytics"   element={<SuperAdminAnalytics />} />
+        <Route path="*"           element={<Navigate to="dashboard" replace />} />
+      </Route>
     </Routes>
   );
 }

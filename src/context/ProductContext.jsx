@@ -19,6 +19,15 @@ const socket = io(SOCKET_URL, {
 export const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
+  // Read restaurantId from URL param (customer QR scan) or localStorage
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const rid = urlParams.get('restaurantId');
+    if (rid) {
+      localStorage.setItem('restaurantId', rid.toUpperCase());
+    }
+  }, []);
+
   // Hydrate instantly from localStorage so the menu renders without waiting for API
   const [products, setProducts] = useState(() => {
     try {
@@ -150,6 +159,16 @@ export const ProductProvider = ({ children }) => {
   useEffect(() => {
     socket.connect();
 
+    // Join restaurant-specific room so we only receive events for our restaurant
+    const rid = localStorage.getItem('restaurantId');
+    if (rid) {
+      socket.emit('joinRoom', rid);
+    }
+    socket.on('connect', () => {
+      const r = localStorage.getItem('restaurantId');
+      if (r) socket.emit('joinRoom', r);
+    });
+
     socket.on("subItemsUpdated", () => {
       console.log("Real-time sync: Sub-items changed, re-fetching...");
       fetchProductsFresh();
@@ -232,6 +251,7 @@ export const ProductProvider = ({ children }) => {
     });
 
     return () => {
+      socket.off("connect");
       socket.off("productsUpdated");
       socket.off("subItemsUpdated");
       socket.off("productUpdated");

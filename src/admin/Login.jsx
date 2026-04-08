@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
+import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 import { 
   Lock, 
@@ -18,6 +19,7 @@ import {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { loadBranding } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,6 +64,13 @@ export default function Login() {
       // persist token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
+
+      // Store restaurantId so ThemeContext can load branding/features
+      if (data.restaurantId) {
+        localStorage.setItem("restaurantId", data.restaurantId);
+        // Load branding+features NOW so AdminLayout sees them immediately
+        await loadBranding(data.restaurantId);
+      }
       // update all role flags based on the account data (clears them if false)
       localStorage.setItem("isAdminLoggedIn", data.isAdmin ? "true" : "false");
       localStorage.setItem("isKitchenLoggedIn", data.isKitchen ? "true" : "false");

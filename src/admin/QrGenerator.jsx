@@ -6,7 +6,11 @@ export default function QrGenerator() {
   const [table, setTable] = useState("");
 
   // use origin so it works both locally and after deployment
-  const baseUrl = window.location.origin + "/menu?table=";
+  // Include restaurantId so the customer menu scopes data to this restaurant
+  const restaurantId = localStorage.getItem('restaurantId') || '';
+  const baseUrl = restaurantId
+    ? `${window.location.origin}/menu?restaurantId=${encodeURIComponent(restaurantId)}&table=`
+    : `${window.location.origin}/menu?table=`;
   const link = table ? `${baseUrl}${encodeURIComponent(table)}` : "";
 
   // helper to convert SVG element to canvas and return data URL

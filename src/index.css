@@ -1,7 +1,13 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Nunito:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
+  /* SaaS White-label CSS Variables — injected dynamically by ThemeContext */
+  --primary:   #f72585;
+  --secondary: #0f172a;
+  --accent:    #7209b7;
+  --font:      Inter;
+
   --color-primary-50: #fef2f2;
   --color-primary-100: #fee2e2;
   --color-primary-200: #fecaca;
@@ -13,6 +19,12 @@
   --color-primary-800: #800000;
   --color-primary-900: #7f1d1d;
   --color-primary-950: #450a0a;
+}
+
+/* Dark mode base support */
+body.dark {
+  background-color: #0f172a;
+  color: #f1f5f9;
 }
 
 @layer base {

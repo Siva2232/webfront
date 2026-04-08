@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
+import { useTheme } from "../context/ThemeContext";
+import SubscriptionWidget from "../components/SubscriptionWidget";
 import {
   LayoutDashboard,
   Package,
@@ -122,6 +124,23 @@ const menuItems = [
 export default function AdminLayout() {
   const { products = [], subitems = [] } = useProducts();
   const { notifications = [], notificationsLoading, markNotificationAsRead, fetchNotifications } = useUI();
+  const { branding } = useTheme();
+
+  // Feature-filtered nav items — hide sections the Super Admin has disabled
+  const features = branding?.features || {};
+  const featureMap = {
+    "hr":          "hr",
+    "accounting":  "accounting",
+    "reports":     "reports",
+    "kitchen-bill": "kitchenPanel",
+    "tables":      "qrMenu",
+    "orders":      "onlineOrders",
+  };
+  const visibleMenuItems = menuItems.filter((item) => {
+    const featureKey = featureMap[item.path];
+    if (featureKey && features[featureKey] === false) return false;
+    return true;
+  });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -292,7 +311,15 @@ const handleClearAllStockAlerts = () => {
   );
 };
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700">
+    <div
+      className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700"
+      style={{
+        "--primary":   branding.primaryColor   || "#f72585",
+        "--secondary": branding.secondaryColor || "#0f172a",
+        "--accent":    branding.accentColor    || "#7209b7",
+        fontFamily:    `'${branding.fontFamily || "Inter"}', sans-serif`,
+      }}
+    >
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobileOpen && (
@@ -318,11 +345,15 @@ const handleClearAllStockAlerts = () => {
       >
         <div className="h-24 flex items-center px-6 justify-between">
           <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}>
-            <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
-              <Sparkles className="text-white w-6 h-6" />
-            </div>
+            {branding.logo ? (
+              <img src={branding.logo} alt={branding.name || "Logo"} className="w-10 h-10 rounded-2xl object-contain shadow-lg" />
+            ) : (
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200" style={{ backgroundColor: branding.primaryColor || "#0f172a" }}>
+                <Sparkles className="text-white w-6 h-6" />
+              </div>
+            )}
             <span className="text-xl font-black tracking-tight text-slate-800">
-              My Cafe<span className="text-indigo-600"> Admin</span>
+              {branding.name || "My Cafe"}<span style={{ color: branding.primaryColor || "#6366f1" }}> Admin</span>
             </span>
           </div>
           <button
@@ -334,7 +365,7 @@ const handleClearAllStockAlerts = () => {
         </div>
 
        <nav className="flex-1 px-4 space-y-1 mt-4 max-h-[calc(100vh-160px)] overflow-y-auto no-scrollbar">
-  {menuItems.map((item) => {
+  {visibleMenuItems.map((item) => {
     // Shared classes for both Disabled and Active states to maintain visual harmony
     const baseClasses = `
       group relative flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors duration-100
@@ -510,16 +541,28 @@ const handleClearAllStockAlerts = () => {
 </nav>
         <div className="p-6 border-t border-slate-100">
           <div className={`bg-slate-50 rounded-2xl p-4 flex items-center gap-3 ${isCollapsed && "lg:justify-center"}`}>
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-              B
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+              style={{ backgroundColor: branding.primaryColor || "#6366f1" }}
+            >
+              {user?.name?.charAt(0)?.toUpperCase() || "A"}
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Standard Plan</p>
-                <p className="text-[10px] text-slate-400 truncate">Unlimited Products</p>
+                <p className="text-xs font-black text-slate-800 uppercase tracking-tighter truncate">{user?.name || "Admin"}</p>
+                <p className="text-[10px] text-slate-400 truncate">{user?.restaurantId || "Restaurant"}</p>
               </div>
             )}
           </div>
+
+          {/* Dynamic Subscription Widget */}
+          {!isCollapsed && (
+            <SubscriptionWidget
+              subscriptionStatus={branding.subscriptionStatus}
+              subscriptionExpiry={branding.subscriptionExpiry}
+              planName={branding.subscriptionPlan?.name}
+            />
+          )}
         </div>
       </aside>
 
