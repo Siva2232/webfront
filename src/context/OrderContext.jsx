@@ -21,11 +21,14 @@ const socket = io(SOCKET_URL, {
 const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
-  // namespaced cache helpers â€” each restaurant stores data in its own slot
+  // namespaced cache helpers — each restaurant stores data in its own slot
   const _rid = getCurrentRestaurantId();
-  const _tGet  = (k)    => tenantGet(k, _rid);
-  const _tSet  = (k, v) => tenantSet(k, _rid, v);
-  const _tDel  = (k)    => tenantRemove(k, _rid);
+  const _mountedRid = useRef(_rid);
+  // Use live helpers that always read the CURRENT restaurantId (not the stale mount-time value)
+  const _getLiveRid = () => getCurrentRestaurantId() || _mountedRid.current;
+  const _tGet  = (k)    => tenantGet(k, _getLiveRid());
+  const _tSet  = (k, v) => tenantSet(k, _getLiveRid(), v);
+  const _tDel  = (k)    => tenantRemove(k, _getLiveRid());
 
   const [orders, setOrders] = useState(() => {
     try {
@@ -814,12 +817,27 @@ export const OrderProvider = ({ children }) => {
     }
 
     // re-fetch only when the tab regains focus (user switched back)
+    // Also detect restaurant switch and reset state accordingly.
     const onFocus = () => {
       const t = localStorage.getItem("token");
-      if (t) {
-        fetchOrders();
-        fetchBills();
+      if (!t) return;
+
+      // Detect restaurant switch
+      const liveRid = getCurrentRestaurantId();
+      if (liveRid && liveRid !== _mountedRid.current) {
+        _mountedRid.current = liveRid;
+        // Reset state to the new restaurant's cache (or empty)
+        const cachedOrders = tenantGet('cachedOrders', liveRid);
+        const cachedBills = tenantGet('cachedBills', liveRid);
+        const cachedKB = tenantGet('cachedKitchenBills', liveRid);
+        setOrders(Array.isArray(cachedOrders) ? cachedOrders : []);
+        setBills(Array.isArray(cachedBills) ? cachedBills : []);
+        setKitchenBills(Array.isArray(cachedKB) ? cachedKB : []);
+        setBillsReady(false);
       }
+
+      fetchOrders();
+      fetchBills();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);

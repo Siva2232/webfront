@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import API from "../api/axios";
 import { io as socketIOClient } from "socket.io-client";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
@@ -42,6 +42,9 @@ const defaultOffers = [
 
 export const UIProvider = ({ children }) => {
   const _rid = getCurrentRestaurantId();
+  const _mountedRid = useRef(_rid);
+  // Live helper that always reads the CURRENT restaurantId
+  const _getLiveRid = () => getCurrentRestaurantId() || _mountedRid.current;
 
   // Hydrate instantly from namespaced cache for THIS restaurant only
   const [banners, setBanners] = useState(() => {
@@ -102,10 +105,10 @@ export const UIProvider = ({ children }) => {
       if (Array.isArray(data) && data.length > 0) {
         // Only update state if data actually changed to prevent re-renders
         const newData = data;
-        const oldStored = tenantGet('ui_banners', _rid);
+        const oldStored = tenantGet('ui_banners', _getLiveRid());
         if (JSON.stringify(newData) !== JSON.stringify(oldStored)) {
           setBanners(newData);
-          tenantSet('ui_banners', _rid, newData);
+          tenantSet('ui_banners', _getLiveRid(), newData);
         }
       } else {
         setBanners(defaultBanners);
@@ -126,10 +129,10 @@ export const UIProvider = ({ children }) => {
       if (Array.isArray(data) && data.length > 0) {
         const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
         if (valid.length > 0) {
-          const oldStored = tenantGet('ui_offers', _rid);
+          const oldStored = tenantGet('ui_offers', _getLiveRid());
           if (JSON.stringify(valid) !== JSON.stringify(oldStored)) {
             setOffers(valid);
-            tenantSet('ui_offers', _rid, valid);
+            tenantSet('ui_offers', _getLiveRid(), valid);
           }
           return;
         }
@@ -159,6 +162,24 @@ export const UIProvider = ({ children }) => {
     window.addEventListener("promosUpdated", fetchOffers);
     window.addEventListener("storage", fetchData);
     window.addEventListener("notificationsUpdated", fetchNotifications);
+
+    // Detect restaurant switch on focus and reset UI state
+    const checkRidChange = () => {
+      const liveRid = getCurrentRestaurantId();
+      if (liveRid && liveRid !== _mountedRid.current) {
+        _mountedRid.current = liveRid;
+        // Reset to new restaurant's cache or defaults
+        const cachedBanners = tenantGet('ui_banners', liveRid);
+        const cachedOffers = tenantGet('ui_offers', liveRid);
+        setBanners(Array.isArray(cachedBanners) && cachedBanners.length > 0 ? cachedBanners : defaultBanners);
+        setOffers(Array.isArray(cachedOffers) && cachedOffers.length > 0 ? cachedOffers : defaultOffers);
+        setNotifications([]);
+        setReservations([]);
+        fetchData();
+      }
+    };
+    window.addEventListener("focus", checkRidChange);
+    window.addEventListener("popstate", checkRidChange);
 
     // Add server socket for immediate notification updates
     // Strip /api suffix from the URL since socket.io connects to the base server URL
@@ -245,6 +266,8 @@ export const UIProvider = ({ children }) => {
       window.removeEventListener("promosUpdated", fetchOffers);
       window.removeEventListener("storage", fetchData);
       window.removeEventListener("notificationsUpdated", fetchNotifications);
+      window.removeEventListener("focus", checkRidChange);
+      window.removeEventListener("popstate", checkRidChange);
       clearInterval(pollInterval);
       socket.disconnect();
     };

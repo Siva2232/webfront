@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import { useTheme } from "../context/ThemeContext";
-import { syncRestaurantCache } from "../utils/tenantCache";
+import { syncRestaurantCache, getCurrentRestaurantId } from "../utils/tenantCache";
 import toast from "react-hot-toast";
 import { 
   Lock, 
@@ -62,13 +62,21 @@ export default function Login() {
     try {
       const { data } = await API.post("/auth/login", { email, password });
 
+      // Detect restaurant switch — if the new restaurantId differs from the
+      // one already in memory, we MUST hard-reload so every context re-mounts
+      // with the correct tenant.  Without this, ProductContext / OrderContext
+      // keep serving cached data from the previous restaurant.
+      const prevRid = getCurrentRestaurantId();
+      const newRid  = (data.restaurantId || '').toUpperCase().trim();
+      const isRestaurantSwitch = prevRid && newRid && prevRid !== newRid;
+
       // persist token and user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("userInfo", JSON.stringify(data));
 
       // Store restaurantId so ThemeContext can load branding/features
       if (data.restaurantId) {
-        syncRestaurantCache(data.restaurantId); // wipe stale cache from previous restaurant
+        syncRestaurantCache(data.restaurantId);
         localStorage.setItem("restaurantId", data.restaurantId);
         // Load branding+features NOW so AdminLayout sees them immediately
         await loadBranding(data.restaurantId);
@@ -78,6 +86,17 @@ export default function Login() {
       localStorage.setItem("isKitchenLoggedIn", data.isKitchen ? "true" : "false");
       localStorage.setItem("isWaiterLoggedIn", data.isWaiter ? "true" : "false");
       localStorage.setItem("showWelcomeMessage", "true");
+
+      // If the restaurant changed, hard-reload the page so all context
+      // providers re-initialise with the correct tenant data.
+      if (isRestaurantSwitch) {
+        const dest = data.isAdmin ? "/admin/dashboard"
+                   : data.isKitchen ? "/kitchen/dashboard"
+                   : data.isWaiter ? "/waiter/dashboard"
+                   : "/admin/dashboard";
+        window.location.href = dest;
+        return; // stop — browser will reload
+      }
 
       if (data.isAdmin) {
         toast.success("Logged in successfully");

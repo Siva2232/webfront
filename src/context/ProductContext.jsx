@@ -22,6 +22,8 @@ export const ProductContext = createContext();
 export const ProductProvider = ({ children }) => {
   // Current restaurant ID from URL (priority) or localStorage
   const currentRid = getCurrentRestaurantId();
+  // Track the rid at mount so we can detect switches without a hard reload
+  const mountedRid = useRef(currentRid);
 
   // Hydrate instantly from namespaced cache for THIS restaurant only
   const [products, setProducts] = useState(() => {
@@ -47,6 +49,9 @@ export const ProductProvider = ({ children }) => {
     } catch {}
     return true;
   });
+
+  // Helper: get the LIVE restaurantId (not the stale closure value)
+  const getLiveRid = () => getCurrentRestaurantId() || mountedRid.current;
 
   const fetchCategories = async () => {
     try {
@@ -97,7 +102,7 @@ export const ProductProvider = ({ children }) => {
         const data = categoriesRes.value.data;
         if (Array.isArray(data) && data.length > 0) {
           setCategories(data);
-          tenantSet('categories', currentRid, data);
+          tenantSet('categories', getLiveRid(), data);
         }
       }
 
@@ -112,7 +117,7 @@ export const ProductProvider = ({ children }) => {
         // Prevents a transient empty response from wiping an already-loaded product list.
         if (list.length > 0 || products.length === 0) {
           setProducts(list);
-          tenantSet('products', currentRid, list);
+          tenantSet('products', getLiveRid(), list);
         }
       }
     } catch (error) {
@@ -130,6 +135,32 @@ export const ProductProvider = ({ children }) => {
     fetchProducts();
   }, []);
 
+  // Detect restaurant switch (e.g. admin logged into a different restaurant)
+  // and reset state + re-fetch when it happens.
+  useEffect(() => {
+    const checkRidChange = () => {
+      const liveRid = getCurrentRestaurantId();
+      if (liveRid && liveRid !== mountedRid.current) {
+        mountedRid.current = liveRid;
+        // Reset state to the new restaurant's cache (or empty)
+        const cachedProducts = tenantGet('products', liveRid);
+        const cachedCategories = tenantGet('categories', liveRid);
+        setProducts(Array.isArray(cachedProducts) ? cachedProducts : []);
+        setCategories(Array.isArray(cachedCategories) ? cachedCategories : []);
+        setSubitems([]);
+        setIsLoading(true);
+        fetchProducts();
+      }
+    };
+    // Check on every navigation / focus change
+    window.addEventListener('focus', checkRidChange);
+    window.addEventListener('popstate', checkRidChange);
+    return () => {
+      window.removeEventListener('focus', checkRidChange);
+      window.removeEventListener('popstate', checkRidChange);
+    };
+  }, []);
+
   // Force-fresh products fetch (bypasses server cache) — used after socket events
   const fetchProductsFresh = async () => {
     try {
@@ -145,7 +176,7 @@ export const ProductProvider = ({ children }) => {
         const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
         if (list.length > 0 || products.length === 0) {
           setProducts(list);
-          tenantSet('products', currentRid, list);
+          tenantSet('products', getLiveRid(), list);
         }
       }
     } catch {}
@@ -189,7 +220,7 @@ export const ProductProvider = ({ children }) => {
 
       // Also update namespaced cache to keep it fresh
       try {
-        const stored = tenantGet('products', currentRid);
+        const stored = tenantGet('products', getLiveRid());
         const parsed = Array.isArray(stored) ? stored : [];
         const index = parsed.findIndex(p => p._id === updatedProduct._id);
         if (index !== -1) {
@@ -197,7 +228,7 @@ export const ProductProvider = ({ children }) => {
         } else {
           parsed.push(updatedProduct);
         }
-        tenantSet('products', currentRid, parsed);
+        tenantSet('products', getLiveRid(), parsed);
       } catch (err) {
         console.error("Local sync error:", err);
       }
@@ -208,9 +239,9 @@ export const ProductProvider = ({ children }) => {
       setProducts(prev => prev.filter(p => p._id !== productId));
       
       try {
-        const stored = tenantGet('products', currentRid);
+        const stored = tenantGet('products', getLiveRid());
         if (Array.isArray(stored)) {
-          tenantSet('products', currentRid, stored.filter(p => p._id !== productId));
+          tenantSet('products', getLiveRid(), stored.filter(p => p._id !== productId));
         }
       } catch (err) {
         console.error("Local sync error (delete):", err);
@@ -276,13 +307,13 @@ export const ProductProvider = ({ children }) => {
   // Sync when localStorage changes (from other tabs/windows)
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === tenantKey('products', currentRid)) {
+      if (e.key === tenantKey('products', getLiveRid())) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) setProducts(parsed);
         } catch {}
       }
-      if (e.key === tenantKey('categories', currentRid)) {
+      if (e.key === tenantKey('categories', getLiveRid())) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) setCategories(parsed);
@@ -297,12 +328,12 @@ export const ProductProvider = ({ children }) => {
   // Helper functions
   const saveProducts = (newProducts) => {
     setProducts(newProducts);
-    tenantSet('products', currentRid, newProducts);
+    tenantSet('products', getLiveRid(), newProducts);
   };
 
   const saveCategories = (newCategories) => {
     setCategories(newCategories);
-    tenantSet('categories', currentRid, newCategories);
+    tenantSet('categories', getLiveRid(), newCategories);
   };
 
   const addProduct = async (productData) => {
@@ -312,7 +343,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.post("/products", payload);
       const updated = [...products, data];
       setProducts(updated);
-      tenantSet('products', currentRid, updated);
+      tenantSet('products', getLiveRid(), updated);
       return data;
     } catch (error) {
       console.error("Error adding product:", error.response?.data || error.message || error);
@@ -328,7 +359,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.post("/categories", { name: trimmed });
       const updated = [...categories, data.name];
       setCategories(updated);
-      tenantSet('categories', currentRid, updated);
+      tenantSet('categories', getLiveRid(), updated);
     } catch (error) {
       console.error("Error adding category:", error);
       // Fallback to local only if API fails
@@ -342,7 +373,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.put(`/products/${id}`, updates);
       const updated = products.map(p => p._id === id ? data : p);
       setProducts(updated);
-      tenantSet('products', currentRid, updated);
+      tenantSet('products', getLiveRid(), updated);
       return data;
     } catch (error) {
       console.error("Error updating product:", error);
@@ -404,7 +435,7 @@ export const ProductProvider = ({ children }) => {
       await API.delete(`/products/${id}`);
       const updated = products.filter(p => p._id !== id);
       setProducts(updated);
-      tenantSet('products', currentRid, updated);
+      tenantSet('products', getLiveRid(), updated);
     } catch (error) {
       console.error("Error deleting product:", error);
     }
@@ -417,7 +448,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.put(`/products/${id}`, { isAvailable: !product.isAvailable });
       const updated = products.map(p => p._id === id ? data : p);
       setProducts(updated);
-      tenantSet('products', currentRid, updated);
+      tenantSet('products', getLiveRid(), updated);
     } catch (error) {
       console.error("Error toggling availability:", error);
     }
