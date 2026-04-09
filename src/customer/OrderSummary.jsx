@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
 import { AnimatePresence } from "framer-motion";
 import API from "../api/axios";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { 
   ChevronLeft, 
   RotateCcw, 
@@ -212,10 +213,11 @@ export default function OrderSummary() {
       toast.success("Bill closed and table released");
 
       // Reset chooser flow so next time same table sees the choose-mode flow again
+      const _rid = getCurrentRestaurantId();
       if (currentTable) {
-        localStorage.removeItem(`tableModeChosen_${currentTable}`);
+        localStorage.removeItem(tenantKey(`tableModeChosen_${currentTable}`, _rid));
       }
-      localStorage.removeItem(`tableModeChosen_${TAKEAWAY_TABLE}`);
+      localStorage.removeItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid));
 
       // Explicitly clear the current order from view by navigating or local state
       // fetchOrders() will eventually sync, but navigation removes the UI immediateley

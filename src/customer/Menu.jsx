@@ -18,6 +18,7 @@ import {
   Package
 } from "lucide-react";
 import API from "../api/axios";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import butter from "../assets/images/butter.png";
 import onion from "../assets/images/onion.png";
 import gopi from "../assets/images/gopi.png";
@@ -45,14 +46,16 @@ export default function Menu() {
   const sectionRefs = useRef({});
   const [showLoader, setShowLoader] = useState(() => {
     // Only show loader if not seen before
-    return !localStorage.getItem("hasSeenMenuLoader");
+    const _rid = getCurrentRestaurantId();
+    return !localStorage.getItem(tenantKey("hasSeenMenuLoader", _rid));
   });
 
   useEffect(() => {
     if (showLoader) {
       const timer = setTimeout(() => {
         setShowLoader(false);
-        localStorage.setItem("hasSeenMenuLoader", "true");
+        const _rid = getCurrentRestaurantId();
+        localStorage.setItem(tenantKey("hasSeenMenuLoader", _rid), "true");
       }, 1500); // Show for 1.5 seconds
       return () => clearTimeout(timer);
     }
@@ -71,7 +74,8 @@ export default function Menu() {
     // (marked via ?from=chooser).  otherwise we want the guest to make a
     // choice even if the cart context already grabbed the table from the URL.
     if (urlTable && !mode && !isTakeaway && from !== "chooser") {
-      if (localStorage.getItem(`tableModeChosen_${urlTable}`)) {
+      const _rid = getCurrentRestaurantId();
+      if (localStorage.getItem(tenantKey(`tableModeChosen_${urlTable}`, _rid))) {
         setTable(urlTable);
         navigate(`/menu?table=${urlTable}`, { replace: true });
       } else {
@@ -81,7 +85,8 @@ export default function Menu() {
     }
 
     if (mode === "takeaway") {
-      if (!localStorage.getItem(`tableModeChosen_${TAKEAWAY_TABLE}`)) {
+      const _rid = getCurrentRestaurantId();
+      if (!localStorage.getItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid))) {
         navigate(`/choose-mode?mode=takeaway`, { replace: true });
         return;
       }
@@ -211,7 +216,8 @@ export default function Menu() {
                   <button 
                     onClick={() => {
                       // If we have a stored table or just go back to chooser/last table
-                      const storedTable = localStorage.getItem("lastTable") || "1";
+                      const _rid = getCurrentRestaurantId();
+                      const storedTable = localStorage.getItem(tenantKey("lastTable", _rid)) || "1";
                       navigate(`/menu?table=${storedTable}&from=chooser`);
                     }}
                     className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors group"

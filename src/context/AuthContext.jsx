@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import API from "../api/axios";
-import { syncRestaurantCache } from "../utils/tenantCache";
+import { syncRestaurantCache, getCurrentRestaurantId, tenantRemove } from "../utils/tenantCache";
 
 const AuthContext = createContext(null);
 
@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    const rid = getCurrentRestaurantId();
     setUser(null);
     localStorage.removeItem("userInfo");
     localStorage.removeItem("token");
@@ -31,12 +32,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("_cachedRestaurantId");
     localStorage.removeItem("isSuperAdmin");
     localStorage.removeItem("isAdminLoggedIn");
-    localStorage.removeItem("products");
-    localStorage.removeItem("categories");
-    localStorage.removeItem("cachedOrders");
-    localStorage.removeItem("cachedBills");
-    localStorage.removeItem("cachedKitchenBills");
-    localStorage.removeItem("cachedTokens");
+    // Clear tenant-namespaced caches for the current restaurant
+    tenantRemove("products", rid);
+    tenantRemove("categories", rid);
+    tenantRemove("cachedOrders", rid);
+    tenantRemove("cachedBills", rid);
+    tenantRemove("cachedKitchenBills", rid);
+    tenantRemove("cachedTokens", rid);
     sessionStorage.removeItem("restaurantBranding");
   }, []);
 

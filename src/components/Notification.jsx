@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import {
   Bell,
   ShoppingBag,
@@ -96,7 +97,8 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const [open, setOpen] = useState(false);
   const [dismissedIds, setDismissedIds] = useState(() => {
     try {
-      const saved = localStorage.getItem("dismissedOrderIds");
+      const _rid = getCurrentRestaurantId();
+      const saved = localStorage.getItem(tenantKey("dismissedOrderIds", _rid));
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -106,13 +108,15 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
   // Persistence for dismissedIds
   useEffect(() => {
-    localStorage.setItem("dismissedOrderIds", JSON.stringify(dismissedIds));
+    const _rid = getCurrentRestaurantId();
+    localStorage.setItem(tenantKey("dismissedOrderIds", _rid), JSON.stringify(dismissedIds));
   }, [dismissedIds]);
   
   // Track "Add More Items" notifications
   const [addMoreNotifications, setAddMoreNotifications] = useState(() => {
     try {
-      const saved = localStorage.getItem("pendingAddMore");
+      const _rid = getCurrentRestaurantId();
+      const saved = localStorage.getItem(tenantKey("pendingAddMore", _rid));
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -121,7 +125,8 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
   // Persistence for addMoreNotifications
   useEffect(() => {
-    localStorage.setItem("pendingAddMore", JSON.stringify(addMoreNotifications));
+    const _rid = getCurrentRestaurantId();
+    localStorage.setItem(tenantKey("pendingAddMore", _rid), JSON.stringify(addMoreNotifications));
   }, [addMoreNotifications]);
 
   const seenOrderIds = useRef(new Set());

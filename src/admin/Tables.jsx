@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import API from "../api/axios";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
@@ -64,7 +65,8 @@ export default function Tables() {
       } catch (err) {
         console.error("Failed to fetch tables", err);
         toast.error("Cloud sync failed. Using local fallback.");
-        const saved = localStorage.getItem("restaurant_tables_config");
+        const rid = getCurrentRestaurantId();
+        const saved = localStorage.getItem(tenantKey("restaurant_tables_config", rid));
         if (saved) setTables(JSON.parse(saved));
       } finally {
         setIsLoading(false);

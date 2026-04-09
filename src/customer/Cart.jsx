@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import api from '../api/axios';
+import { getCurrentRestaurantId, tenantKey } from '../utils/tenantCache';
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -237,7 +238,8 @@ export default function Cart({ hideTable = false }) {
     playSynthSound('success');
 
     const orderId = generateId("ORD");
-    localStorage.setItem("lastOrderId", orderId);
+    const _rid = getCurrentRestaurantId();
+    localStorage.setItem(tenantKey("lastOrderId", _rid), orderId);
 
     const mergeId = searchParams.get("mergeId");
 
@@ -277,7 +279,8 @@ export default function Cart({ hideTable = false }) {
     // Fire API in background — don't block the UI
     addOrder(details).then(created => {
       const effectiveId = created?._id || orderId;
-      localStorage.setItem("lastOrderId", effectiveId);
+      const _rid = getCurrentRestaurantId();
+      localStorage.setItem(tenantKey("lastOrderId", _rid), effectiveId);
     }).catch(err => {
       console.error("Order placement error:", err);
     });

@@ -44,9 +44,11 @@ export default function Dashboard() {
   const { orders = [], fetchOrders } = useOrders();
   const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
   
+  const _rid = getCurrentRestaurantId();
+
   const [tables, setTables] = useState(() => {
     try {
-      const cached = localStorage.getItem("restaurant_tables_config");
+      const cached = localStorage.getItem(tenantKey("restaurant_tables_config", _rid));
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
@@ -70,22 +72,22 @@ export default function Dashboard() {
   });
 
   const [totalRevenue, setTotalRevenue] = useState(() => {
-    return Number(localStorage.getItem("dashboard_total_revenue") || 0);
+    return Number(localStorage.getItem(tenantKey("dashboard_total_revenue", _rid)) || 0);
   });
 
   const [todayOrdersCount, setTodayOrdersCount] = useState(() => {
-    return Number(localStorage.getItem("dashboard_today_count") || 0);
+    return Number(localStorage.getItem(tenantKey("dashboard_today_count", _rid)) || 0);
   });
 
   const [bestSellers, setBestSellers] = useState(() => {
     try {
-      const cached = localStorage.getItem("dashboard_best_sellers");
+      const cached = localStorage.getItem(tenantKey("dashboard_best_sellers", _rid));
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
 
   // Performance enhancement: Persistent sync tracker to skip heavy refetching if data is fresh
-  const lastSyncRef = useRef(Number(localStorage.getItem("dashboard_last_sync") || 0));
+  const lastSyncRef = useRef(Number(localStorage.getItem(tenantKey("dashboard_last_sync", _rid)) || 0));
 
   const [reservedTables, setReservedTables] = useState({});
   const [tableAlerts, setTableAlerts] = useState({});
@@ -113,24 +115,24 @@ export default function Dashboard() {
           
           if (typeof totalRevenue === 'number') {
             setTotalRevenue(totalRevenue);
-            localStorage.setItem("dashboard_total_revenue", totalRevenue.toString());
+            localStorage.setItem(tenantKey("dashboard_total_revenue", _rid), totalRevenue.toString());
           }
           if (typeof todayCount === 'number') {
             setTodayOrdersCount(todayCount);
-            localStorage.setItem("dashboard_today_count", todayCount.toString());
+            localStorage.setItem(tenantKey("dashboard_today_count", _rid), todayCount.toString());
           }
           if (Array.isArray(bestSellers)) {
             setBestSellers(bestSellers);
-            localStorage.setItem("dashboard_best_sellers", JSON.stringify(bestSellers));
+            localStorage.setItem(tenantKey("dashboard_best_sellers", _rid), JSON.stringify(bestSellers));
           }
           
           lastSyncRef.current = now;
-          localStorage.setItem("dashboard_last_sync", now.toString());
+          localStorage.setItem(tenantKey("dashboard_last_sync", _rid), now.toString());
         }
 
         if (tableRes?.data) {
           setTables(tableRes.data);
-          localStorage.setItem("restaurant_tables_config", JSON.stringify(tableRes.data));
+          localStorage.setItem(tenantKey("restaurant_tables_config", _rid), JSON.stringify(tableRes.data));
         }
 
         // Also refresh live orders list in background

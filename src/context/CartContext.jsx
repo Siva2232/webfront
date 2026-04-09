@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { getCurrentRestaurantId } from "../utils/tenantCache";
+import { getCurrentRestaurantId, tenantKey, tenantRemove } from "../utils/tenantCache";
 
 const CartContext = createContext();
 
@@ -22,10 +22,11 @@ const safeSetLocalStorage = (key, value) => {
       console.warn("localStorage quota exceeded, clearing non-critical caches", err);
       try {
         // Remove caches to free some space, keep cart data in memory for now.
-        localStorage.removeItem("cachedOrders");
-        localStorage.removeItem("cachedBills");
-        localStorage.removeItem("cachedKitchenBills");
-        localStorage.removeItem("lastViewedProduct");
+        const _rid = getCurrentRestaurantId();
+        tenantRemove("cachedOrders", _rid);
+        tenantRemove("cachedBills", _rid);
+        tenantRemove("cachedKitchenBills", _rid);
+        tenantRemove("lastViewedProduct", _rid);
         // Retry once with reduced data if possible
         window.localStorage.setItem(key, value);
       } catch (inner) {
@@ -46,7 +47,8 @@ export const CartProvider = ({ children }) => {
       return TAKEAWAY_TABLE;
     }
     const urlTable = params.get("table")?.trim()?.replace(/^0+/, "");
-    return urlTable || localStorage.getItem("lastUsedTable") || "";
+    const _rid = getCurrentRestaurantId();
+    return urlTable || localStorage.getItem(tenantKey("lastUsedTable", _rid)) || "";
   });
 
   const [cart, setCart] = useState(() => {
@@ -62,7 +64,8 @@ export const CartProvider = ({ children }) => {
     if (table?.trim()) {
       const cartData = JSON.stringify(cart);
       safeSetLocalStorage(getCartKey(table), cartData);
-      safeSetLocalStorage("lastUsedTable", table);
+      const _rid = getCurrentRestaurantId();
+      localStorage.setItem(tenantKey("lastUsedTable", _rid), table);
     }
   }, [cart, table]);
 

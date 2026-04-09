@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { Utensils, ShoppingBag, MapPin } from "lucide-react";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 
 export default function ChooseMode() {
   const [searchParams] = useSearchParams();
@@ -13,7 +14,8 @@ export default function ChooseMode() {
 
   useEffect(() => {
     // Once user selected mode for this table in current visit, skip chooser.
-    if (table && localStorage.getItem(`tableModeChosen_${table}`)) {
+    const _rid = getCurrentRestaurantId();
+    if (table && localStorage.getItem(tenantKey(`tableModeChosen_${table}`, _rid))) {
       setTable(table);
       navigate(`/menu?table=${table}`, { replace: true });
       return;
@@ -28,7 +30,8 @@ export default function ChooseMode() {
 
   const chooseDineIn = () => {
     if (table) {
-      localStorage.setItem(`tableModeChosen_${table}`, "true");
+      const _rid = getCurrentRestaurantId();
+      localStorage.setItem(tenantKey(`tableModeChosen_${table}`, _rid), "true");
       setTable(table);
       navigate(`/menu?table=${table}&from=chooser`);
     } else {
@@ -37,7 +40,8 @@ export default function ChooseMode() {
   };
 
   const chooseTakeaway = () => {
-    localStorage.setItem(`tableModeChosen_${TAKEAWAY_TABLE}`, "true");
+    const _rid = getCurrentRestaurantId();
+    localStorage.setItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid), "true");
     navigate(`/menu?mode=takeaway&from=chooser`);
   };
 
