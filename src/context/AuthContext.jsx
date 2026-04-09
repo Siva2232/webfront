@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import API from "../api/axios";
+import { syncRestaurantCache } from "../utils/tenantCache";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +16,10 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     localStorage.setItem("userInfo", JSON.stringify(userData));
     if (userData.token)        localStorage.setItem("token", userData.token);
-    if (userData.restaurantId) localStorage.setItem("restaurantId", userData.restaurantId);
+    if (userData.restaurantId) {
+      syncRestaurantCache(userData.restaurantId); // wipe stale cache from previous restaurant
+      localStorage.setItem("restaurantId", userData.restaurantId);
+    }
     if (userData.role === "superadmin") localStorage.setItem("isSuperAdmin", "true");
   }, []);
 
@@ -24,8 +28,15 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("userInfo");
     localStorage.removeItem("token");
     localStorage.removeItem("restaurantId");
+    localStorage.removeItem("_cachedRestaurantId");
     localStorage.removeItem("isSuperAdmin");
     localStorage.removeItem("isAdminLoggedIn");
+    localStorage.removeItem("products");
+    localStorage.removeItem("categories");
+    localStorage.removeItem("cachedOrders");
+    localStorage.removeItem("cachedBills");
+    localStorage.removeItem("cachedKitchenBills");
+    localStorage.removeItem("cachedTokens");
     sessionStorage.removeItem("restaurantBranding");
   }, []);
 

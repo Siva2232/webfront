@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import API from "../api/axios";
 import { io as socketIOClient } from "socket.io-client";
+import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
 
 const UIContext = createContext();
 
@@ -40,24 +41,20 @@ const defaultOffers = [
 ];
 
 export const UIProvider = ({ children }) => {
-  // Hydrate instantly from localStorage cache, fallback to defaults
+  const _rid = getCurrentRestaurantId();
+
+  // Hydrate instantly from namespaced cache for THIS restaurant only
   const [banners, setBanners] = useState(() => {
     try {
-      const stored = localStorage.getItem("ui_banners");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      const stored = tenantGet('ui_banners', _rid);
+      if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return defaultBanners;
   });
   const [offers, setOffers] = useState(() => {
     try {
-      const stored = localStorage.getItem("ui_offers");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      const stored = tenantGet('ui_offers', _rid);
+      if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return defaultOffers;
   });
@@ -104,11 +101,11 @@ export const UIProvider = ({ children }) => {
       const { data } = await API.get("/banners");
       if (Array.isArray(data) && data.length > 0) {
         // Only update state if data actually changed to prevent re-renders
-        const newStr = JSON.stringify(data);
-        const oldStr = localStorage.getItem("ui_banners");
-        if (newStr !== oldStr) {
-          setBanners(data);
-          try { localStorage.setItem("ui_banners", newStr); } catch {}
+        const newData = data;
+        const oldStored = tenantGet('ui_banners', _rid);
+        if (JSON.stringify(newData) !== JSON.stringify(oldStored)) {
+          setBanners(newData);
+          tenantSet('ui_banners', _rid, newData);
         }
       } else {
         setBanners(defaultBanners);
@@ -129,11 +126,10 @@ export const UIProvider = ({ children }) => {
       if (Array.isArray(data) && data.length > 0) {
         const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
         if (valid.length > 0) {
-          const newStr = JSON.stringify(valid);
-          const oldStr = localStorage.getItem("ui_offers");
-          if (newStr !== oldStr) {
+          const oldStored = tenantGet('ui_offers', _rid);
+          if (JSON.stringify(valid) !== JSON.stringify(oldStored)) {
             setOffers(valid);
-            try { localStorage.setItem("ui_offers", newStr); } catch {}
+            tenantSet('ui_offers', _rid, valid);
           }
           return;
         }
@@ -178,7 +174,9 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("connect", () => {
-      // optional: console.debug("Socket connected", socket.id);
+      // Join the restaurant room for tenant-scoped events
+      const rid = getCurrentRestaurantId();
+      if (rid) socket.emit("joinRoom", rid);
     });
 
     socket.on("newNotification", (notif) => {

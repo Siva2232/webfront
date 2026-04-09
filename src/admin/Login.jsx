@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import { useTheme } from "../context/ThemeContext";
+import { syncRestaurantCache } from "../utils/tenantCache";
 import toast from "react-hot-toast";
 import { 
   Lock, 
@@ -67,6 +68,7 @@ export default function Login() {
 
       // Store restaurantId so ThemeContext can load branding/features
       if (data.restaurantId) {
+        syncRestaurantCache(data.restaurantId); // wipe stale cache from previous restaurant
         localStorage.setItem("restaurantId", data.restaurantId);
         // Load branding+features NOW so AdminLayout sees them immediately
         await loadBranding(data.restaurantId);

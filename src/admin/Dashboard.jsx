@@ -4,6 +4,7 @@ import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import API from "../api/axios";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
@@ -54,7 +55,8 @@ export default function Dashboard() {
   const [activeOrdersMap, setActiveOrdersMap] = useState(() => {
     const map = {};
     try {
-      const cached = localStorage.getItem("cachedOrders");
+      const rid = getCurrentRestaurantId();
+      const cached = localStorage.getItem(tenantKey("cachedOrders", rid));
       if (cached) {
         const parsed = JSON.parse(cached);
         parsed.forEach(o => {

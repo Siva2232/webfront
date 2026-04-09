@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -166,12 +167,13 @@ export default function OrderBill() {
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
     // Only fetch if we don't already have bills or it's been more than 5 minutes
-    const lastFetch = localStorage.getItem("lastBillsFetch");
+    const rid = getCurrentRestaurantId();
+    const lastFetch = localStorage.getItem(tenantKey("lastBillsFetch", rid));
     const now = Date.now();
     
     if (!billsReady || !bills.length || !lastFetch || (now - parseInt(lastFetch)) > 300000) {
       fetchBills();
-      localStorage.setItem("lastBillsFetch", now.toString());
+      localStorage.setItem(tenantKey("lastBillsFetch", rid), now.toString());
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -205,7 +207,7 @@ export default function OrderBill() {
 
   /* refresh */
   const handleRefresh = useCallback(() => {
-    try { localStorage.removeItem("cachedBills"); } catch (_) {}
+    try { const rid = getCurrentRestaurantId(); localStorage.removeItem(tenantKey("cachedBills", rid)); } catch (_) {}
     fetchBills();
     toast.success("Refreshing invoices...");
   }, [fetchBills]);

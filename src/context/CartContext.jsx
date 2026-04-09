@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { getCurrentRestaurantId } from "../utils/tenantCache";
 
 const CartContext = createContext();
 
@@ -7,7 +8,10 @@ const CartContext = createContext();
 export const TAKEAWAY_TABLE = "TAKEAWAY";
 export const DELIVERY_TABLE = "DELIVERY";
 
-const getCartKey = (table) => `cart_${table?.trim() || 'guest'}`;
+const getCartKey = (table) => {
+  const rid = getCurrentRestaurantId() || '';
+  return `cart_${rid}_${table?.trim() || 'guest'}`;
+};
 const MAX_CART_ITEMS = 120;
 
 const safeSetLocalStorage = (key, value) => {

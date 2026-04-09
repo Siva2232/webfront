@@ -207,8 +207,14 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     const notifSocket = _notifSocket;
     if (!notifSocket.connected) notifSocket.connect();
     
+    // Join restaurant room for scoped events
+    const rid = localStorage.getItem('restaurantId');
+    if (rid) notifSocket.emit('joinRoom', rid);
+
     notifSocket.on("connect", () => {
       console.log("[Notification] Socket connected");
+      const r = localStorage.getItem('restaurantId');
+      if (r) notifSocket.emit('joinRoom', r);
     });
     
     // Listen directly for orderItemsAdded event

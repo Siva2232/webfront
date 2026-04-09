@@ -1,5 +1,6 @@
 // src/context/SalesContext.jsx
 import { createContext, useContext, useState, useCallback } from 'react';
+import API from '../api/axios';
 
 const SalesContext = createContext();
 
@@ -15,23 +16,20 @@ export function SalesProvider({ children }) {
 
       // Example endpoints — change according to your backend
       const endpoints = {
-        day:   '/api/analytics/sales/day',
-        week:  '/api/analytics/sales/week',
-        month: '/api/analytics/sales/month',
-        year:  '/api/analytics/sales/year',
+        day:   '/analytics/sales/day',
+        week:  '/analytics/sales/week',
+        month: '/analytics/sales/month',
+        year:  '/analytics/sales/year',
       };
 
-      const res = await fetch(endpoints[range] || endpoints.week);
-      if (!res.ok) throw new Error('Failed to fetch sales data');
-
-      const data = await res.json();
+      const { data } = await API.get(endpoints[range] || endpoints.week);
 
       setSalesData(prev => ({
         ...prev,
         [range]: data  // expected format: [{ date: "2025-01-13", revenue: 12400, orders: 47 }, ...]
       }));
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setIsLoading(false);
     }

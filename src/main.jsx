@@ -4,6 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
+/* CLEAR STALE CACHE before any provider mounts */
+import { bootstrapTenantCache } from "./utils/tenantCache";
+bootstrapTenantCache();
+
 /* CONTEXT PROVIDERS */
 import { ProductProvider } from "./context/ProductContext";
 import { OrderProvider } from "./context/OrderContext";

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
+import { syncRestaurantCache, getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
 
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
@@ -19,33 +20,21 @@ const socket = io(SOCKET_URL, {
 export const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
-  // Read restaurantId from URL param (customer QR scan) or localStorage
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const rid = urlParams.get('restaurantId');
-    if (rid) {
-      localStorage.setItem('restaurantId', rid.toUpperCase());
-    }
-  }, []);
+  // Current restaurant ID from URL (priority) or localStorage
+  const currentRid = getCurrentRestaurantId();
 
-  // Hydrate instantly from localStorage so the menu renders without waiting for API
+  // Hydrate instantly from namespaced cache for THIS restaurant only
   const [products, setProducts] = useState(() => {
     try {
-      const stored = localStorage.getItem("products");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      const stored = tenantGet('products', currentRid);
+      if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return [];
   });
   const [categories, setCategories] = useState(() => {
     try {
-      const stored = localStorage.getItem("categories");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      const stored = tenantGet('categories', currentRid);
+      if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return [];
   });
@@ -53,11 +42,8 @@ export const ProductProvider = ({ children }) => {
   // If we have cached products, mark as not-loading so UI renders immediately
   const [isLoading, setIsLoading] = useState(() => {
     try {
-      const stored = localStorage.getItem("products");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return false;
-      }
+      const stored = tenantGet('products', currentRid);
+      return !(Array.isArray(stored) && stored.length > 0);
     } catch {}
     return true;
   });
@@ -111,7 +97,7 @@ export const ProductProvider = ({ children }) => {
         const data = categoriesRes.value.data;
         if (Array.isArray(data) && data.length > 0) {
           setCategories(data);
-          try { localStorage.setItem("categories", JSON.stringify(data)); } catch {}
+          tenantSet('categories', currentRid, data);
         }
       }
 
@@ -122,8 +108,12 @@ export const ProductProvider = ({ children }) => {
 
       if (productsRes.status === "fulfilled") {
         const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
-        setProducts(list);
-        try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
+        // Only overwrite if API returned products, or we had nothing cached (first load).
+        // Prevents a transient empty response from wiping an already-loaded product list.
+        if (list.length > 0 || products.length === 0) {
+          setProducts(list);
+          tenantSet('products', currentRid, list);
+        }
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -132,7 +122,11 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  // Store restaurantId and fetch products on mount
   useEffect(() => {
+    if (currentRid) {
+      syncRestaurantCache(currentRid);
+    }
     fetchProducts();
   }, []);
 
@@ -149,8 +143,10 @@ export const ProductProvider = ({ children }) => {
       }
       if (productsRes.status === "fulfilled") {
         const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
-        setProducts(list);
-        try { localStorage.setItem("products", JSON.stringify(list)); } catch {}
+        if (list.length > 0 || products.length === 0) {
+          setProducts(list);
+          tenantSet('products', currentRid, list);
+        }
       }
     } catch {}
   };
@@ -191,22 +187,17 @@ export const ProductProvider = ({ children }) => {
         return newList;
       });
 
-      // Also update localStorage to keep it fresh
+      // Also update namespaced cache to keep it fresh
       try {
-        const stored = localStorage.getItem("products");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const index = parsed.findIndex(p => p._id === updatedProduct._id);
-          if (index !== -1) {
-            parsed[index] = updatedProduct;
-            localStorage.setItem("products", JSON.stringify(parsed));
-          } else {
-            parsed.push(updatedProduct);
-            localStorage.setItem("products", JSON.stringify(parsed));
-          }
+        const stored = tenantGet('products', currentRid);
+        const parsed = Array.isArray(stored) ? stored : [];
+        const index = parsed.findIndex(p => p._id === updatedProduct._id);
+        if (index !== -1) {
+          parsed[index] = updatedProduct;
         } else {
-          localStorage.setItem("products", JSON.stringify([updatedProduct]));
+          parsed.push(updatedProduct);
         }
+        tenantSet('products', currentRid, parsed);
       } catch (err) {
         console.error("Local sync error:", err);
       }
@@ -217,11 +208,9 @@ export const ProductProvider = ({ children }) => {
       setProducts(prev => prev.filter(p => p._id !== productId));
       
       try {
-        const stored = localStorage.getItem("products");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const filtered = parsed.filter(p => p._id !== productId);
-          localStorage.setItem("products", JSON.stringify(filtered));
+        const stored = tenantGet('products', currentRid);
+        if (Array.isArray(stored)) {
+          tenantSet('products', currentRid, stored.filter(p => p._id !== productId));
         }
       } catch (err) {
         console.error("Local sync error (delete):", err);
@@ -263,11 +252,16 @@ export const ProductProvider = ({ children }) => {
   }, []);
 
   // Ordered categories with preferred order — always returns name strings
+  // Also includes categories derived from the products themselves so that
+  // products with a custom category (not yet in the categories collection)
+  // still get their own section in the menu.
   const orderedCategories = useMemo(() => {
     const preferredOrder = ["Starters", "Main Courses", "Desserts", "Beverages", "Others"];
     // Normalize to name strings regardless of whether entries are objects or strings
-    const names = categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
-    const unique = [...new Set(names)];
+    const fromDb = categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
+    // Derive any additional categories directly from the products list
+    const fromProducts = products.map(p => p.category).filter(Boolean);
+    const unique = [...new Set([...fromDb, ...fromProducts])];
     unique.sort((a, b) => {
       const ia = preferredOrder.indexOf(a);
       const ib = preferredOrder.indexOf(b);
@@ -277,18 +271,18 @@ export const ProductProvider = ({ children }) => {
       return ia - ib;
     });
     return unique;
-  }, [categories]);
+  }, [categories, products]);
 
   // Sync when localStorage changes (from other tabs/windows)
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === "products") {
+      if (e.key === tenantKey('products', currentRid)) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) setProducts(parsed);
         } catch {}
       }
-      if (e.key === "categories") {
+      if (e.key === tenantKey('categories', currentRid)) {
         try {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) setCategories(parsed);
@@ -303,12 +297,12 @@ export const ProductProvider = ({ children }) => {
   // Helper functions
   const saveProducts = (newProducts) => {
     setProducts(newProducts);
-    localStorage.setItem("products", JSON.stringify(newProducts));
+    tenantSet('products', currentRid, newProducts);
   };
 
   const saveCategories = (newCategories) => {
     setCategories(newCategories);
-    localStorage.setItem("categories", JSON.stringify(newCategories));
+    tenantSet('categories', currentRid, newCategories);
   };
 
   const addProduct = async (productData) => {
@@ -318,7 +312,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.post("/products", payload);
       const updated = [...products, data];
       setProducts(updated);
-      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
+      tenantSet('products', currentRid, updated);
       return data;
     } catch (error) {
       console.error("Error adding product:", error.response?.data || error.message || error);
@@ -334,7 +328,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.post("/categories", { name: trimmed });
       const updated = [...categories, data.name];
       setCategories(updated);
-      try { localStorage.setItem("categories", JSON.stringify(updated)); } catch {}
+      tenantSet('categories', currentRid, updated);
     } catch (error) {
       console.error("Error adding category:", error);
       // Fallback to local only if API fails
@@ -348,7 +342,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.put(`/products/${id}`, updates);
       const updated = products.map(p => p._id === id ? data : p);
       setProducts(updated);
-      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
+      tenantSet('products', currentRid, updated);
       return data;
     } catch (error) {
       console.error("Error updating product:", error);
@@ -410,7 +404,7 @@ export const ProductProvider = ({ children }) => {
       await API.delete(`/products/${id}`);
       const updated = products.filter(p => p._id !== id);
       setProducts(updated);
-      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
+      tenantSet('products', currentRid, updated);
     } catch (error) {
       console.error("Error deleting product:", error);
     }
@@ -423,7 +417,7 @@ export const ProductProvider = ({ children }) => {
       const { data } = await API.put(`/products/${id}`, { isAvailable: !product.isAvailable });
       const updated = products.map(p => p._id === id ? data : p);
       setProducts(updated);
-      try { localStorage.setItem("products", JSON.stringify(updated)); } catch {}
+      tenantSet('products', currentRid, updated);
     } catch (error) {
       console.error("Error toggling availability:", error);
     }

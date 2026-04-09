@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { io } from "socket.io-client";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { 
   Ticket, 
   ChevronLeft, 
@@ -31,13 +32,15 @@ export default function Token() {
   const [tokens, setTokens] = useState(() => {
     // Hydrate from cache immediately so board is never empty on first render
     try {
-      const cached = localStorage.getItem("cachedTokens");
+      const rid = getCurrentRestaurantId();
+      const cached = localStorage.getItem(tenantKey("cachedTokens", rid));
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
   // Start in loading state only when there is no cache (first ever visit)
   const [isFetching, setIsFetching] = useState(() => {
-    return !localStorage.getItem("cachedTokens");
+    const rid = getCurrentRestaurantId();
+    return !localStorage.getItem(tenantKey("cachedTokens", rid));
   });
   const [isResetting, setIsResetting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,8 +54,9 @@ export default function Token() {
       const fetchedTokens = data.tokens || [];
       setTokens(fetchedTokens);
       try {
-        localStorage.setItem("cachedTokens", JSON.stringify(fetchedTokens));
-        localStorage.setItem("lastTokenFetch", Date.now().toString());
+        const rid = getCurrentRestaurantId();
+        localStorage.setItem(tenantKey("cachedTokens", rid), JSON.stringify(fetchedTokens));
+        localStorage.setItem(tenantKey("lastTokenFetch", rid), Date.now().toString());
       } catch {}
     } catch (err) {
       console.error("fetchTokens error:", err);
@@ -90,7 +94,8 @@ export default function Token() {
 
   // ─── Mount: fetch + socket ────────────────────────────────────────────────
   useEffect(() => {
-    const lastFetch = localStorage.getItem("lastTokenFetch");
+    const rid = getCurrentRestaurantId();
+    const lastFetch = localStorage.getItem(tenantKey("lastTokenFetch", rid));
     const now = Date.now();
 
     // Always fetch on mount to get fresh server data
@@ -107,6 +112,12 @@ export default function Token() {
     const socket = io(SOCKET_URL, { transports: ["websocket"] });
     socketRef.current = socket;
 
+    // Join restaurant room for scoped events
+    if (rid) socket.emit('joinRoom', rid);
+    socket.on("connect", () => {
+      if (rid) socket.emit('joinRoom', rid);
+    });
+
     // New takeaway order created → add to board instantly, then sync from server
     socket.on("orderCreated", (order) => {
       if (!order.isTakeawayOrder || !order.tokenNumber) return;
@@ -114,10 +125,11 @@ export default function Token() {
         const exists = prev.some(t => t._id === order._id);
         if (exists) return prev;
         const next = [order, ...prev];
-        try { localStorage.setItem("cachedTokens", JSON.stringify(next)); } catch {}
+        try { const curRid = getCurrentRestaurantId(); localStorage.setItem(tenantKey("cachedTokens", curRid), JSON.stringify(next)); } catch {}
         return next;
       });
-      localStorage.removeItem("lastTokenFetch");
+      const resRid = getCurrentRestaurantId();
+      localStorage.removeItem(tenantKey("lastTokenFetch", resRid));
     });
 
     // Order updated (status change, close, etc.) → update in place
@@ -125,7 +137,7 @@ export default function Token() {
       if (!order.isTakeawayOrder || !order.tokenNumber) return;
       setTokens(prev => {
         const next = prev.map(t => t._id === order._id ? { ...t, ...order } : t);
-        try { localStorage.setItem("cachedTokens", JSON.stringify(next)); } catch {}
+        try { const curRid = getCurrentRestaurantId(); localStorage.setItem(tenantKey("cachedTokens", curRid), JSON.stringify(next)); } catch {}
         return next;
       });
     });
@@ -133,8 +145,9 @@ export default function Token() {
     // Admin triggered reset → instantly clear board
     socket.on("tokenReset", () => {
       setTokens([]);
-      localStorage.removeItem("cachedTokens");
-      localStorage.removeItem("lastTokenFetch");
+      const curRid = getCurrentRestaurantId();
+      localStorage.removeItem(tenantKey("cachedTokens", curRid));
+      localStorage.removeItem(tenantKey("lastTokenFetch", curRid));
       toast("Tokens were reset by admin", { icon: "🔄" });
     });
 

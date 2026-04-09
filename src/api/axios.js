@@ -39,10 +39,26 @@ API.interceptors.request.use((req) => {
     req.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Append restaurantId to every request if available (from URL or localStorage)
+  // Append restaurantId to every request.
+  // Priority: URL query param → localStorage → JWT token payload
   const urlParams = new URLSearchParams(window.location.search);
-  const restaurantId =
-    urlParams.get('restaurantId') || localStorage.getItem('restaurantId');
+  let restaurantId = (urlParams.get('restaurantId') || localStorage.getItem('restaurantId') || '').toUpperCase().trim();
+
+  if (!restaurantId) {
+    // Last resort: decode the JWT payload to extract restaurantId
+    try {
+      const tok = localStorage.getItem('token') || localStorage.getItem('hrToken');
+      if (tok) {
+        const payload = JSON.parse(atob(tok.split('.')[1]));
+        if (payload.restaurantId) {
+          restaurantId = String(payload.restaurantId).toUpperCase().trim();
+          // Persist so future requests don't need to decode again
+          localStorage.setItem('restaurantId', restaurantId);
+        }
+      }
+    } catch (_) { /* malformed token — ignore */ }
+  }
+
   if (restaurantId && !req.params?.restaurantId) {
     req.params = { ...req.params, restaurantId };
   }

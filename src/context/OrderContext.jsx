@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+﻿import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
+import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
@@ -20,16 +21,22 @@ const socket = io(SOCKET_URL, {
 const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
+  // namespaced cache helpers â€” each restaurant stores data in its own slot
+  const _rid = getCurrentRestaurantId();
+  const _tGet  = (k)    => tenantGet(k, _rid);
+  const _tSet  = (k, v) => tenantSet(k, _rid, v);
+  const _tDel  = (k)    => tenantRemove(k, _rid);
+
   const [orders, setOrders] = useState(() => {
     try {
-      const cached = localStorage.getItem("cachedOrders");
-      return cached ? JSON.parse(cached) : [];
+      const cached = _tGet('cachedOrders');
+      return Array.isArray(cached) ? cached : [];
     } catch { return []; }
   });
   const [bills, setBills] = useState(() => {
     try {
-      const cached = localStorage.getItem("cachedBills");
-      return cached ? JSON.parse(cached) : [];
+      const cached = _tGet('cachedBills');
+      return Array.isArray(cached) ? cached : [];
     } catch {
       return [];
     }
@@ -38,8 +45,8 @@ export const OrderProvider = ({ children }) => {
   // Kitchen bills - separate batches for kitchen/waiter view
   const [kitchenBills, setKitchenBills] = useState(() => {
     try {
-      const cached = localStorage.getItem("cachedKitchenBills");
-      return cached ? JSON.parse(cached) : [];
+      const cached = _tGet('cachedKitchenBills');
+      return Array.isArray(cached) ? cached : [];
     } catch {
       return [];
     }
@@ -48,11 +55,8 @@ export const OrderProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [billsReady, setBillsReady] = useState(() => {
     try {
-      const cached = localStorage.getItem("cachedBills");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return Array.isArray(parsed) && parsed.length > 0;
-      }
+      const cached = _tGet('cachedBills');
+      return Array.isArray(cached) && cached.length > 0;
     } catch {}
     return false;
   });
@@ -73,7 +77,7 @@ export const OrderProvider = ({ children }) => {
     }
 
     try {
-      // Fetch active orders only — keeps the Orders page fast
+      // Fetch active orders only â€” keeps the Orders page fast
       const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served,Paid");
       setOrders((prev) => {
         // Merge strategy: incoming data from server is the "source of truth",
@@ -100,7 +104,7 @@ export const OrderProvider = ({ children }) => {
           new Date(b.createdAt || b._optimisticAt || 0) - new Date(a.createdAt || a._optimisticAt || 0)
         );
 
-        try { localStorage.setItem("cachedOrders", JSON.stringify(final)); } catch {}
+        try { _tSet('cachedOrders', final); } catch {}
         return final;
       });
     } catch (error) {
@@ -118,7 +122,7 @@ export const OrderProvider = ({ children }) => {
       // if we have a persisted optimistic patch from before refresh, reapply it
       let optimisticPatch;
       try {
-        optimisticPatch = JSON.parse(localStorage.getItem("optimisticOrderPatch"));
+        optimisticPatch = _tGet('optimisticOrderPatch') || null;
       } catch (e) {
         optimisticPatch = null;
       }
@@ -160,13 +164,13 @@ export const OrderProvider = ({ children }) => {
           return { ...server, _optimisticAt: undefined };
         });
         patchedData.forEach((o) => { if (!prev.find((p) => p._id === o._id)) merged.push(o); });
-        try { localStorage.setItem("cachedOrders", JSON.stringify(merged)); } catch {}
+        try { _tSet('cachedOrders', merged); } catch {}
         return merged;
       });
 
       // if we successfully re-applied the patch, clear it once we have a packet
       if (optimisticPatch) {
-        localStorage.removeItem("optimisticOrderPatch");
+        _tDel('optimisticOrderPatch');
       }
     } catch (error) {
       console.error("Error fetching table orders:", error);
@@ -180,17 +184,11 @@ export const OrderProvider = ({ children }) => {
     if (_billsFetchInFlight.current) return;
     _billsFetchInFlight.current = true;
 
-    // Fast path: load from localStorage if we are in the middle of a session
-    const cachedStr = localStorage.getItem("cachedBills");
-    let cachedData = [];
-    if (cachedStr) {
-      try {
-        cachedData = JSON.parse(cachedStr);
-        if (Array.isArray(cachedData) && cachedData.length > 0) {
-          setBills(cachedData);
-          setBillsReady(true);
-        }
-      } catch (e) {}
+    // Fast path: load from namespaced cache if we are in the middle of a session
+    const cachedData = _tGet('cachedBills');
+    if (Array.isArray(cachedData) && cachedData.length > 0) {
+      setBills(cachedData);
+      setBillsReady(true);
     }
 
     try {
@@ -229,7 +227,7 @@ export const OrderProvider = ({ children }) => {
           .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
           .slice(0, 50); // Hard memory cap
           
-        try { localStorage.setItem("cachedBills", JSON.stringify(final)); } catch (_) {}
+        try { _tSet('cachedBills', final); } catch (_) {}
         return final;
       });
     } catch (error) {
@@ -243,7 +241,7 @@ export const OrderProvider = ({ children }) => {
 
   // mark a bill as paid on the server and update local cache
   const markBillPaid = async (id) => {
-    // Optimistic update — mark all COD sessions as paid so the button
+    // Optimistic update â€” mark all COD sessions as paid so the button
     // disappears immediately instead of waiting for the server round-trip.
     let prevBills;
     setBills((prev) => {
@@ -262,7 +260,7 @@ export const OrderProvider = ({ children }) => {
         };
       });
       // persist optimistic state to localStorage so a refresh keeps it
-      try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+      try { _tSet('cachedBills', next); } catch (_) {}
       return next;
     });
 
@@ -286,7 +284,7 @@ export const OrderProvider = ({ children }) => {
           _optimisticAt: Date.now() + 10000
         };
       });
-      try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch (_) {}
+      try { _tSet('cachedOrders', next); } catch (_) {}
       return next;
     });
 
@@ -295,7 +293,7 @@ export const OrderProvider = ({ children }) => {
       // Reconcile with actual server data
       setBills((prev) => {
         const next = prev.map((b) => ((b._id || b.id) === (data._id || data.id)) ? { ...data, _pendingUpdate: undefined } : b);
-        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        try { _tSet('cachedBills', next); } catch (_) {}
         return next;
       });
       return data;
@@ -303,7 +301,7 @@ export const OrderProvider = ({ children }) => {
       // Revert on failure
       if (prevBills) {
         setBills(prevBills);
-        try { localStorage.setItem("cachedBills", JSON.stringify(prevBills)); } catch (_) {}
+        try { _tSet('cachedBills', prevBills); } catch (_) {}
       }
       console.error("Error marking bill paid", err);
       throw err;
@@ -321,7 +319,7 @@ export const OrderProvider = ({ children }) => {
           ? { ...b, status: "Closed", _pendingUpdate: Date.now() } 
           : b
       );
-      try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+      try { _tSet('cachedBills', next); } catch (_) {}
       return next;
     });
 
@@ -334,7 +332,7 @@ export const OrderProvider = ({ children }) => {
             ? { ...data, _pendingUpdate: undefined } 
             : b
         );
-        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        try { _tSet('cachedBills', next); } catch (_) {}
         return next;
       });
       return data;
@@ -342,7 +340,7 @@ export const OrderProvider = ({ children }) => {
       // Revert on failure
       if (prevBills) {
         setBills(prevBills);
-        try { localStorage.setItem("cachedBills", JSON.stringify(prevBills)); } catch (_) {}
+        try { _tSet('cachedBills', prevBills); } catch (_) {}
       }
       console.error("Error closing bill", err);
       throw err;
@@ -356,9 +354,9 @@ export const OrderProvider = ({ children }) => {
 
     // Try to hydrate from cache for instant UI
     try {
-      const cached = localStorage.getItem("cachedKitchenBills");
-      if (cached) {
-        setKitchenBills(JSON.parse(cached));
+      const cached = _tGet('cachedKitchenBills');
+      if (Array.isArray(cached)) {
+        setKitchenBills(cached);
       }
     } catch (e) {
       console.warn("failed to read cached kitchen bills", e);
@@ -369,7 +367,7 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.get("/kitchen-bills?limit=500");
       setKitchenBills(data);
       try {
-        localStorage.setItem("cachedKitchenBills", JSON.stringify(data));
+        _tSet('cachedKitchenBills', data);
       } catch (e) {}
     } catch (error) {
       console.error("Error fetching kitchen bills:", error);
@@ -386,7 +384,7 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.get("/kitchen-bills/active");
       setKitchenBills(data);
       try {
-        localStorage.setItem("cachedKitchenBills", JSON.stringify(data));
+        _tSet('cachedKitchenBills', data);
       } catch (e) {}
     } catch (error) {
       console.error("Error fetching active kitchen bills:", error);
@@ -420,7 +418,7 @@ export const OrderProvider = ({ children }) => {
       const effectiveTable = orderData.table || TAKEAWAY_TABLE;
       const orderItems = orderData.orderItems || orderData.items;
 
-      // OPTIMISTIC UPDATE — immediately update local state so OrderSummary
+      // OPTIMISTIC UPDATE â€” immediately update local state so OrderSummary
       // sees the data without waiting for the server round-trip
       if (orderData.existingOrderId) {
         // Merge items into existing order optimistically
@@ -452,7 +450,7 @@ export const OrderProvider = ({ children }) => {
               mergedItems: orderItems,
               updatedAt: Date.now(),
             };
-            localStorage.setItem("optimisticOrderPatch", JSON.stringify(patch));
+            _tSet('optimisticOrderPatch', patch);
           } catch (e) {
             console.warn("Could not persist optimistic patch", e);
           }
@@ -460,7 +458,7 @@ export const OrderProvider = ({ children }) => {
           return updated;
         });
       } else {
-        // New order — append optimistic entry
+        // New order â€” append optimistic entry
         const optimisticOrder = {
           _id: orderData.id || 'optimistic-' + Date.now(),
           table: effectiveTable,
@@ -515,7 +513,7 @@ export const OrderProvider = ({ children }) => {
         }
         // Step 3: otherwise prepend the confirmed server order
         const updated = [data, ...withoutOptimistic];
-        try { localStorage.setItem("cachedOrders", JSON.stringify(updated)); } catch {}
+        try { _tSet('cachedOrders', updated); } catch {}
         return updated;
       });
 
@@ -587,15 +585,14 @@ export const OrderProvider = ({ children }) => {
         });
       });
       try {
-        const cached = localStorage.getItem("cachedBills");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          const updated = parsed.map(b => {
+        const cached = _tGet('cachedBills');
+        if (Array.isArray(cached)) {
+          const updated = cached.map(b => {
             const key = b.orderRef || b._id || b.id;
             if (key === id) return { ...b, status: "Closed" };
             return b;
           });
-          localStorage.setItem("cachedBills", JSON.stringify(updated));
+          _tSet('cachedBills', updated);
         }
       } catch (e) {}
     }
@@ -614,8 +611,8 @@ export const OrderProvider = ({ children }) => {
   const clearOrders = () => {
     setOrders([]);
     setBills([]);
-    localStorage.removeItem("orders");
-    localStorage.removeItem("cachedOrders");
+    _tDel('orders');
+    _tDel('cachedOrders');
   };
 
   useEffect(() => {
@@ -623,7 +620,7 @@ export const OrderProvider = ({ children }) => {
     socket.connect();
     console.log("OrderContext: Socket initializing...");
 
-    // Join restaurant-specific room so we only receive events for our restaurant
+    // Join restaurant-specific room for scoped events
     const rid = localStorage.getItem('restaurantId');
     if (rid) socket.emit('joinRoom', rid);
 
@@ -647,7 +644,7 @@ export const OrderProvider = ({ children }) => {
         const next = exists
           ? prev.map((o) => (o._id === order._id ? order : o))
           : [order, ...prev];
-        try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+        try { _tSet('cachedOrders', next); } catch {}
         return next;
       });
     });
@@ -660,7 +657,7 @@ export const OrderProvider = ({ children }) => {
         // so that Tables.jsx (which filters for status !== "Closed") updates immediately.
         if (order.status === "Closed") {
           const next = prev.filter((o) => o._id !== order._id);
-          try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+          try { _tSet('cachedOrders', next); } catch {}
           return next;
         }
 
@@ -672,11 +669,11 @@ export const OrderProvider = ({ children }) => {
                   order.items && o.items && order.items.length < o.items.length) {
                 return o;
               }
-              // Server caught up or has equal/more items — accept and clear flag
+              // Server caught up or has equal/more items â€” accept and clear flag
               return { ...order, _optimisticAt: undefined };
             })
           : [order, ...prev];
-        try { localStorage.setItem("cachedOrders", JSON.stringify(next)); } catch {}
+        try { _tSet('cachedOrders', next); } catch {}
         return next;
       });
     });
@@ -691,7 +688,7 @@ export const OrderProvider = ({ children }) => {
         if (exists) return prev.map((b) => ((b._id === key || b.id === key) || b.orderRef === key) ? bill : b);
         
         const next = [bill, ...prev];
-        try { localStorage.setItem("cachedBills", JSON.stringify(next.slice(0, 100))); } catch (_) {}
+        try { _tSet('cachedBills', next.slice(0, 100)); } catch (_) {}
         return next;
       });
     });
@@ -729,7 +726,7 @@ export const OrderProvider = ({ children }) => {
           next = [updatedBill, ...prev];
         }
 
-        try { localStorage.setItem("cachedBills", JSON.stringify(next.slice(0, 100))); } catch (_) {}
+        try { _tSet('cachedBills', next.slice(0, 100)); } catch (_) {}
         return next;
       });
     });
@@ -738,7 +735,7 @@ export const OrderProvider = ({ children }) => {
     socket.on("billDeleted", (billId) => {
       setBills((prev) => {
         const next = prev.filter(b => b._id !== billId && b.id !== billId);
-        try { localStorage.setItem("cachedBills", JSON.stringify(next)); } catch (_) {}
+        try { _tSet('cachedBills', next); } catch (_) {}
         return next;
       });
     });
@@ -748,9 +745,8 @@ export const OrderProvider = ({ children }) => {
       setKitchenBills((prev) => [kitchenBill, ...prev]);
       // Also update localStorage cache
       try {
-        const cached = localStorage.getItem("cachedKitchenBills");
-        const parsed = cached ? JSON.parse(cached) : [];
-        localStorage.setItem("cachedKitchenBills", JSON.stringify([kitchenBill, ...parsed]));
+        const parsed = _tGet('cachedKitchenBills');
+        _tSet('cachedKitchenBills', [kitchenBill, ...(Array.isArray(parsed) ? parsed : [])]);
       } catch (e) {}
     });
 
@@ -764,13 +760,12 @@ export const OrderProvider = ({ children }) => {
       });
       // Update localStorage cache
       try {
-        const cached = localStorage.getItem("cachedKitchenBills");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          const updated = parsed.map((kb) => 
+        const cached = _tGet('cachedKitchenBills');
+        if (Array.isArray(cached)) {
+          const updated = cached.map((kb) => 
             kb._id === updatedKitchenBill._id ? updatedKitchenBill : kb
           );
-          localStorage.setItem("cachedKitchenBills", JSON.stringify(updated));
+          _tSet('cachedKitchenBills', updated);
         }
       } catch (e) {}
     });
