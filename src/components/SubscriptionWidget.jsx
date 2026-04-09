@@ -14,14 +14,22 @@ export default function SubscriptionWidget({ subscriptionStatus, subscriptionExp
     ? Math.ceil((new Date(subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const isExpired   = subscriptionStatus === "expired";
+  // If a real plan is assigned and status is just "trial" (DB not yet updated),
+  // treat it as "active" so the widget displays correctly.
+  const effectiveStatus = (planName && subscriptionStatus === "trial")
+    ? "active"
+    : (subscriptionStatus || "trial");
+
+  const isExpired   = effectiveStatus === "expired";
   const isExpiring  = daysLeft !== null && daysLeft <= 7 && !isExpired;
-  const isTrial     = subscriptionStatus === "trial";
+  const isTrial     = effectiveStatus === "trial";
 
   const colorClass = isExpired
     ? "border-red-500/30 bg-red-500/10"
     : isExpiring
     ? "border-amber-500/30 bg-amber-500/10"
+    : effectiveStatus === "active"
+    ? "border-emerald-500/30 bg-emerald-500/5"
     : "border-slate-700 bg-slate-800/50";
 
   return (
@@ -31,13 +39,13 @@ export default function SubscriptionWidget({ subscriptionStatus, subscriptionExp
         <p className="text-xs font-semibold text-slate-300 truncate">{planName || "No Plan"}</p>
         <span
           className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-            subscriptionStatus === "active"    ? "bg-emerald-500/20 text-emerald-400" :
-            subscriptionStatus === "trial"     ? "bg-amber-500/20   text-amber-400"   :
-            subscriptionStatus === "expired"   ? "bg-red-500/20     text-red-400"     :
+            effectiveStatus === "active"    ? "bg-emerald-500/20 text-emerald-400" :
+            effectiveStatus === "trial"     ? "bg-amber-500/20   text-amber-400"   :
+            effectiveStatus === "expired"   ? "bg-red-500/20     text-red-400"     :
             "bg-slate-600/30 text-slate-400"
           }`}
         >
-          {subscriptionStatus || "trial"}
+          {effectiveStatus}
         </span>
       </div>
 

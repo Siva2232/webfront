@@ -353,7 +353,7 @@ const handleClearAllStockAlerts = () => {
               </div>
             )}
             <span className="text-xl font-black tracking-tight text-slate-800">
-              {branding.name || "My Cafe"}<span style={{ color: branding.primaryColor || "#6366f1" }}> Admin</span>
+              {branding.name || "KMC"}<span style={{ color: branding.primaryColor || "#6366f1" }}> Admin</span>
             </span>
           </div>
           <button
@@ -885,8 +885,34 @@ const handleClearAllStockAlerts = () => {
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
                       <p className="text-sm font-bold text-slate-800">{user.email || 'admin@luxehub.com'}</p>
                     </div>
+
+                    {/* Subscription Status Item */}
+                    <div 
+                      className="mx-2 mt-2 group relative cursor-pointer"
+                      onClick={() => {
+                        navigate("subscription");
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-50/50 border border-slate-100/50 transition-all duration-200 group-hover:bg-indigo-50/30 group-hover:border-indigo-100/50 overflow-hidden">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-500 group-hover:text-indigo-600 transition-colors shrink-0">
+                          <Zap size={20} fill={branding.subscriptionStatus === 'active' ? 'currentColor' : 'none'} className={branding.subscriptionStatus === 'active' ? 'animate-pulse' : ''} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Active Plan</p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm font-bold text-slate-800 truncate">
+                              {branding.subscriptionPlan?.name || "Trial Mode"}
+                            </span>
+                            <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${branding.subscriptionStatus === 'active' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-pulse'}`} />
+                          </div>
+                        </div>
+                        <ChevronRight size={14} className="text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1 shrink-0" />
+                      </div>
+                    </div>
+
                     <button
-                      className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-all duration-200 group"
+                      className="w-full flex items-center justify-between px-4 py-3.5 mt-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-all duration-200 group"
                       onClick={() => {
                         navigate("customer");
                         setIsProfileOpen(false);

@@ -90,12 +90,15 @@ export const ProductProvider = ({ children }) => {
   const fetchProducts = async () => {
     try {
       // Only show loading spinner if there's no cached data
-      if (products.length === 0) setIsLoading(true);
+      const cached = tenantGet('products', getLiveRid());
+      if (!Array.isArray(cached) || cached.length === 0) setIsLoading(true);
       
+      // Cache-bust to prevent browser from serving stale/empty responses
+      const _t = `_t=${Date.now()}`;
       const [categoriesRes, subitemsRes, productsRes] = await Promise.allSettled([
-        API.get("/categories"),
-        API.get("/sub-items"),
-        API.get("/products")
+        API.get(`/categories?${_t}`),
+        API.get(`/sub-items?${_t}`),
+        API.get(`/products?${_t}`)
       ]);
 
       if (categoriesRes.status === "fulfilled") {
@@ -113,12 +116,14 @@ export const ProductProvider = ({ children }) => {
 
       if (productsRes.status === "fulfilled") {
         const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
-        // Only overwrite if API returned products, or we had nothing cached (first load).
-        // Prevents a transient empty response from wiping an already-loaded product list.
-        if (list.length > 0 || products.length === 0) {
-          setProducts(list);
-          tenantSet('products', getLiveRid(), list);
-        }
+        // Use functional update to check CURRENT state, not stale closure
+        setProducts(prev => {
+          if (list.length > 0 || prev.length === 0) {
+            tenantSet('products', getLiveRid(), list);
+            return list;
+          }
+          return prev;
+        });
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -164,9 +169,10 @@ export const ProductProvider = ({ children }) => {
   // Force-fresh products fetch (bypasses server cache) — used after socket events
   const fetchProductsFresh = async () => {
     try {
+      const _t = `_t=${Date.now()}`;
       const [subitemsRes, productsRes] = await Promise.allSettled([
-        API.get("/sub-items"),
-        API.get(`/products?_t=${Date.now()}`),
+        API.get(`/sub-items?${_t}`),
+        API.get(`/products?${_t}`),
       ]);
       if (subitemsRes.status === "fulfilled") {
         const data = subitemsRes.value.data;
@@ -174,10 +180,14 @@ export const ProductProvider = ({ children }) => {
       }
       if (productsRes.status === "fulfilled") {
         const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
-        if (list.length > 0 || products.length === 0) {
-          setProducts(list);
-          tenantSet('products', getLiveRid(), list);
-        }
+        // Functional update — avoids stale closure for products.length check
+        setProducts(prev => {
+          if (list.length > 0 || prev.length === 0) {
+            tenantSet('products', getLiveRid(), list);
+            return list;
+          }
+          return prev;
+        });
       }
     } catch {}
   };
