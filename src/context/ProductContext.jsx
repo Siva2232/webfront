@@ -87,7 +87,11 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const _fetchProductsInFlight = useRef(false);
+
   const fetchProducts = async () => {
+    if (_fetchProductsInFlight.current) return;
+    _fetchProductsInFlight.current = true;
     try {
       // Only show loading spinner if there's no cached data
       const cached = tenantGet('products', getLiveRid());
@@ -128,6 +132,7 @@ export const ProductProvider = ({ children }) => {
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
+      _fetchProductsInFlight.current = false;
       setIsLoading(false);
     }
   };
@@ -154,6 +159,7 @@ export const ProductProvider = ({ children }) => {
         setCategories(Array.isArray(cachedCategories) ? cachedCategories : []);
         setSubitems([]);
         setIsLoading(true);
+        _fetchProductsInFlight.current = false; // allow re-fetch for new restaurant
         fetchProducts();
       }
     };

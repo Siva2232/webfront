@@ -147,13 +147,12 @@ export const UIProvider = ({ children }) => {
   }, [offers.length]);
 
   const fetchData = useCallback(async () => {
-    // Parallelize with error isolation to ensure one failure doesn't block others
-    Promise.allSettled([
-      fetchBanners(), 
-      fetchOffers(), 
-      fetchNotifications(), 
-      fetchReservations()
-    ]);
+    // Always fetch public data (banners/offers) — needed for customer panel
+    // Only fetch admin-only data (notifications/reservations) when authenticated
+    const isAdmin = !!localStorage.getItem("token");
+    const tasks = [fetchBanners(), fetchOffers()];
+    if (isAdmin) tasks.push(fetchNotifications(), fetchReservations());
+    Promise.allSettled(tasks);
   }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations]);
 
   useEffect(() => {
@@ -196,11 +195,16 @@ export const UIProvider = ({ children }) => {
 
     socket.on("connect", () => {
       // Join the restaurant room for tenant-scoped events
+      // Pass the auth token so the server can send staff-only snapshots
       const rid = getCurrentRestaurantId();
-      if (rid) socket.emit("joinRoom", rid);
+      if (rid) {
+        const token = localStorage.getItem('token') || undefined;
+        socket.emit("joinRoom", { restaurantId: rid, token });
+      }
     });
 
     socket.on("newNotification", (notif) => {
+      if (!localStorage.getItem("token")) return;
       fetchNotifications();
       // Handle different types for specific UI sounds/events
       if (notif && notif.type === "BillRequested") {
@@ -214,15 +218,15 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("notificationUpdated", () => {
-      fetchNotifications();
+      if (localStorage.getItem("token")) fetchNotifications();
     });
 
     socket.on("newReservation", () => {
-      fetchReservations();
+      if (localStorage.getItem("token")) fetchReservations();
     });
 
     socket.on("reservationUpdated", () => {
-      fetchReservations();
+      if (localStorage.getItem("token")) fetchReservations();
     });
 
     // HR & Accounting Real-time Sync
@@ -255,10 +259,12 @@ export const UIProvider = ({ children }) => {
       // optional: console.debug("Socket disconnected");
     });
 
-    // Polling fallback
+    // Polling fallback — admin-only endpoints only polled when authenticated
     const pollInterval = setInterval(() => {
-      fetchNotifications();
-      fetchReservations();
+      if (localStorage.getItem("token")) {
+        fetchNotifications();
+        fetchReservations();
+      }
     }, 15000); // Poll every 15 seconds
 
     return () => {

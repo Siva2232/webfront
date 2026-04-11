@@ -68,7 +68,8 @@ export default function Login() {
       // keep serving cached data from the previous restaurant.
       const prevRid = getCurrentRestaurantId();
       const newRid  = (data.restaurantId || '').toUpperCase().trim();
-      const isRestaurantSwitch = prevRid && newRid && prevRid !== newRid;
+      // Hard reload whenever restaurant changes OR on any fresh login (prevRid empty = after logout)
+      const isRestaurantSwitch = newRid && prevRid !== newRid;
 
       // persist token and user info
       localStorage.setItem("token", data.token);

@@ -35,7 +35,9 @@ export default function HRLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/hr/login');
+    localStorage.removeItem("restaurantId");
+    // Hard reload so all context state and socket rooms are fully reset
+    window.location.href = '/hr/login';
   };
 
   return (

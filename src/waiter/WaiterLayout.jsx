@@ -98,8 +98,9 @@ export default function WaiterLayout() {
               localStorage.removeItem("token");
               localStorage.removeItem("userInfo");
               localStorage.removeItem("isWaiterLoggedIn");
-              toast.success("Logged out successfully");
-              navigate("/login?waiterLogout=true", { replace: true });
+              localStorage.removeItem("restaurantId");
+              // Hard reload so all context state and socket rooms are fully reset
+              window.location.href = "/login?waiterLogout=true";
             }}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg"
           >

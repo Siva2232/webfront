@@ -42,7 +42,8 @@ export default function SuperAdminLayout() {
   const handleLogout = () => {
     logout();
     toast.success("Logged out");
-    navigate("/superadmin/login");
+    // Hard reload ensures all context state resets cleanly
+    window.location.href = '/superadmin/login';
   };
 
   return (

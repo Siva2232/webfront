@@ -185,10 +185,9 @@ export default function AdminLayout() {
             onClick={() => {
               toast.dismiss(logoutToastId);              localStorage.removeItem("token");
               localStorage.removeItem("userInfo");              localStorage.removeItem("isAdminLoggedIn");
-              toast.success("Logged out successfully");
-              // flag the logout so the shared login page won't auto-switch
-              // to the kitchen if that session is still active
-              navigate("/login?adminLogout=true", { replace: true });
+              localStorage.removeItem("restaurantId");
+              // Hard reload so all context state and socket rooms are fully reset
+              window.location.href = "/login?adminLogout=true";
             }}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg"
           >Yes</button>

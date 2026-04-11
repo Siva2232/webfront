@@ -624,14 +624,20 @@ export const OrderProvider = ({ children }) => {
     console.log("OrderContext: Socket initializing...");
 
     // Join restaurant-specific room for scoped events
-    const rid = localStorage.getItem('restaurantId');
-    if (rid) socket.emit('joinRoom', rid);
+    // Staff panels pass their JWT so the server will send the ordersSnapshot;
+    // customer guests (no token) join but receive no sensitive snapshot.
+    const _emitJoinRoom = () => {
+      const rid = localStorage.getItem('restaurantId');
+      if (!rid) return;
+      const token = localStorage.getItem('token') || undefined;
+      socket.emit('joinRoom', { restaurantId: rid, token });
+    };
+    _emitJoinRoom();
 
     // Re-fetch bills when socket reconnects (covers missed events during disconnect)
     socket.on("connect", () => {
       console.log("OrderContext: Socket connected successfully");
-      const r = localStorage.getItem('restaurantId');
-      if (r) socket.emit('joinRoom', r);
+      _emitJoinRoom();
       const t = localStorage.getItem("token");
       if (t) fetchBills();
     });
@@ -773,24 +779,12 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     });
 
-    // if the server sends full snapshot on (re)connect, merge instead of replace
-    // so we don't lose richer data already received via orderCreated/orderUpdated
+    // Replace orders with authoritative server snapshot — prevents stale cross-tenant data
+    // from a previous restaurant session persisting into a new restaurant's view
     socket.on("ordersSnapshot", (list) => {
       if (!Array.isArray(list)) return;
-      setOrders((prev) => {
-        // build lookup of existing (richer) orders
-        const existing = new Map(prev.map((o) => [o._id, o]));
-        // merge: keep existing entry if we already have it (it has full fields),
-        // otherwise take the snapshot entry
-        const merged = list.map((o) => existing.get(o._id) || o);
-        // also keep any orders in prev that aren't in the snapshot
-        // (e.g. an order just created but not yet in the snapshot query)
-        const snapshotIds = new Set(list.map((o) => o._id));
-        prev.forEach((o) => {
-          if (!snapshotIds.has(o._id)) merged.push(o);
-        });
-        return merged;
-      });
+      setOrders(list);
+      try { _tSet('cachedOrders', list); } catch {}
     });
 
     return () => {
@@ -840,7 +834,22 @@ export const OrderProvider = ({ children }) => {
       fetchBills();
     };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+
+    // Re-join the correct socket room whenever the restaurant changes
+    // (handles the case where a tenant switch happens without a full page reload)
+    const onStorage = (e) => {
+      if (e.key !== 'restaurantId') return;
+      const newRid = (e.newValue || '').toUpperCase().trim();
+      if (!newRid) return;
+      const token = localStorage.getItem('token') || undefined;
+      socket.emit('joinRoom', { restaurantId: newRid, token });
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   return (

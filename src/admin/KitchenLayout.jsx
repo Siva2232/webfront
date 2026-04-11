@@ -48,10 +48,9 @@ export default function KitchenLayout() {
             onClick={() => {
               toast.dismiss(logoutToastId);              localStorage.removeItem("token");
               localStorage.removeItem("userInfo");              localStorage.removeItem("isKitchenLoggedIn");
-              toast.success("Logged out successfully");
-              // include a query flag so the shared login page will
-              // avoid immediately bouncing back to the admin panel
-              navigate("/login?kitchenLogout=true", { replace: true });
+              localStorage.removeItem("restaurantId");
+              // Hard reload so all context state and socket rooms are fully reset
+              window.location.href = "/login?kitchenLogout=true";
             }}
             className="px-4 py-2 bg-rose-500 text-white rounded-lg"
           >
