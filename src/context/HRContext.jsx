@@ -24,6 +24,9 @@ export const HRProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const { data } = await hrLogin({ email, password });
     localStorage.setItem('hrToken', data.token);
+    if (data.restaurantId) {
+      localStorage.setItem('restaurantId', data.restaurantId.toUpperCase().trim());
+    }
     setHRToken(data.token);
     setHRStaff(data);
     return data;

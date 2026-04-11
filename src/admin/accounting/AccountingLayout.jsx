@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   FileText,
   ChevronRight,
 } from "lucide-react";
+import { seedChartOfAccounts } from "../../api/accApi";
 
 const navItems = [
   { label: "Dashboard", path: "/admin/accounting/dashboard", icon: LayoutDashboard },
@@ -26,6 +28,11 @@ const navItems = [
 ];
 
 export default function AccountingLayout() {
+  // Auto-seed Chart of Accounts on first access (safe to call repeatedly — backend is idempotent)
+  useEffect(() => {
+    seedChartOfAccounts().catch(() => {/* silent — admin can seed manually from Accounts page */});
+  }, []);
+
   return (
     <div className="min-h-screen bg-transparent">
       {/* Content only, as sidebar is already in AdminLayout */}
