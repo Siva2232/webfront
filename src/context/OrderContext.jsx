@@ -624,20 +624,14 @@ export const OrderProvider = ({ children }) => {
     console.log("OrderContext: Socket initializing...");
 
     // Join restaurant-specific room for scoped events
-    // Staff panels pass their JWT so the server will send the ordersSnapshot;
-    // customer guests (no token) join but receive no sensitive snapshot.
-    const _emitJoinRoom = () => {
-      const rid = localStorage.getItem('restaurantId');
-      if (!rid) return;
-      const token = localStorage.getItem('token') || undefined;
-      socket.emit('joinRoom', { restaurantId: rid, token });
-    };
-    _emitJoinRoom();
+    const rid = localStorage.getItem('restaurantId');
+    if (rid) socket.emit('joinRoom', { restaurantId: rid, token: localStorage.getItem('token') || undefined });
 
     // Re-fetch bills when socket reconnects (covers missed events during disconnect)
     socket.on("connect", () => {
       console.log("OrderContext: Socket connected successfully");
-      _emitJoinRoom();
+      const r = localStorage.getItem('restaurantId');
+      if (r) socket.emit('joinRoom', { restaurantId: r, token: localStorage.getItem('token') || undefined });
       const t = localStorage.getItem("token");
       if (t) fetchBills();
     });
@@ -834,22 +828,7 @@ export const OrderProvider = ({ children }) => {
       fetchBills();
     };
     window.addEventListener("focus", onFocus);
-
-    // Re-join the correct socket room whenever the restaurant changes
-    // (handles the case where a tenant switch happens without a full page reload)
-    const onStorage = (e) => {
-      if (e.key !== 'restaurantId') return;
-      const newRid = (e.newValue || '').toUpperCase().trim();
-      if (!newRid) return;
-      const token = localStorage.getItem('token') || undefined;
-      socket.emit('joinRoom', { restaurantId: newRid, token });
-    };
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   return (

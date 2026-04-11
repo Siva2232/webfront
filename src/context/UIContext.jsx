@@ -195,12 +195,8 @@ export const UIProvider = ({ children }) => {
 
     socket.on("connect", () => {
       // Join the restaurant room for tenant-scoped events
-      // Pass the auth token so the server can send staff-only snapshots
       const rid = getCurrentRestaurantId();
-      if (rid) {
-        const token = localStorage.getItem('token') || undefined;
-        socket.emit("joinRoom", { restaurantId: rid, token });
-      }
+      if (rid) socket.emit("joinRoom", { restaurantId: rid, token: localStorage.getItem('token') || undefined });
     });
 
     socket.on("newNotification", (notif) => {

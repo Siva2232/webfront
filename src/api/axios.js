@@ -59,8 +59,12 @@ API.interceptors.request.use((req) => {
     } catch (_) { /* malformed token — ignore */ }
   }
 
-  if (restaurantId && !req.params?.restaurantId) {
-    req.params = { ...req.params, restaurantId };
+  if (restaurantId) {
+    // Send as both query param AND header for redundancy
+    if (!req.params?.restaurantId) {
+      req.params = { ...req.params, restaurantId };
+    }
+    req.headers['X-Restaurant-Id'] = restaurantId;
   }
 
   return req;

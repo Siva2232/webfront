@@ -205,11 +205,11 @@ export const ProductProvider = ({ children }) => {
     // Join restaurant-specific room so we only receive events for our restaurant
     const rid = localStorage.getItem('restaurantId');
     if (rid) {
-      socket.emit('joinRoom', rid);
+      socket.emit('joinRoom', { restaurantId: rid, token: localStorage.getItem('token') || undefined });
     }
     socket.on('connect', () => {
       const r = localStorage.getItem('restaurantId');
-      if (r) socket.emit('joinRoom', r);
+      if (r) socket.emit('joinRoom', { restaurantId: r, token: localStorage.getItem('token') || undefined });
     });
 
     socket.on("subItemsUpdated", () => {

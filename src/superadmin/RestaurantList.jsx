@@ -93,8 +93,20 @@ const ColorRow = ({ label, name, value, onChange }) => (
   </div>
 );
 
+// ── Compute next RESTO number from existing restaurant list ─────────────────
+const getNextRestoNumber = (restaurants = []) => {
+  const nums = restaurants
+    .map((r) => {
+      const m = r.restaurantId?.match(/^RESTO(\d+)$/i);
+      return m ? parseInt(m[1], 10) : 0;
+    })
+    .filter(Boolean);
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+  return String(next).padStart(3, "0");
+};
+
 // ── Create / Edit Drawer ─────────────────────────────────────────────────────
-const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved }) => {
+const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaurants = [] }) => {
   const [form, setForm] = useState(BLANK_FORM);
   const [logoPreview, setLogoPreview] = useState("");
   const [saving, setSaving] = useState(false);
@@ -106,19 +118,23 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved }) => {
 
   useEffect(() => {
     if (open) {
-      setForm(initial
-        ? {
-            ...BLANK_FORM,
-            ...initial,
-            subscriptionPlan: initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
-            logoBase64: "",
-          }
-        : BLANK_FORM);
-      setLogoPreview(initial?.logo || "");
+      if (initial) {
+        setForm({
+          ...BLANK_FORM,
+          ...initial,
+          subscriptionPlan: initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
+          logoBase64: "",
+        });
+        setLogoPreview(initial?.logo || "");
+      } else {
+        const nextNum = getNextRestoNumber(restaurants);
+        setForm({ ...BLANK_FORM, restaurantId: `RESTO${nextNum}` });
+        setLogoPreview("");
+      }
       setPreview(false);
       setActiveTab("general");
     }
-  }, [open, initial]);
+  }, [open, initial, restaurants]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setColor = (k, v) => { set(k, v); if (preview) previewBranding({ [k]: v }); };
@@ -278,9 +294,23 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved }) => {
                     {!isEdit && (
                       <div className="col-span-2 group">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">System Identifier</label>
-                        <input value={form.restaurantId} onChange={(e) => set("restaurantId", e.target.value.toUpperCase())}
-                          placeholder="RESTO-X"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all placeholder:text-slate-700 font-mono" />
+                        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-pink-500/50 transition-all">
+                          <span className="px-5 py-4 text-sm font-black text-pink-400 font-mono bg-slate-950/60 border-r border-slate-800 select-none whitespace-nowrap">RESTO</span>
+                          <input
+                            value={form.restaurantId.replace(/^RESTO/i, "")}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, "");
+                              set("restaurantId", `RESTO${raw}`);
+                            }}
+                            placeholder="001"
+                            maxLength={6}
+                            className="flex-1 bg-transparent px-4 py-4 text-sm text-white focus:outline-none font-mono tracking-widest"
+                          />
+                          <span className="px-4 py-4 text-[10px] text-slate-500 font-black uppercase tracking-widest whitespace-nowrap">
+                            Auto
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 font-bold mt-2 ml-1">PREFIX IS FIXED · ONLY DIGITS ARE EDITABLE</p>
                       </div>
                     )}
                     <div className="col-span-2">
@@ -659,6 +689,7 @@ export default function RestaurantList() {
         initial={editing}
         plans={plans}
         onSaved={load}
+        restaurants={restaurants}
       />
 
       {/* Quick Status Modal */}

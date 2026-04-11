@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }) => {
     tenantRemove("cachedKitchenBills", rid);
     tenantRemove("cachedTokens", rid);
     sessionStorage.removeItem("restaurantBranding");
+    if (rid) sessionStorage.removeItem(`restaurantBranding_${rid}`);
   }, []);
 
   const isSuperAdmin = user?.role === "superadmin";

@@ -59,8 +59,8 @@ export const ThemeProvider = ({ children }) => {
       const merged = { ...DEFAULT_THEME, ...data };
       setBranding(merged);
       applyThemeToDom(merged);
-      // Persist to session storage so reloads are instant
-      sessionStorage.setItem("restaurantBranding", JSON.stringify(merged));
+      // Persist to session storage so reloads are instant (namespaced by restaurant)
+      sessionStorage.setItem(`restaurantBranding_${restaurantId}`, JSON.stringify(merged));
     } catch (err) {
       console.warn("[ThemeContext] Could not load branding:", err.message);
     } finally {
@@ -87,7 +87,9 @@ export const ThemeProvider = ({ children }) => {
 
   // On mount: restore from sessionStorage for instant paint
   useEffect(() => {
-    const cached = sessionStorage.getItem("restaurantBranding");
+    const restaurantId = localStorage.getItem("restaurantId");
+    const cacheKey = restaurantId ? `restaurantBranding_${restaurantId}` : "restaurantBranding";
+    const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -100,7 +102,6 @@ export const ThemeProvider = ({ children }) => {
     }
 
     // Also load fresh from backend if restaurantId is known
-    const restaurantId = localStorage.getItem("restaurantId");
     if (restaurantId) loadBranding(restaurantId);
   }, [loadBranding]);
 
