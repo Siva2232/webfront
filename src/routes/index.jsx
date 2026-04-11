@@ -25,7 +25,8 @@ import SuperAdminLayout   from "../superadmin/SuperAdminLayout";
 import SuperAdminDashboard from "../superadmin/SuperAdminDashboard";
 import RestaurantList     from "../superadmin/RestaurantList";
 import PlanManager        from "../superadmin/PlanManager";
-import SuperAdminAnalytics from "../superadmin/SuperAdminAnalytics";
+import SuperAdminAnalytics      from "../superadmin/SuperAdminAnalytics";
+import SuperAdminNotifications  from "../superadmin/SuperAdminNotifications";
 
 /* Admin Subscription Page */
 import SubscriptionPage from "../admin/SubscriptionPage";
@@ -225,8 +226,9 @@ export default function AppRoutes() {
         <Route path="dashboard"   element={<SuperAdminDashboard />} />
         <Route path="restaurants" element={<RestaurantList />} />
         <Route path="plans"       element={<PlanManager />} />
-        <Route path="analytics"   element={<SuperAdminAnalytics />} />
-        <Route path="*"           element={<Navigate to="dashboard" replace />} />
+        <Route path="analytics"       element={<SuperAdminAnalytics />} />
+        <Route path="notifications"   element={<SuperAdminNotifications />} />
+        <Route path="*"               element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>
   );

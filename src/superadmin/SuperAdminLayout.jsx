@@ -8,18 +8,21 @@ import {
   Bell, User, CreditCard as CardIcon
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { getSANotifications, markAllSANotificationsRead } from "../api/restaurantApi";
 
 const nav = [
-  { label: "Dashboard",    icon: LayoutDashboard, to: "/superadmin/dashboard" },
-  { label: "Restaurants",  icon: Building2,       to: "/superadmin/restaurants" },
-  { label: "Plans",        icon: CreditCard,      to: "/superadmin/plans" },
-  { label: "Analytics",   icon: BarChart3,       to: "/superadmin/analytics" },
+  { label: "Dashboard",     icon: LayoutDashboard, to: "/superadmin/dashboard" },
+  { label: "Restaurants",   icon: Building2,       to: "/superadmin/restaurants" },
+  { label: "Plans",         icon: CreditCard,      to: "/superadmin/plans" },
+  { label: "Analytics",     icon: BarChart3,       to: "/superadmin/analytics" },
+  { label: "Notifications", icon: Bell,            to: "/superadmin/notifications" },
 ];
 
 export default function SuperAdminLayout() {
   const { user, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -27,6 +30,19 @@ export default function SuperAdminLayout() {
       navigate("/superadmin/login");
     }
   }, [user, isSuperAdmin, navigate]);
+
+  // Fetch unread notification count and poll every 30s
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const { data } = await getSANotifications();
+        setUnreadCount(data.unreadCount || 0);
+      } catch { /* silent */ }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -79,8 +95,13 @@ export default function SuperAdminLayout() {
               {({ isActive }) => (
                 <>
                   <item.icon className={`w-4 h-4 shrink-0 ${isActive ? "text-pink-500" : "text-slate-500 group-hover:text-pink-400"} transition-colors`} />
-                  <span className="truncate">{item.label}</span>
-                  {isActive && (
+                  <span className="truncate flex-1">{item.label}</span>
+                  {item.to === "/superadmin/notifications" && unreadCount > 0 && (
+                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-pink-600 text-white min-w-[1.1rem] text-center">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                  {isActive && item.to !== "/superadmin/notifications" && (
                     <motion.div 
                       layoutId="activeNav"
                       className="ml-auto w-1.5 h-1.5 rounded-full bg-pink-500 shadow-[0_0_10px_#ec4899]"
@@ -116,9 +137,16 @@ export default function SuperAdminLayout() {
           <div className="flex items-center gap-6">
             {/* Quick Actions */}
             <div className="hidden sm:flex items-center gap-3 pr-6 border-r border-slate-800/50">
-               <button className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all relative">
+               <button 
+                 onClick={() => navigate("/superadmin/notifications")}
+                 className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all relative"
+               >
                  <Bell size={20} />
-                 <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-pink-500 rounded-full border-2 border-[#020617]" />
+                 {unreadCount > 0 && (
+                   <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-pink-500 rounded-full text-white text-[8px] font-black flex items-center justify-center border-2 border-[#020617] shadow-[0_0_8px_#ec4899]">
+                     {unreadCount > 9 ? "9+" : unreadCount}
+                   </span>
+                 )}
                </button>
                <button className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all">
                  <Settings size={20} />

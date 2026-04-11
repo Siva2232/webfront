@@ -26,3 +26,16 @@ export const deletePlan = (id)       => API.delete(`/plans/${id}`);
 export const superAdminLogin    = (data) => API.post("/superadmin/login", data);
 export const superAdminRegister = (data) => API.post("/superadmin/register", data);
 export const getSuperAdminMe    = ()     => API.get("/superadmin/me");
+
+// ── Payments ───────────────────────────────────────────────────────────────
+export const createPaymentIntent = (data) => API.post("/payments/create-payment-intent", data);
+export const verifyPayment = (paymentIntentId) => API.get(`/payments/verify-payment/${paymentIntentId}`);
+export const getPaymentConfig = () => API.get("/payments/config");
+export const recordSubscriptionPayment = (id, data) => API.post(`/restaurants/${id}/subscription-payment`, data);
+
+// ── Super Admin Notifications ──────────────────────────────────────────────
+export const getSANotifications = () => API.get("/sa-notifications");
+export const markSANotificationRead = (id) => API.patch(`/sa-notifications/${id}/read`);
+export const markAllSANotificationsRead = () => API.patch("/sa-notifications/read-all");
+export const deleteSANotification = (id) => API.delete(`/sa-notifications/${id}`);
+

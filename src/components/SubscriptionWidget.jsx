@@ -10,33 +10,32 @@ export default function SubscriptionWidget({ subscriptionStatus, subscriptionExp
   const { branding } = useTheme();
   const navigate = useNavigate();
 
-  const daysLeft = subscriptionExpiry
-    ? Math.ceil((new Date(subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24))
+  // planName may be a string (legacy) or a populated plan object
+  const resolvedPlanName = (typeof planName === "object" && planName !== null)
+    ? planName.name
+    : (planName || null);
+
+  const resolvedStatus = subscriptionStatus || branding.subscriptionStatus || "trial";
+  const resolvedExpiry = subscriptionExpiry || branding.subscriptionExpiry || null;
+  const resolvedPlan   = resolvedPlanName   || (typeof branding.subscriptionPlan === "object" ? branding.subscriptionPlan?.name : null);
+
+  const daysLeft = resolvedExpiry
+    ? Math.ceil((new Date(resolvedExpiry) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
-  // If a real plan is assigned and status is just "trial" (DB not yet updated),
-  // treat it as "active" so the widget displays correctly.
-  const effectiveStatus = (planName && subscriptionStatus === "trial")
-    ? "active"
-    : (subscriptionStatus || "trial");
+  const effectiveStatus = resolvedStatus;
 
   const isExpired   = effectiveStatus === "expired";
   const isExpiring  = daysLeft !== null && daysLeft <= 7 && !isExpired;
   const isTrial     = effectiveStatus === "trial";
 
   const colorClass = isExpired
-    ? "border-red-500/30 bg-red-500/10"
-    : isExpiring
-    ? "border-amber-500/30 bg-amber-500/10"
-    : effectiveStatus === "active"
-    ? "border-emerald-500/30 bg-emerald-500/5"
-    : "border-slate-700 bg-slate-800/50";
 
   return (
     <div className={`mx-3 mb-3 p-3 rounded-xl border ${colorClass}`}>
       <div className="flex items-center gap-2 mb-2">
-        <CreditCard className="w-4 h-4 text-slate-400" />
-        <p className="text-xs font-semibold text-slate-300 truncate">{planName || "No Plan"}</p>
+        <CreditCard className="w-4 h-4 text-black-400" />
+        <p className="text-xs font-semibold  truncate">{resolvedPlan || "No Plan"}</p>
         <span
           className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
             effectiveStatus === "active"    ? "bg-emerald-500/20 text-emerald-400" :
@@ -50,7 +49,7 @@ export default function SubscriptionWidget({ subscriptionStatus, subscriptionExp
       </div>
 
       {daysLeft !== null && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+        <div className="flex items-center gap-1.5 text-xs text-black-400 mb-2">
           {(isExpired || isExpiring) && <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
           <span>
             {isExpired
