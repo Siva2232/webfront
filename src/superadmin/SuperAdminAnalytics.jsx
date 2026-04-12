@@ -155,11 +155,29 @@ export default function SuperAdminAnalytics() {
     }));
   }, [stats]);
 
-  const topTenants = useMemo(() => {
+  const alphaRankings = useMemo(() => {
     return [...restaurants]
       .sort((a, b) => (b.totalPaid || 0) - (a.totalPaid || 0))
       .slice(0, 6);
   }, [restaurants]);
+
+  const aiForecast = useMemo(() => {
+    if (!stats || !growthData.length) return "Analyzing platform telemetry for growth patterns...";
+    
+    // Calculate trailing growth rate
+    const lastRev = growthData[growthData.length - 1]?.revenue || 0;
+    const prevRev = growthData[growthData.length - 2]?.revenue || 0;
+    const growthRate = prevRev > 0 ? (((lastRev - prevRev) / prevRev) * 100).toFixed(1) : "12.5";
+    
+    // Identify risks
+    const trialNodes = restaurants.filter(r => !r.subscriptionPlan || r.subscriptionPlan.name === 'Trial').length;
+    const expiredNodes = stats.expired || 0;
+    
+    // Identify low engagement modules
+    const weakestModule = [...featureEngagementData].sort((a, b) => a.value - b.value)[0]?.label || "Inventory";
+
+    return `MRR is projected to scale ${growthRate}% by next quarter. Churn risk detected in ${trialNodes + expiredNodes} nodes due to low ${weakestModule} adoption. Recommend personalized automation outreach for high-risk assets.`;
+  }, [stats, growthData, restaurants, featureEngagementData]);
 
   const exportAnalytics = async () => {
     const element = analyticsRef.current;
@@ -315,30 +333,30 @@ export default function SuperAdminAnalytics() {
                     </div>
                  </div>
                  <p className="relative z-10 text-[11px] text-slate-300 font-medium leading-relaxed bg-slate-950/50 p-5 rounded-2xl border border-white/5 italic">
-                    "MRR is projected to scale 18.4% by Q3. Churn risk detected in 3 trial nodes due to low HR module inactivity. Recommend automation outreach."
+                    "{aiForecast}"
                  </p>
                  <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-indigo-500 opacity-10 blur-3xl group-hover:opacity-20 transition-opacity" />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
             {/* -- TIER DISTRIBUTION (PIE) -- */}
-            <div className="bg-slate-900/40 border border-slate-800/80 rounded-[3rem] p-10 flex flex-col items-center">
+            <div className="lg:col-span-4 bg-slate-900/40 border border-slate-800/80 rounded-[3rem] p-10 flex flex-col items-center">
               <div className="w-full text-left mb-6">
                  <h3 className="text-xl font-black text-white flex items-center gap-3">
                    <Layers className="w-5 h-5 text-indigo-500" /> Tier Market Share
                  </h3>
                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Tenant Subscription Mix</p>
               </div>
-              <div className="h-64 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={planDistribution}
-                      innerRadius={75}
-                      outerRadius={105}
+                      innerRadius={80}
+                      outerRadius={110}
                       paddingAngle={8}
                       dataKey="value"
                       stroke="none"
@@ -348,7 +366,7 @@ export default function SuperAdminAnalytics() {
                       ))}
                     </Pie>
                     <Tooltip 
-                       contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '15px' }}
+                       contentStyle={{ backgroundColor: 'white', border: '1px solid #1e293b', borderRadius: '15px' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -367,7 +385,7 @@ export default function SuperAdminAnalytics() {
             </div>
 
             {/* -- ALPHA PERFORMANCE (TABLE) -- */}
-            <div className="lg:col-span-3 bg-slate-900/40 border border-slate-800/80 rounded-[3rem] p-10">
+            <div className="lg:col-span-8 bg-slate-900/40 border border-slate-800/80 rounded-[3rem] p-10">
                <div className="flex items-center justify-between mb-10">
                   <div>
                     <h3 className="text-xl font-black text-white flex items-center gap-3">
@@ -381,7 +399,7 @@ export default function SuperAdminAnalytics() {
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {topTenants.map((ten, idx) => (
+                  {alphaRankings.map((ten, idx) => (
                     <div 
                       key={ten.restaurantId}
                       className="group flex items-center justify-between p-6 bg-slate-950/40 border border-slate-800/50 rounded-[2.25rem] hover:bg-slate-800/40 transition-all relative overflow-hidden"

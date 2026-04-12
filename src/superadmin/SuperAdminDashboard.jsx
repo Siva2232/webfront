@@ -388,7 +388,7 @@ export default function SuperAdminDashboard() {
                       ))}
                     </Pie>
                     <Tooltip 
-                       contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '15px' }}
+                       contentStyle={{ backgroundColor: 'white', border: '1px solid #1e293b', borderRadius: '15px' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>

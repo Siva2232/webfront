@@ -22,6 +22,8 @@ const DEFAULT_THEME = {
     onlineOrders: false,
     kitchenPanel: true,
     waiterPanel:  true,
+    waiterCall:   true,
+    billRequest:  true,
   },
 };
 

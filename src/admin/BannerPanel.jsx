@@ -69,17 +69,20 @@ export default function BannerPanel() {
 
   const handleSave = async () => {
     try {
+      const payload = { ...formData };
+      
       if (editingSlide && editingSlide._id) {
-        await API.put(`/banners/${editingSlide._id}`, formData);
+        await API.put(`/banners/${editingSlide._id}`, payload);
       } else {
-        await API.post("/banners", formData);
+        await API.post("/banners", payload);
       }
       setIsModalOpen(false);
       fetchBanners();
       window.dispatchEvent(new Event("bannersUpdated"));
     } catch (error) {
       console.error("Error saving banner:", error);
-      alert("Failed to save banner");
+      const msg = error.response?.data?.message || "Failed to save banner";
+      alert(msg);
     }
   };
 

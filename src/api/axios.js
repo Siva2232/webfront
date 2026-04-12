@@ -60,8 +60,9 @@ API.interceptors.request.use((req) => {
   }
 
   if (restaurantId) {
-    // Send as both query param AND header for redundancy
-    if (!req.params?.restaurantId) {
+    // Check if restaurantId is already in query params to avoid duplication
+    const url = new URL(req.url, window.location.origin);
+    if (!url.searchParams.has('restaurantId')) {
       req.params = { ...req.params, restaurantId };
     }
     req.headers['X-Restaurant-Id'] = restaurantId;

@@ -68,6 +68,8 @@ const FEATURE_KEYS = [
   { key: "onlineOrders", label: "Online Orders" },
   { key: "kitchenPanel", label: "Kitchen Panel" },
   { key: "waiterPanel",  label: "Waiter Panel" },
+  { key: "waiterCall",   label: "Waiter Call Service" },
+  { key: "billRequest",  label: "Digital Bill Request" },
 ];
 
 const BLANK_FORM = {
@@ -75,7 +77,7 @@ const BLANK_FORM = {
   primaryColor: "#f72585", secondaryColor: "#0f172a", accentColor: "#7209b7",
   sidebarBgColor: "#ffffff", sidebarTextColor: "#1e293b",
   theme: "light", fontFamily: "Inter",
-  features: { hr: true, accounting: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true },
+  features: { hr: true, accounting: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
   subscriptionPlan: "", // Selected plan ID
   subscriptionStatus: "trial",
   logoBase64: "",

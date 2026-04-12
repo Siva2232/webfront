@@ -21,8 +21,11 @@ export default function Navbar({ title }) {
   const [successMessage, setSuccessMessage] = useState({ title: "", sub: "" });
   const [isNoOffersModalOpen, setIsNoOffersModalOpen] = useState(false);
 
-  const { offers } = useUI();
+  const { offers, banners: activeSlides } = useUI();
+  const { branding } = useTheme();
   const { orders } = useOrders();
+
+  const features = branding?.features || {};
 
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");
@@ -189,7 +192,7 @@ export default function Navbar({ title }) {
 
             <div className="flex items-center gap-5">
               {/* Request Bill Button - Desktop */}
-              {currentTable && mode !== "takeaway" && (
+              {currentTable && mode !== "takeaway" && features.billRequest !== false && (
                 <button
                   onClick={handleRequestBill}
                   disabled={isRequestingBill || !canRequestBill}
@@ -207,7 +210,7 @@ export default function Navbar({ title }) {
               )}
 
               {/* Call Waiter Button - Desktop */}
-              {currentTable && mode !== "takeaway" && (
+              {currentTable && mode !== "takeaway" && features.waiterCall !== false && (
                 <button
                   onClick={handleCallWaiter}
                   disabled={isCallingWaiter || waiterCooldown > 0}
@@ -281,7 +284,7 @@ export default function Navbar({ title }) {
 
         <div className="flex items-center gap-4">
           {/* Bill Request - Mobile */}
-          {currentTable && mode !== "takeaway" && (
+          {currentTable && mode !== "takeaway" && features.billRequest !== false && (
             <div className="relative mr-1">
               <button
                 onClick={handleRequestBill}
@@ -301,7 +304,7 @@ export default function Navbar({ title }) {
           )}
 
           {/* Call Waiter Button - Mobile */}
-          {currentTable && mode !== "takeaway" && (
+          {currentTable && mode !== "takeaway" && features.waiterCall !== false && (
             <div className="relative">
               <button
                 onClick={handleCallWaiter}

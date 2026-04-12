@@ -70,17 +70,20 @@ export default function PromoPanel() {
 
   const handleSave = async () => {
     try {
+      const payload = { ...formData };
+
       if (editingPromo) {
-        await API.put(`/offers/${editingPromo._id}`, formData);
+        await API.put(`/offers/${editingPromo._id}`, payload);
       } else {
-        await API.post("/offers", formData);
+        await API.post("/offers", payload);
       }
       setIsModalOpen(false);
       fetchPromos();
       window.dispatchEvent(new Event("promosUpdated"));
     } catch (error) {
       console.error("Error saving promo:", error);
-      alert("Failed to save promo");
+      const msg = error.response?.data?.message || "Failed to save promo";
+      alert(msg);
     }
   };
 
