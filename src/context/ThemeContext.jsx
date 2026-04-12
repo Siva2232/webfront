@@ -7,6 +7,8 @@ const DEFAULT_THEME = {
   primaryColor:   "#f72585",
   secondaryColor: "#0f172a",
   accentColor:    "#7209b7",
+  sidebarBgColor: "#ffffff",
+  sidebarTextColor: "#1e293b",
   theme:          "light",
   fontFamily:     "Inter",
   logo:           "",
@@ -32,6 +34,8 @@ const applyThemeToDom = (branding) => {
   if (branding.primaryColor)   root.style.setProperty("--primary",   branding.primaryColor);
   if (branding.secondaryColor) root.style.setProperty("--secondary", branding.secondaryColor);
   if (branding.accentColor)    root.style.setProperty("--accent",    branding.accentColor);
+  if (branding.sidebarBgColor)   root.style.setProperty("--sidebar-bg", branding.sidebarBgColor);
+  if (branding.sidebarTextColor) root.style.setProperty("--sidebar-text", branding.sidebarTextColor);
   if (branding.fontFamily)     root.style.setProperty("--font",      branding.fontFamily);
 
   // Dark/Light body class

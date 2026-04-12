@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Building2, CreditCard, BarChart3,
   Shield, LogOut, Settings, ChevronRight, ChevronDown,
-  Bell, User, CreditCard as CardIcon
+  Bell, User, CreditCard as CardIcon, MessageSquare
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { getSANotifications, markAllSANotificationsRead } from "../api/restaurantApi";
@@ -15,7 +15,9 @@ const nav = [
   { label: "Restaurants",   icon: Building2,       to: "/superadmin/restaurants" },
   { label: "Plans",         icon: CreditCard,      to: "/superadmin/plans" },
   { label: "Analytics",     icon: BarChart3,       to: "/superadmin/analytics" },
+  { label: "Support Team",  icon: User,            to: "/superadmin/support-team" },
   { label: "Notifications", icon: Bell,            to: "/superadmin/notifications" },
+  { label: "Support",       icon: MessageSquare,   to: "/superadmin/support" },
 ];
 
 export default function SuperAdminLayout() {
@@ -68,7 +70,7 @@ export default function SuperAdminLayout() {
       <aside className="w-64 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col z-20">
         {/* Brand header */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-800/50">
-          <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/20">
+          <div className="w-10 h-10 bg-linear-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/20">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -159,7 +161,7 @@ export default function SuperAdminLayout() {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl hover:bg-slate-800/50 border border-transparent hover:border-slate-800 transition-all group"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 p-[2px]">
+                <div className="w-10 h-10 rounded-xl bg-linear-to-br from-slate-700 to-slate-800 p-0.5">
                   <div className="w-full h-full rounded-[10px] bg-slate-900 overflow-hidden flex items-center justify-center">
                     <img 
                       src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Super'}`} 

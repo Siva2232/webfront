@@ -27,6 +27,16 @@ import RestaurantList     from "../superadmin/RestaurantList";
 import PlanManager        from "../superadmin/PlanManager";
 import SuperAdminAnalytics      from "../superadmin/SuperAdminAnalytics";
 import SuperAdminNotifications  from "../superadmin/SuperAdminNotifications";
+import SupportTicketManager     from "../superadmin/SupportTicketManager";
+import SupportTeamManager       from "../superadmin/SupportTeamManager";
+
+/* Dedicated Support Team Panel */
+import SupportLogin        from "../support-team/SupportLogin";
+import SupportLayout       from "../support-team/SupportLayout";
+import SupportDashboard    from "../support-team/SupportDashboard";
+import SupportProfile      from "../support-team/SupportProfile";
+import SupportTicketList   from "../support-team/SupportTicketManager"; // reusing the manager
+import ProtectedSupportRoute from "./ProtectedSupportRoute";
 
 /* Admin Subscription Page */
 import SubscriptionPage from "../admin/SubscriptionPage";
@@ -227,8 +237,23 @@ export default function AppRoutes() {
         <Route path="restaurants" element={<RestaurantList />} />
         <Route path="plans"       element={<PlanManager />} />
         <Route path="analytics"       element={<SuperAdminAnalytics />} />
+        <Route path="support-team"    element={<SupportTeamManager />} />
         <Route path="notifications"   element={<SuperAdminNotifications />} />
+        <Route path="support"         element={<SupportTicketManager />} />
         <Route path="*"               element={<Navigate to="dashboard" replace />} />
+      </Route>
+
+      {/* ── Dedicated Support Team Panel ── */}
+      <Route path="/support-team/login" element={<SupportLogin />} />
+      <Route element={<ProtectedSupportRoute />}>
+        <Route path="/support-team" element={<SupportLayout />}>
+          <Route index element={<Navigate to="/support-team/dashboard" replace />} />
+          <Route path="dashboard" element={<SupportDashboard />} />
+          <Route path="profile"   element={<SupportProfile />} />
+          <Route path="tickets"   element={<SupportTicketList />} />
+          <Route path="service"   element={<SupportTicketList />} />
+          <Route path="*"         element={<Navigate to="/support-team/dashboard" replace />} />
+        </Route>
       </Route>
     </Routes>
   );

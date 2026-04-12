@@ -8,7 +8,7 @@ import {
 import {
   Bell, CheckCheck, Trash2, CreditCard, Building2, 
   ShieldAlert, Zap, RefreshCw, Check, Clock, 
-  AlertTriangle, DollarSign
+  AlertTriangle, DollarSign,MessageSquare 
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -16,8 +16,7 @@ const typeConfig = {
   payment:             { icon: DollarSign,   color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", label: "Payment" },
   new_restaurant:      { icon: Building2,    color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20",    label: "New Node" },
   subscription_expiry: { icon: AlertTriangle,color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/20",   label: "Expiry" },
-  suspension:          { icon: ShieldAlert,  color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    label: "Suspension" },
-  system:              { icon: Zap,          color: "text-indigo-400",  bg: "bg-indigo-500/10",  border: "border-indigo-500/20",  label: "System" },
+  suspension:          { icon: ShieldAlert,  color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20",    label: "Suspension" },  support_ticket:      { icon: MessageSquare, color: "text-sky-400",    bg: "bg-sky-500/10",    border: "border-sky-500/20",    label: "Support" },  system:              { icon: Zap,          color: "text-indigo-400",  bg: "bg-indigo-500/10",  border: "border-indigo-500/20",  label: "System" },
 };
 
 function timeAgo(dateStr) {

@@ -64,6 +64,8 @@ export const UIProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [supportTicketCount, setSupportTicketCount] = useState(0);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [reservations, setReservations] = useState([]);
 
   const fetchNotifications = useCallback(async () => {
@@ -88,12 +90,48 @@ export const UIProvider = ({ children }) => {
     }
   }, []);
 
+  const fetchSupportTicketCount = useCallback(async () => {
+    try {
+      const isSupportAgent = localStorage.getItem("isSupportLoggedIn") === "true";
+      
+      if (isSupportAgent) {
+        // Support team side: count unread tickets for them
+        const { data } = await API.get("/support-tickets/all");
+        const count = Array.isArray(data)
+          ? data.filter((ticket) => ticket.isRead === false).length
+          : 0;
+        setSupportUnreadCount(count);
+      } else {
+        // Restaurant owner side: count unread tickets for them
+        const { data } = await API.get("/support-tickets");
+        const count = Array.isArray(data)
+          ? data.filter((ticket) => ticket.isRead === false).length
+          : 0;
+        setSupportTicketCount(count);
+      }
+    } catch (error) {
+      console.error("Error fetching support ticket count:", error);
+      setSupportTicketCount(0);
+      setSupportUnreadCount(0);
+    }
+  }, []);
+
   const markNotificationAsRead = async (id) => {
     try {
       await API.put(`/notifications/${id}`);
       setNotifications(prev => prev.filter(n => n._id !== id));
     } catch (error) {
       console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllSupportTicketsRead = async () => {
+    try {
+      await API.patch("/support-tickets/read-all");
+      setSupportUnreadCount(0);
+      setSupportTicketCount(0);
+    } catch (error) {
+      console.error("Error marking all support tickets read:", error);
     }
   };
 
@@ -151,16 +189,19 @@ export const UIProvider = ({ children }) => {
     // Only fetch admin-only data (notifications/reservations) when authenticated
     const isAdmin = !!localStorage.getItem("token");
     const tasks = [fetchBanners(), fetchOffers()];
-    if (isAdmin) tasks.push(fetchNotifications(), fetchReservations());
+    if (isAdmin) tasks.push(fetchNotifications(), fetchReservations(), fetchSupportTicketCount());
     Promise.allSettled(tasks);
-  }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations]);
+  }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations, fetchSupportTicketCount]);
 
   useEffect(() => {
     fetchData();
     window.addEventListener("bannersUpdated", fetchBanners);
     window.addEventListener("promosUpdated", fetchOffers);
     window.addEventListener("storage", fetchData);
-    window.addEventListener("notificationsUpdated", fetchNotifications);
+    window.addEventListener("notificationsUpdated", () => {
+      fetchNotifications();
+      fetchSupportTicketCount();
+    });
 
     // Detect restaurant switch on focus and reset UI state
     const checkRidChange = () => {
@@ -214,7 +255,10 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("notificationUpdated", () => {
-      if (localStorage.getItem("token")) fetchNotifications();
+      if (localStorage.getItem("token")) {
+        fetchNotifications();
+        fetchSupportTicketCount();
+      }
     });
 
     socket.on("newReservation", () => {
@@ -251,6 +295,10 @@ export const UIProvider = ({ children }) => {
       window.dispatchEvent(new CustomEvent("transactionsUpdated"));
     });
 
+    socket.on("supportTicketUpdated", () => {
+      if (localStorage.getItem("token")) fetchSupportTicketCount();
+    });
+
     socket.on("disconnect", () => {
       // optional: console.debug("Socket disconnected");
     });
@@ -260,6 +308,7 @@ export const UIProvider = ({ children }) => {
       if (localStorage.getItem("token")) {
         fetchNotifications();
         fetchReservations();
+        fetchSupportTicketCount();
       }
     }, 15000); // Poll every 15 seconds
 
@@ -273,12 +322,14 @@ export const UIProvider = ({ children }) => {
       clearInterval(pollInterval);
       socket.disconnect();
     };
-  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications]);
+  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications, fetchSupportTicketCount]);
 
   const value = {
     banners,
     offers,
     notifications,
+    supportTicketCount,
+    supportUnreadCount,
     reservations,
     isLoading,
     notificationsLoading,
@@ -287,7 +338,9 @@ export const UIProvider = ({ children }) => {
     setOffers,
     fetchNotifications,
     fetchReservations,
-    markNotificationAsRead
+    markNotificationAsRead,
+    fetchSupportTicketCount,
+    markAllSupportTicketsRead,
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

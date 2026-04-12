@@ -73,6 +73,7 @@ const FEATURE_KEYS = [
 const BLANK_FORM = {
   restaurantId: "", name: "", ownerName: "", ownerEmail: "", ownerPassword: "", ownerPhone: "", address: "",
   primaryColor: "#f72585", secondaryColor: "#0f172a", accentColor: "#7209b7",
+  sidebarBgColor: "#ffffff", sidebarTextColor: "#1e293b",
   theme: "light", fontFamily: "Inter",
   features: { hr: true, accounting: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true },
   subscriptionPlan: "", // Selected plan ID
@@ -124,6 +125,9 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           ...initial,
           subscriptionPlan: initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
           logoBase64: "",
+          // Ensure colors from DB are prioritized over BLANK_FORM defaults if they exist
+          sidebarBgColor: initial.sidebarBgColor || BLANK_FORM.sidebarBgColor,
+          sidebarTextColor: initial.sidebarTextColor || BLANK_FORM.sidebarTextColor,
         });
         setLogoPreview(initial?.logo || "");
       } else {
@@ -166,7 +170,15 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
 
   const toggleLivePreview = () => {
     if (!preview) {
-      previewBranding({ primaryColor: form.primaryColor, secondaryColor: form.secondaryColor, accentColor: form.accentColor, theme: form.theme, fontFamily: form.fontFamily });
+      previewBranding({ 
+        primaryColor: form.primaryColor, 
+        secondaryColor: form.secondaryColor, 
+        accentColor: form.accentColor, 
+        sidebarBgColor: form.sidebarBgColor,
+        sidebarTextColor: form.sidebarTextColor,
+        theme: form.theme, 
+        fontFamily: form.fontFamily 
+      });
       setPreview(true);
     } else {
       resetPreview();
@@ -181,7 +193,10 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
       if (isEdit) {
         await updateBranding(initial.restaurantId, {
           primaryColor: form.primaryColor, secondaryColor: form.secondaryColor,
-          accentColor: form.accentColor, theme: form.theme, fontFamily: form.fontFamily,
+          accentColor: form.accentColor, 
+          sidebarBgColor: form.sidebarBgColor,
+          sidebarTextColor: form.sidebarTextColor,
+          theme: form.theme, fontFamily: form.fontFamily,
           logoBase64: form.logoBase64 || undefined,
         });
         await updateFeatures(initial.restaurantId, form.features);
@@ -196,7 +211,13 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
         }
         toast.success("Restaurant updated");
       } else {
-        const { data } = await createRestaurant(form);
+        // Prepare data for creation: ensure sidebar colors are included
+        const createData = {
+          ...form,
+          sidebarBgColor: form.sidebarBgColor,
+          sidebarTextColor: form.sidebarTextColor
+        };
+        const { data } = await createRestaurant(createData);
         if (data.ownerCreated) {
           toast.success(`Restaurant created!\nOwner login: ${data.ownerEmail}`, { duration: 6000 });
         } else {
@@ -416,10 +437,19 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
                     <div className="w-1 h-4 bg-orange-500 rounded-full" />
                     <h3 className="text-sm font-black text-white uppercase tracking-widest">Color Spectrum</h3>
                   </div>
-                  <div className="grid gap-4">
-                    <ColorRow label="Primary Drive"   name="primaryColor"   value={form.primaryColor}   onChange={setColor} />
-                    <ColorRow label="Secondary Axis" name="secondaryColor" value={form.secondaryColor} onChange={setColor} />
-                    <ColorRow label="Accent Pulse"    name="accentColor"    value={form.accentColor}    onChange={setColor} />
+                  <div className="grid gap-6">
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Core Theme</p>
+                      <ColorRow label="Primary Drive"   name="primaryColor"   value={form.primaryColor}   onChange={setColor} />
+                      <ColorRow label="Secondary Axis" name="secondaryColor" value={form.secondaryColor} onChange={setColor} />
+                      <ColorRow label="Accent Pulse"    name="accentColor"    value={form.accentColor}    onChange={setColor} />
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-800 space-y-3">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sidebar Identity</p>
+                      <ColorRow label="Sidebar Background" name="sidebarBgColor" value={form.sidebarBgColor} onChange={setColor} />
+                      <ColorRow label="Sidebar Icons & Text" name="sidebarTextColor" value={form.sidebarTextColor} onChange={setColor} />
+                    </div>
                   </div>
                 </section>
               </motion.div>

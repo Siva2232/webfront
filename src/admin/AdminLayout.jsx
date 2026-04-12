@@ -52,6 +52,7 @@ import {
   PieChart,
   Repeat,
 } from "lucide-react";
+import API from "../api/axios";
 import { useProducts } from "../context/ProductContext";
 import { useUI } from "../context/UIContext";
 import toast from "react-hot-toast";
@@ -123,7 +124,7 @@ const menuItems = [
 
 export default function AdminLayout() {
   const { products = [], subitems = [] } = useProducts();
-  const { notifications = [], notificationsLoading, markNotificationAsRead, fetchNotifications } = useUI();
+  const { notifications = [], notificationsLoading, markNotificationAsRead, fetchNotifications, supportTicketCount, markAllSupportTicketsRead } = useUI();
   const { branding } = useTheme();
 
   // Feature-filtered nav items — hide sections the Super Admin has disabled
@@ -147,8 +148,12 @@ export default function AdminLayout() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [showWaiterPanel, setShowWaiterPanel] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportModalLoading, setSupportModalLoading] = useState(false);
+  const [supportModalTickets, setSupportModalTickets] = useState([]);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const waiterRef = useRef(null);
+  const supportRef = useRef(null);
   
   const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
   // ids that have been cleared from the alert list (until refresh)
@@ -174,6 +179,41 @@ export default function AdminLayout() {
     ...outOfStockProducts.map((item) => ({ ...item, _alertType: "product" })),
     ...outOfStockSubitems.map((item) => ({ ...item, _alertType: "subitem" })),
   ];
+
+  const loadSupportModalTickets = async () => {
+    setSupportModalLoading(true);
+    try {
+      const { data } = await API.get("/support-tickets");
+      setSupportModalTickets(data || []);
+    } catch (error) {
+      console.error("Error loading support tickets:", error);
+      setSupportModalTickets([]);
+    } finally {
+      setSupportModalLoading(false);
+    }
+  };
+
+  const handleSupportIconClick = async () => {
+    if (showSupportModal) {
+      setShowSupportModal(false);
+      return;
+    }
+
+    try {
+      if (supportTicketCount > 0) {
+        await markAllSupportTicketsRead();
+      }
+      await loadSupportModalTickets();
+    } catch (error) {
+      console.error("Error opening support modal:", error);
+    }
+    setShowSupportModal(true);
+  };
+
+  const handleOpenSupportPage = () => {
+    setShowSupportModal(false);
+    navigate("/admin/customer", { state: { fromSupportNotification: true } });
+  };
 
   const handleLogout = () => {
     // custom confirmation using toast so browser dialog is avoided
@@ -221,6 +261,9 @@ export default function AdminLayout() {
       }
       if (waiterRef.current && !waiterRef.current.contains(e.target)) {
         setShowWaiterPanel(false);
+      }
+      if (supportRef.current && !supportRef.current.contains(e.target)) {
+        setShowSupportModal(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -311,11 +354,13 @@ const handleClearAllStockAlerts = () => {
 };
   return (
     <div
-      className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700"
+      className="min-h-screen flex font-sans selection:bg-indigo-100 selection:text-indigo-700"
       style={{
         "--primary":   branding.primaryColor   || "#f72585",
         "--secondary": branding.secondaryColor || "#0f172a",
         "--accent":    branding.accentColor    || "#7209b7",
+        "--sidebar-bg": branding.sidebarBgColor || "#ffffff",
+        "--sidebar-text": branding.sidebarTextColor || "#1e293b",
         fontFamily:    `'${branding.fontFamily || "Inter"}', sans-serif`,
       }}
     >
@@ -337,10 +382,11 @@ const handleClearAllStockAlerts = () => {
       <aside
         className={`
           fixed lg:sticky top-0 left-0 z-[70] h-screen flex flex-col
-          bg-white border-r border-slate-200 transition-all duration-150 ease-out
+          border-r border-slate-200 transition-all duration-150 ease-out
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${isCollapsed ? "lg:w-[90px]" : "w-72"}
         `}
+        style={{ backgroundColor: "var(--sidebar-bg)", borderRightColor: "color-mix(in srgb, var(--sidebar-bg), black 10%)" }}
       >
         <div className="h-24 flex items-center px-6 justify-between">
           <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}>
@@ -351,13 +397,14 @@ const handleClearAllStockAlerts = () => {
                 <Sparkles className="text-white w-6 h-6" />
               </div>
             )}
-            <span className="text-xl font-black tracking-tight text-slate-800">
+            <span className="text-xl font-black tracking-tight" style={{ color: "var(--sidebar-text)" }}>
               {branding.name || "KMC"}<span style={{ color: branding.primaryColor || "#6366f1" }}> Admin</span>
             </span>
           </div>
           <button
             onClick={() => (isMobileOpen ? setIsMobileOpen(false) : setIsCollapsed(!isCollapsed))}
-            className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors"
+            className="p-2 rounded-xl hover:bg-black/5 transition-colors"
+            style={{ color: "color-mix(in srgb, var(--sidebar-text), transparent 50%)" }}
           >
             {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
@@ -415,15 +462,16 @@ const handleClearAllStockAlerts = () => {
     // 2. MENU ITEM WITH CHILDREN (dropdown)
     if (item.children) {
       const isOpen = openSubmenu === item.name;
+      const isActive = item.children.some(child => location.pathname.includes(child.path));
       return (
         <div key={item.name} className="relative">
           <button
             onClick={() => handleParentItemClick(item)}
-            className={`w-full text-left ${baseClasses} ${
-              isOpen
-                ? "bg-slate-900 text-white"
-                : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900"
-            }`}
+            className={`w-full text-left ${baseClasses}`}
+            style={{ 
+              backgroundColor: isOpen || isActive ? "var(--primary)" : "transparent",
+              color: isOpen || isActive ? "#fff" : "var(--sidebar-text)"
+            }}
           >
             <item.icon size={22} className="flex-shrink-0" />
             <span
@@ -437,6 +485,7 @@ const handleClearAllStockAlerts = () => {
               <ChevronDown
                 size={16}
                 className={`ml-auto transition-transform duration-100 ${isOpen ? "rotate-180" : ""}`}
+                style={{ color: isOpen || isActive ? "#fff" : "var(--sidebar-text)" }}
               />
             )}
           </button>
@@ -462,7 +511,7 @@ const handleClearAllStockAlerts = () => {
                     (child.path && location.pathname.endsWith(child.path)) ||
                     currentTab === child.tab;
                   const key = child.tab || child.path || child.name;
-                  return (
+                    return (
                     <button
                       key={key}
                       onClick={() => {
@@ -473,16 +522,17 @@ const handleClearAllStockAlerts = () => {
                         }
                         closeMobileMenu();
                       }}
-                      className={`w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors ${
-                        isActiveChild
-                          ? "bg-slate-200 text-slate-900"
-                          : "text-slate-600 hover:bg-slate-100"
-                      }`}
+                      className={`w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors`}
+                      style={{
+                        backgroundColor: isActiveChild ? "rgba(0,0,0,0.15)" : "transparent",
+                        color: "var(--sidebar-text)",
+                        opacity: isActiveChild ? 1 : 0.8
+                      }}
                     >
                       {icon}
                       {child.name}
                     </button>
-                  );
+                    );
                 });
               })()}
             </div>
@@ -499,12 +549,12 @@ const handleClearAllStockAlerts = () => {
         onClick={closeMobileMenu}
         className={({ isActive }) => `
           ${baseClasses}
-          ${
-            isActive
-              ? "bg-slate-900 text-white shadow-[0_10px_25px_-5px_rgba(15,23,42,0.25)] border border-slate-800"
-              : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent"
-          }
         `}
+        style={({ isActive }) => ({
+           backgroundColor: isActive ? "var(--primary)" : "transparent",
+           color: isActive ? "#fff" : "var(--sidebar-text)",
+           border: isActive ? "1px solid rgba(0,0,0,0.1)" : "1px solid transparent"
+        })}
       >
         {({ isActive }) => (
           <>
@@ -523,7 +573,7 @@ const handleClearAllStockAlerts = () => {
 
             {/* Active Indicator Dot (Mobile/Expanded only) */}
             {isActive && !isCollapsed && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />
             )}
 
             {/* Desktop Collapsed Tooltip */}
@@ -538,8 +588,8 @@ const handleClearAllStockAlerts = () => {
     );
   })}
 </nav>
-        <div className="p-6 border-t border-slate-100">
-          <div className={`bg-slate-50 rounded-2xl p-4 flex items-center gap-3 ${isCollapsed && "lg:justify-center"}`}>
+        <div className="p-6 border-t" style={{ borderColor: "rgba(0,0,0,0.05)" }}>
+          <div className={`rounded-2xl p-4 flex items-center gap-3 ${isCollapsed && "lg:justify-center"}`} style={{ backgroundColor: "rgba(0,0,0,0.03)" }}>
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
               style={{ backgroundColor: branding.primaryColor || "#6366f1" }}
@@ -548,8 +598,8 @@ const handleClearAllStockAlerts = () => {
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className="text-xs font-black text-slate-800 uppercase tracking-tighter truncate">{user?.name || "Admin"}</p>
-                <p className="text-[10px] text-slate-400 truncate">{user?.restaurantId || "Restaurant"}</p>
+                <p className="text-xs font-black uppercase tracking-tighter truncate" style={{ color: "var(--sidebar-text)" }}>{user?.name || "Admin"}</p>
+                <p className="text-[10px] truncate" style={{ color: "var(--sidebar-text)", opacity: 0.5 }}>{user?.restaurantId || "Restaurant"}</p>
               </div>
             )}
           </div>
@@ -566,7 +616,7 @@ const handleClearAllStockAlerts = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: "#F8FAFC" }}>
         {/* Header */}
         <header className="h-24 flex items-center justify-between px-6 lg:px-10 bg-white/70 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
           <div className="flex items-center gap-4">
@@ -667,6 +717,96 @@ const handleClearAllStockAlerts = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Support Ticket Chat Count */}
+            <div className="relative" ref={supportRef}>
+              <button
+                onClick={handleSupportIconClick}
+                className={`relative p-2 sm:p-3 rounded-full transition-all duration-200 ${
+                  supportTicketCount > 0
+                    ? "bg-sky-50 text-sky-600 hover:bg-sky-100"
+                    : "hover:bg-slate-100 text-slate-400"
+                }`}
+                aria-label="Open support chat notification modal"
+              >
+                <Headset size={24} className={supportTicketCount > 0 ? "animate-pulse" : ""} />
+                {supportTicketCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-sky-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
+                    {supportTicketCount > 99 ? "99+" : supportTicketCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showSupportModal && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                    className="absolute right-0 mt-4 w-[320px] lg:w-[380px] bg-white rounded-3xl border border-slate-200 shadow-2xl shadow-slate-200/80 overflow-hidden z-50"
+                  >
+                    <div className="p-4 border-b border-slate-100">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Support Notifications</p>
+                          <p className="text-sm font-bold text-slate-900">{supportTicketCount} unread ticket{supportTicketCount !== 1 ? "s" : ""}</p>
+                        </div>
+                        <button
+                          onClick={() => setShowSupportModal(false)}
+                          className="text-slate-400 hover:text-slate-600"
+                          aria-label="Close support modal"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-[320px] overflow-y-auto no-scrollbar">
+                      {supportModalLoading ? (
+                        <div className="p-6 text-center text-slate-500">Loading support tickets…</div>
+                      ) : supportModalTickets.length === 0 ? (
+                        <div className="p-6 text-center text-slate-500">No support tickets found.</div>
+                      ) : (
+                        supportModalTickets.map((ticket) => (
+                          <button
+                            key={ticket._id}
+                            onClick={() => {
+                              setShowSupportModal(false);
+                              navigate("/admin/customer", { state: { fromSupportNotification: true, selectedTicketId: ticket._id } });
+                            }}
+                            className="w-full text-left p-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm text-slate-900 truncate">{ticket.subject}</p>
+                                <p className="text-[11px] text-slate-500 truncate mt-1">{ticket.messages[ticket.messages.length - 1]?.text || "No message yet"}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-full ${
+                                ticket.status === 'Resolved' ? 'bg-emerald-100 text-emerald-600' :
+                                ticket.status === 'Open' ? 'bg-amber-100 text-amber-600' : 'bg-sky-100 text-sky-600'
+                              }`}>
+                                {ticket.status}
+                              </span>
+                            </div>
+                            <div className="mt-3 text-[10px] text-slate-400 flex items-center justify-between">
+                              <span>{new Date(ticket.lastMessageAt).toLocaleString()}</span>
+                              {!ticket.isRead && <span className="font-black text-slate-900">Unread</span>}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="p-4 border-t border-slate-100 bg-slate-50">
+                      <button
+                        onClick={handleOpenSupportPage}
+                        className="w-full rounded-2xl bg-slate-900 text-white py-3 text-sm font-bold hover:bg-slate-800 transition-colors"
+                      >
+                        Open Support Center
+                      </button>
                     </div>
                   </motion.div>
                 )}
