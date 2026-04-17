@@ -5,6 +5,7 @@ import { Utensils, ShoppingCart, Receipt, ChefHat, Bell, HandHelping, CheckCircl
 import { TAKEAWAY_TABLE } from "../context/CartContext";
 import API from "../api/axios";
 import { useUI } from "../context/UIContext";
+import { useTheme } from "../context/ThemeContext";
 import { useOrders } from "../context/OrderContext";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 
