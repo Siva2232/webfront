@@ -6,6 +6,7 @@ import { TAKEAWAY_TABLE } from "../context/CartContext";
 import API from "../api/axios";
 import { useUI } from "../context/UIContext";
 import { useOrders } from "../context/OrderContext";
+import { useTheme } from "../context/ThemeContext";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 
 export default function Navbar({ title }) {

@@ -269,7 +269,7 @@ export const UIProvider = ({ children }) => {
       if (localStorage.getItem("token")) fetchReservations();
     });
 
-    // HR & Accounting Real-time Sync
+    // HR real-time sync
     socket.on("staffUpdate", () => {
       window.dispatchEvent(new CustomEvent("staffUpdated"));
     });

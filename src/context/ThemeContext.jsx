@@ -15,7 +15,6 @@ const DEFAULT_THEME = {
   name:           "",
   features: {
     hr:           true,
-    accounting:   true,
     inventory:    false,
     reports:      true,
     qrMenu:       true,

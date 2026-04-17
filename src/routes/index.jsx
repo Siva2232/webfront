@@ -20,22 +20,22 @@ import Login from "../admin/Login";
 import ProtectedRoute from "./ProtectedRoute";
 
 /* Super Admin */
-import SuperAdminLogin    from "../superadmin/SuperAdminLogin";
-import SuperAdminLayout   from "../superadmin/SuperAdminLayout";
+import SuperAdminLogin from "../superadmin/SuperAdminLogin";
+import SuperAdminLayout from "../superadmin/SuperAdminLayout";
 import SuperAdminDashboard from "../superadmin/SuperAdminDashboard";
-import RestaurantList     from "../superadmin/RestaurantList";
-import PlanManager        from "../superadmin/PlanManager";
-import SuperAdminAnalytics      from "../superadmin/SuperAdminAnalytics";
-import SuperAdminNotifications  from "../superadmin/SuperAdminNotifications";
-import SupportTicketManager     from "../superadmin/SupportTicketManager";
-import SupportTeamManager       from "../superadmin/SupportTeamManager";
+import RestaurantList from "../superadmin/RestaurantList";
+import PlanManager from "../superadmin/PlanManager";
+import SuperAdminAnalytics from "../superadmin/SuperAdminAnalytics";
+import SuperAdminNotifications from "../superadmin/SuperAdminNotifications";
+import SupportTicketManager from "../superadmin/SupportTicketManager";
+import SupportTeamManager from "../superadmin/SupportTeamManager";
 
 /* Dedicated Support Team Panel */
-import SupportLogin        from "../support-team/SupportLogin";
-import SupportLayout       from "../support-team/SupportLayout";
-import SupportDashboard    from "../support-team/SupportDashboard";
-import SupportProfile      from "../support-team/SupportProfile";
-import SupportTicketList   from "../support-team/SupportTicketManager"; // reusing the manager
+import SupportLogin from "../support-team/SupportLogin";
+import SupportLayout from "../support-team/SupportLayout";
+import SupportDashboard from "../support-team/SupportDashboard";
+import SupportProfile from "../support-team/SupportProfile";
+import SupportTicketList from "../support-team/SupportTicketManager"; // reusing the manager
 import ProtectedSupportRoute from "./ProtectedSupportRoute";
 
 /* Admin Subscription Page */
@@ -51,6 +51,7 @@ import AddProduct from "../admin/AddProduct";
 import EditForm from "../admin/EditForm";
 import SubItemLibrary from "../admin/Subitem";
 import OfferPanel from "../admin/OfferPanel";
+import AdminProfile from "../admin/AdminProfile";
 import BannerPanel from "../admin/BannerPanel";
 import CustomerSupport from "../admin/CustomerSupport";
 import Analytics from "../admin/Analytics";
@@ -78,19 +79,6 @@ import ShiftManager from "../hr/shifts/ShiftManager";
 import PayrollManager from "../hr/payroll/PayrollManager";
 import StaffPortal from "../hr/portal/StaffPortal";
 
-/* Accounting Module — inside AdminLayout */
-import AccountingLayout from "../admin/accounting/AccountingLayout";
-import AccDashboard from "../admin/accounting/AccDashboard";
-import AccParties from "../admin/accounting/AccParties";
-import AccAccounts from "../admin/accounting/AccAccounts";
-import AccOrders from "../admin/accounting/AccOrders";
-import AccPurchases from "../admin/accounting/AccPurchases";
-import AccExpenses from "../admin/accounting/AccExpenses";
-import AccLoans from "../admin/accounting/AccLoans";
-import AccPayments from "../admin/accounting/AccPayments";
-import AccLedger from "../admin/accounting/AccLedger";
-import AccReports from "../admin/accounting/AccReports";
-
 /* HR Module — dedicated admin pages (inside AdminLayout) */
 import AdminHRDashboard from "../admin/hr/AdminHRDashboard";
 import AdminStaff from "../admin/hr/AdminStaff";
@@ -98,6 +86,13 @@ import AdminAttendance from "../admin/hr/AdminAttendance";
 import AdminLeaves from "../admin/hr/AdminLeaves";
 import AdminShifts from "../admin/hr/AdminShifts";
 import AdminPayroll from "../admin/hr/AdminPayroll";
+
+/* Accounting Module */
+import AccDashboard from "../admin/accounting/AccDashboard";
+import AccLedgers from "../admin/accounting/AccLedgers";
+import AccLedgerDetail from "../admin/accounting/AccLedgerDetail";
+import AccTransactions from "../admin/accounting/AccTransactions";
+import AccReports from "../admin/accounting/AccReports";
 
 /* Customer Pages */
 import Menu from "../customer/Menu";
@@ -110,7 +105,8 @@ import TakeawayCart from "../customer/TakeawayCart";
 /* Optional: Prevent logged-in users from seeing login */
 const ProtectedLogin = ({ children }) => {
   const isAdminLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
-  const isKitchenLoggedIn = localStorage.getItem("isKitchenLoggedIn") === "true";
+  const isKitchenLoggedIn =
+    localStorage.getItem("isKitchenLoggedIn") === "true";
   const isWaiterLoggedIn = localStorage.getItem("isWaiterLoggedIn") === "true";
 
   if (isAdminLoggedIn) return <Navigate to="/admin/dashboard" replace />;
@@ -160,6 +156,13 @@ export default function AppRoutes() {
           <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
+          <Route path="accounting">
+            <Route index element={<AccDashboard />} />
+            <Route path="ledgers" element={<AccLedgers />} />
+            <Route path="ledgers/:ledgerId" element={<AccLedgerDetail />} />
+            <Route path="transactions" element={<AccTransactions />} />
+            <Route path="reports" element={<AccReports />} />
+          </Route>
           <Route path="manual-bill" element={<ManualBill />} />
           <Route path="reservations" element={<Reservations />} />
           <Route path="products" element={<Products />} />
@@ -176,11 +179,21 @@ export default function AppRoutes() {
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="banner" element={<BannerPanel />} />
-          <Route path="reports"      element={<Analytics />} />
+          <Route path="reports" element={<Analytics />} />
           <Route path="subscription" element={<SubscriptionPage />} />
+          <Route path="profile" element={<AdminProfile />} />
 
           {/* HR Management — guarded by hr feature flag */}
-          <Route path="hr" element={<FeatureGuard feature="hr"><div><Outlet /></div></FeatureGuard>}>
+          <Route
+            path="hr"
+            element={
+              <FeatureGuard feature="hr">
+                <div>
+                  <Outlet />
+                </div>
+              </FeatureGuard>
+            }
+          >
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminHRDashboard />} />
             <Route path="staff" element={<AdminStaff />} />
@@ -190,22 +203,10 @@ export default function AppRoutes() {
             <Route path="payroll" element={<AdminPayroll />} />
           </Route>
 
-          {/* Accounting Module — guarded by accounting feature flag */}
-          <Route path="accounting" element={<FeatureGuard feature="accounting"><AccountingLayout /></FeatureGuard>}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AccDashboard />} />
-            <Route path="parties" element={<AccParties />} />
-            <Route path="accounts" element={<AccAccounts />} />
-            <Route path="orders" element={<AccOrders />} />
-            <Route path="purchases" element={<AccPurchases />} />
-            <Route path="expenses" element={<AccExpenses />} />
-            <Route path="loans" element={<AccLoans />} />
-            <Route path="payments" element={<AccPayments />} />
-            <Route path="ledger" element={<AccLedger />} />
-            <Route path="reports" element={<AccReports />} />
-          </Route>
-
-          <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
         </Route>
       </Route>
 
@@ -233,26 +234,32 @@ export default function AppRoutes() {
       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
       <Route path="/superadmin" element={<SuperAdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard"   element={<SuperAdminDashboard />} />
+        <Route path="dashboard" element={<SuperAdminDashboard />} />
         <Route path="restaurants" element={<RestaurantList />} />
-        <Route path="plans"       element={<PlanManager />} />
-        <Route path="analytics"       element={<SuperAdminAnalytics />} />
-        <Route path="support-team"    element={<SupportTeamManager />} />
-        <Route path="notifications"   element={<SuperAdminNotifications />} />
-        <Route path="support"         element={<SupportTicketManager />} />
-        <Route path="*"               element={<Navigate to="dashboard" replace />} />
+        <Route path="plans" element={<PlanManager />} />
+        <Route path="analytics" element={<SuperAdminAnalytics />} />
+        <Route path="support-team" element={<SupportTeamManager />} />
+        <Route path="notifications" element={<SuperAdminNotifications />} />
+        <Route path="support" element={<SupportTicketManager />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
       {/* ── Dedicated Support Team Panel ── */}
       <Route path="/support-team/login" element={<SupportLogin />} />
       <Route element={<ProtectedSupportRoute />}>
         <Route path="/support-team" element={<SupportLayout />}>
-          <Route index element={<Navigate to="/support-team/dashboard" replace />} />
+          <Route
+            index
+            element={<Navigate to="/support-team/dashboard" replace />}
+          />
           <Route path="dashboard" element={<SupportDashboard />} />
-          <Route path="profile"   element={<SupportProfile />} />
-          <Route path="tickets"   element={<SupportTicketList />} />
-          <Route path="service"   element={<SupportTicketList />} />
-          <Route path="*"         element={<Navigate to="/support-team/dashboard" replace />} />
+          <Route path="profile" element={<SupportProfile />} />
+          <Route path="tickets" element={<SupportTicketList />} />
+          <Route path="service" element={<SupportTicketList />} />
+          <Route
+            path="*"
+            element={<Navigate to="/support-team/dashboard" replace />}
+          />
         </Route>
       </Route>
     </Routes>

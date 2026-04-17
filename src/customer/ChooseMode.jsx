@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
-import { Utensils, ShoppingBag, MapPin } from "lucide-react";
+import { Utensils, ShoppingBag } from "lucide-react";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 
 export default function ChooseMode() {
@@ -115,17 +115,10 @@ export default function ChooseMode() {
 
         {/* Footer hint */}
         <div className="text-center pt-4">
-          {!table ? (
+          {!table && (
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Scan a QR code to enable Dine-In
             </p>
-          ) : (
-            <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-gray-50 rounded-full border border-gray-200 shadow-sm">
-              <MapPin size={14} className="text-gray-700" />
-              <span className="text-xs sm:text-sm font-bold uppercase tracking-tight text-gray-800">
-                Location confirmed: Section A
-              </span>
-            </div>
           )}
         </div>
       </div>

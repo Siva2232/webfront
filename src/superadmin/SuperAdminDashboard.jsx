@@ -324,7 +324,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 <div className="space-y-4">
                    <p className="text-xs text-slate-300 font-medium leading-relaxed bg-slate-950/50 p-4 rounded-2xl border border-white/5 italic">
-                     "MRR is projected to grow by 14% next month based on current trial conversion patterns. Upsell 'Accounting' module to RESTO004 for high impact."
+                     "MRR is projected to grow by 14% next month based on current trial conversion patterns."
                    </p>
                    <div className="flex flex-wrap gap-2">
                       <span className="px-2 py-1 bg-pink-500/10 text-pink-500 text-[8px] font-black uppercase tracking-widest rounded-lg border border-pink-500/20">+14% Growth</span>
@@ -452,7 +452,6 @@ export default function SuperAdminDashboard() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                 <FeatureCard label="HR Portal" count={stats?.featureUsage?.hr || 0} total={stats?.total || 1} icon={Users} color="bg-blue-500" />
-                <FeatureCard label="Cloud Accounting" count={stats?.featureUsage?.accounting || 0} total={stats?.total || 1} icon={Briefcase} color="bg-emerald-500" />
                 <FeatureCard label="Kitchen Display" count={stats?.featureUsage?.kitchenPanel || 0} total={stats?.total || 1} icon={MousePointer2} color="bg-pink-500" />
                 <FeatureCard label="QR Menu Suite" count={stats?.featureUsage?.qrMenu || 0} total={stats?.total || 1} icon={Smartphone} color="bg-purple-500" />
                 <FeatureCard label="Waiter Systems" count={stats?.featureUsage?.waiterPanel || 0} total={stats?.total || 1} icon={CreditCard} color="bg-amber-500" />

@@ -289,7 +289,6 @@ export default function SubscriptionPage() {
                 <div className="space-y-3 flex-1 mb-8">
                   {Object.entries({
                     hr:           "HR Management",
-                    accounting:   "Accounting",
                     inventory:    "Inventory",
                     reports:      "Reports",
                     qrMenu:       "QR Menu Suite",

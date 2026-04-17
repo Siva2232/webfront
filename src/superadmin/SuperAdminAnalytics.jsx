@@ -113,7 +113,6 @@ export default function SuperAdminAnalytics() {
     if (!stats?.featureUsage) return [];
     const labels = {
       hr: "Human Resources",
-      accounting: "Cloud Accounting",
       kitchenPanel: "Kitchen Display",
       qrMenu: "QR Menu Suite",
       waiterPanel: "Waiter Systems",
@@ -121,7 +120,6 @@ export default function SuperAdminAnalytics() {
     };
     const colors = {
       hr: "bg-blue-500",
-      accounting: "bg-emerald-500",
       kitchenPanel: "bg-pink-500",
       qrMenu: "bg-purple-500",
       waiterPanel: "bg-amber-500",

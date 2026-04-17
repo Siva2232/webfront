@@ -5,7 +5,6 @@ import { Plus, Pencil, Trash2, Loader2, Check, X, Save } from "lucide-react";
 
 const FEATURE_KEYS = [
   { key: "hr",           label: "HR Management" },
-  { key: "accounting",   label: "Accounting" },
   { key: "inventory",    label: "Inventory" },
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
@@ -18,7 +17,7 @@ const FEATURE_KEYS = [
 
 const BLANK = {
   name: "", price: "", duration: 30, description: "",
-  features: { hr: false, accounting: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
+  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
   maxTables: 20, maxProducts: 100, maxStaff: 10,
 };
 

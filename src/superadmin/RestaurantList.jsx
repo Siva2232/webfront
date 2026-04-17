@@ -61,7 +61,7 @@ const ActionModal = ({ open, onClose, title, message, onConfirm, type = "danger"
 // ── Feature keys with labels ────────────────────────────────────────────────
 const FEATURE_KEYS = [
   { key: "hr",           label: "HR Management" },
-  { key: "accounting",   label: "Accounting" },
+
   { key: "inventory",    label: "Inventory" },
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
@@ -77,7 +77,7 @@ const BLANK_FORM = {
   primaryColor: "#f72585", secondaryColor: "#0f172a", accentColor: "#7209b7",
   sidebarBgColor: "#ffffff", sidebarTextColor: "#1e293b",
   theme: "light", fontFamily: "Inter",
-  features: { hr: true, accounting: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
+  features: { hr: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
   subscriptionPlan: "", // Selected plan ID
   subscriptionStatus: "trial",
   logoBase64: "",
