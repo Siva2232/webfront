@@ -704,25 +704,25 @@ export default function AdminLayout() {
           })}
         </nav>
         <div
-          className="p-6 border-t"
+          className="p-1 border-t mr-[50px]"
           style={{ borderColor: "rgba(0,0,0,0.05)" }}
         >
           <div
-            className={`rounded-2xl p-4 flex items-center gap-3 ${isCollapsed && "lg:justify-center"}`}
-            style={{ backgroundColor: "rgba(0,0,0,0.03)" }}
+            className={`rounded-2xl p-2 flex items-center justify-center gap-2 ${isCollapsed && "lg:justify-center ml-[50px]"}`}
+            style={{ backgroundColor: "rgba(0,0,0,0.06)" }}
           >
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-white"
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
               style={{ backgroundColor: branding.primaryColor || "#6366f1" }}
             >
-              <Sparkles size={18} />
+              <Sparkles size={16} />
             </div>
             {!isCollapsed && (
-              <div className="overflow-hidden">
-                <p className="text-[10px] uppercase tracking-[0.35em] text-white/70 mb-1">
+              <div className="text-center">
+                <p className="text-[9px] uppercase tracking-[0.35em] text-white/70 leading-none">
                   powered by
                 </p>
-                <p className="text-sm font-black tracking-tight text-white truncate">
+                <p className="text-xs font-black tracking-tight text-white leading-none">
                   MyCafe
                 </p>
               </div>
