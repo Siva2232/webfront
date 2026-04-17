@@ -703,13 +703,10 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-        <div
-          className="p-1 border-t mr-[50px]"
-          style={{ borderColor: "rgba(0,0,0,0.05)" }}
-        >
+        <div className="px-2 py-3 border-t border-white/10 flex justify-center">
           <div
-            className={`rounded-2xl p-2 flex items-center justify-center gap-2 ${isCollapsed && "lg:justify-center ml-[50px]"}`}
-            style={{ backgroundColor: "rgba(0,0,0,0.06)" }}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 shadow-sm"
+            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
           >
             <div
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
@@ -754,7 +751,7 @@ export default function AdminLayout() {
             {/* Digital Clock */}
             <div className="hidden sm:flex flex-col items-end justify-center text-right pr-4 border-r border-slate-200">
               <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-0.5">
-                Current Session
+                Time
               </span>
               <span className="text-2xl font-light tabular-nums tracking-tight text-slate-950 leading-none">
                 {currentTime.toLocaleTimeString([], {
