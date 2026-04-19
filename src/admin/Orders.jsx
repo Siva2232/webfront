@@ -13,16 +13,20 @@ export const isTakeawayOrder = (o) =>
   o.table === TAKEAWAY_TABLE || o.table === DELIVERY_TABLE || !o.table || o.table === "TAKEAWAY" || o.table === "DELIVERY";
 import { motion, AnimatePresence } from "framer-motion";
 
+const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
+
 const gradientMap = {
-  New: "from-blue-400 to-blue-500",
-  Preparing: "from-orange-400 to-orange-500",
-  Ready: "from-indigo-500 to-purple-600",
-  Served: "from-emerald-500 to-teal-600",
+  new: "from-blue-400 to-blue-500",
+  preparing: "from-orange-400 to-orange-500",
+  ready: "from-indigo-500 to-purple-600",
+  served: "from-emerald-500 to-teal-600",
+  paid: "from-emerald-500 to-teal-600",
+  closed: "from-emerald-500 to-teal-600",
 };
 
-const statusStep = { New: 1, Preparing: 2, Ready: 3, Served: 4 };
+const statusStep = { new: 1, preparing: 2, ready: 3, served: 4, paid: 4, closed: 4 };
 
-const isStatusActive = (status) => ["New", "Preparing", "Ready", "Served", "Pending"].includes(status);
+const isStatusActive = (status) => ["new", "preparing", "ready", "served", "pending", "paid", "closed"].includes(normalizeStatus(status));
 
 export default function OrdersDashboard({ overrideOrders = null }) {
   const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders, isLoading } = useOrders();
@@ -62,11 +66,11 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     const relevantOrders = orders.filter(o => isStatusActive(o.status));
 
     const active = relevantOrders
-      .filter((o) => o.status !== "Served" || servedPendingIds.has(o._id))
+      .filter((o) => !["served", "paid", "closed"].includes(normalizeStatus(o.status)) || servedPendingIds.has(o._id))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
     const served = relevantOrders
-      .filter((o) => o.status === "Served")
+      .filter((o) => ["served", "paid", "closed"].includes(normalizeStatus(o.status)))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     // Fast reduction for stats
@@ -78,7 +82,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
 
     for (const order of relevantOrders) {
       const isTA = isTakeawayOrder(order);
-      const isAct = order.status !== "Served" || servedPendingIds.has(order._id);
+      const isAct = !["served", "paid", "closed"].includes(normalizeStatus(order.status)) || servedPendingIds.has(order._id);
       
       // Revenue & Items
       const subtotal = order.items?.reduce((sum, item) => sum + (item.price * item.qty), 0) || 0;
@@ -111,7 +115,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Live Tables", value: liveTablesCount, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
     { label: "Active Takeaways/Delivery", value: activeTakeawayCount, icon: ShoppingBag, color: "text-pink-600", bg: "bg-pink-50" },
-    { label: "Ready", value: orders.filter(o => o.status === "Ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ready", value: orders.filter(o => normalizeStatus(o.status) === "ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Total Served", value: servedOrders.length, icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Takeaways/Delivery Served", value: servedTakeawayCount, icon: PackageCheck, color: "text-pink-600", bg: "bg-pink-50" },
     { label: "Items Sold", value: totalItemsSold, icon: UtensilsCrossed, color: "text-rose-600", bg: "bg-rose-50" },
@@ -211,8 +215,9 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const grandTotal = order.billDetails?.grandTotal || (subtotal + cgst + sgst);
 
   const status = order.status;
-  const currentStep = statusStep[status] || 1;
-  const gradient = gradientMap[status] || "from-slate-400 to-slate-600";
+  const statusKey = normalizeStatus(status);
+  const currentStep = statusStep[statusKey] || 1;
+  const gradient = gradientMap[statusKey] || "from-slate-400 to-slate-600";
 
   useEffect(() => {
     const update = () => {
@@ -239,7 +244,7 @@ function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
         <div className="flex-1 space-y-6">
           <div className="flex items-center gap-5">
             <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black text-2xl italic shadow-lg`}>
-              {isTakeawayOrder(order) ? "TA" : order.table}
+              {order.table === DELIVERY_TABLE ? "HD" : "TA"}
             </div>
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import {
   User,
   Mail,
@@ -21,6 +22,7 @@ import toast from "react-hot-toast";
 export default function AdminProfile() {
   const navigate = useNavigate();
   const { branding } = useTheme();
+  const { updateUser } = useAuth();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -72,11 +74,7 @@ export default function AdminProfile() {
         email: data.email,
       }));
 
-      const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
-      localStorage.setItem(
-        "userInfo",
-        JSON.stringify({ ...userInfo, name: data.name, email: data.email }),
-      );
+      updateUser({ name: data.name, email: data.email });
 
       toast.success("Profile updated successfully");
     } catch (error) {

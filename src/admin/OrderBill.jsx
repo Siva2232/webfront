@@ -240,7 +240,7 @@ export default function OrderBill() {
     setIsSubmitting(true);
     try {
       // 1. Mark as paid in main system
-      await markBillPaid(billId);
+      await markBillPaid(billId, markPaidModal.orderRef);
       
       // 2. Create accounting transaction
       await accApi.payBill({
@@ -899,7 +899,7 @@ const BillCard = React.memo(function BillCard({
           <>
             {hasUnpaidCod && (
               <button
-                onClick={() => onMarkPaid({ billId: order._id || order.id, amount: unpaidAmount })}
+                onClick={() => onMarkPaid({ billId: order._id || order.id, orderRef: order.orderRef || order._id || order.id, amount: unpaidAmount })}
                 className="w-full px-6 py-2.5 bg-emerald-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-100"
               >
                 <Wallet size={14} /> Mark Paid · ₹{unpaidAmount.toLocaleString()}

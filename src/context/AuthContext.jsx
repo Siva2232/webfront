@@ -23,6 +23,14 @@ export const AuthProvider = ({ children }) => {
     if (userData.role === "superadmin") localStorage.setItem("isSuperAdmin", "true");
   }, []);
 
+  const updateUser = useCallback((updates) => {
+    setUser((prev) => {
+      const next = { ...prev, ...updates };
+      try { localStorage.setItem("userInfo", JSON.stringify(next)); } catch (_) {}
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     const rid = getCurrentRestaurantId();
     setUser(null);
@@ -49,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   const isWaiter     = user?.isWaiter || user?.role === "waiter";
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isSuperAdmin, isAdmin, isKitchen, isWaiter }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, isSuperAdmin, isAdmin, isKitchen, isWaiter }}>
       {children}
     </AuthContext.Provider>
   );

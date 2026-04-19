@@ -54,6 +54,7 @@ import {
 import API from "../api/axios";
 import { useProducts } from "../context/ProductContext";
 import { useUI } from "../context/UIContext";
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
 const menuItems = [
@@ -163,7 +164,7 @@ export default function AdminLayout() {
   const waiterRef = useRef(null);
   const supportRef = useRef(null);
 
-  const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
+  const { user } = useAuth();
   // ids that have been cleared from the alert list (until refresh)
   const [clearedIds, setClearedIds] = useState([]);
 

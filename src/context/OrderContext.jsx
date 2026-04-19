@@ -4,6 +4,9 @@ import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 
+const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
+const orderKey = (order) => String(order?._id || order?.id || "");
+
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
 const SOCKET_URL =
@@ -243,8 +246,8 @@ export const OrderProvider = ({ children }) => {
   }, []);
 
   // mark a bill as paid on the server and update local cache
-  const markBillPaid = async (id) => {
-    // Optimistic update â€” mark all COD sessions as paid so the button
+  const markBillPaid = async (id, orderRef = null) => {
+    // Optimistic update — mark all COD sessions as paid so the button
     // disappears immediately instead of waiting for the server round-trip.
     let prevBills;
     setBills((prev) => {
@@ -270,12 +273,13 @@ export const OrderProvider = ({ children }) => {
     // Also update orders list optimistically
     setOrders((prev) => {
       const next = prev.map((o) => {
-        if (o._id !== id && o.id !== id && o.orderRef !== id) {
-           // check bill's orderRef too
-           const isMatch = (o._id === id || o.id === id);
-           if (!isMatch) return o;
-        }
-        
+        const matchesBill =
+          o._id === id ||
+          o.id === id ||
+          o.orderRef === id ||
+          (orderRef && (o._id === orderRef || o.id === orderRef));
+        if (!matchesBill) return o;
+
         const updatedSessions = (o.paymentSessions || []).map((s) =>
           s.method === "cod" ? { ...s, status: "paid" } : s
         );
@@ -658,13 +662,7 @@ export const OrderProvider = ({ children }) => {
         
         // If the order is "Closed", we should ideally remove it from the ACTIVE orders list
         // so that Tables.jsx (which filters for status !== "Closed") updates immediately.
-        if (order.status === "Closed") {
-          const next = prev.filter((o) => o._id !== order._id);
-          try { _tSet('cachedOrders', next); } catch {}
-          return next;
-        }
-
-        const next = exists
+          const next = exists
           ? prev.map((o) => {
               if (o._id !== order._id) return o;
               // If optimistic merge is recent and server data has fewer items, skip
@@ -773,12 +771,34 @@ export const OrderProvider = ({ children }) => {
       } catch (e) {}
     });
 
-    // Replace orders with authoritative server snapshot — prevents stale cross-tenant data
-    // from a previous restaurant session persisting into a new restaurant's view
+    // Replace orders with authoritative server snapshot — but preserve paid/closed history.
     socket.on("ordersSnapshot", (list) => {
       if (!Array.isArray(list)) return;
-      setOrders(list);
-      try { _tSet('cachedOrders', list); } catch {}
+      setOrders((prev) => {
+        const snapshot = list || [];
+        const mergedMap = new Map();
+
+        for (const order of snapshot) {
+          mergedMap.set(orderKey(order), order);
+        }
+
+        for (const order of prev) {
+          const key = orderKey(order);
+          if (!key) continue;
+          const isFinal = ["paid", "closed"].includes(normalizeStatus(order.status));
+          if (!isFinal) continue;
+          const existing = mergedMap.get(key);
+          if (!existing || !["paid", "closed"].includes(normalizeStatus(existing.status))) {
+            mergedMap.set(key, order);
+          }
+        }
+
+        const merged = Array.from(mergedMap.values()).sort((a, b) =>
+          new Date(b.createdAt || b._optimisticAt || 0) - new Date(a.createdAt || a._optimisticAt || 0)
+        );
+        try { _tSet('cachedOrders', merged); } catch {}
+        return merged;
+      });
     });
 
     return () => {
