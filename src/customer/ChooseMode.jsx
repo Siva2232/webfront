@@ -1,8 +1,10 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
-import { Utensils, ShoppingBag } from "lucide-react";
+import { Utensils, ShoppingBag, CalendarX, RefreshCw } from "lucide-react";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import API from "../api/axios";
+import { format } from "date-fns";
 
 export default function ChooseMode() {
   const [searchParams] = useSearchParams();
@@ -12,7 +14,56 @@ export default function ChooseMode() {
   const mode = searchParams.get("mode");
   const { setTable } = useCart();
 
+  const [isTableReserved, setIsTableReserved] = useState(false);
+  const [reservationInfo, setReservationInfo] = useState(null);
+  // Start as true immediately when there's a table — prevents flash of chooser or premature redirect
+  const [checkingReservation, setCheckingReservation] = useState(!!table);
+  // Tracks whether the first async check has finished so navigation logic knows it's safe to run
+  const [reservationChecked, setReservationChecked] = useState(!table);
+  const pollRef = useRef(null);
+
+  // Check if this table has an active reservation within 1 hour of now
+  const checkReservation = async () => {
+    if (!table) return;
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await API.get(`/reservations?date=${today}`);
+      const now = Date.now();
+      const ONE_HOUR = 60 * 60 * 1000;
+      const active = (data || []).find((res) => {
+        if (!["Pending", "Confirmed"].includes(res.status)) return false;
+        if (String(res.table) !== String(table)) return false;
+        const resTime = new Date(res.reservationTime).getTime();
+        // Block from 1 hour before the reservation time until the reservation time passes
+        return now >= resTime - ONE_HOUR;
+      });
+      setIsTableReserved(!!active);
+      setReservationInfo(active || null);
+    } catch {
+      // On error, don't block customer
+      setIsTableReserved(false);
+      setReservationInfo(null);
+    }
+  };
+
   useEffect(() => {
+    if (!table) return;
+    // Initial check
+    setCheckingReservation(true);
+    checkReservation().finally(() => {
+      setCheckingReservation(false);
+      setReservationChecked(true);
+    });
+    // Poll every 30 seconds so the gate lifts automatically when admin marks Confirm Seat
+    pollRef.current = setInterval(checkReservation, 30000);
+    return () => clearInterval(pollRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table]);
+
+  // Navigation / mode-skip logic — only runs AFTER reservation check completes AND table is not reserved
+  useEffect(() => {
+    if (!reservationChecked || isTableReserved) return;
+
     // Once user selected mode for this table in current visit, skip chooser.
     const _rid = getCurrentRestaurantId();
     if (table && localStorage.getItem(tenantKey(`tableModeChosen_${table}`, _rid))) {
@@ -26,7 +77,7 @@ export default function ChooseMode() {
     } else if (!table) {
       navigate("/menu", { replace: true });
     }
-  }, [mode, table, navigate, setTable]);
+  }, [mode, table, navigate, setTable, reservationChecked, isTableReserved]);
 
   const chooseDineIn = () => {
     if (table) {
@@ -48,6 +99,42 @@ export default function ChooseMode() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4 sm:px-6 py-8 md:py-12 font-sans antialiased text-black md:mt-[10px] mt-[0px]">
       <div className="w-full max-w-md space-y-10 sm:space-y-12">
+
+        {/* Table Reserved Gate */}
+        {checkingReservation ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-10 h-10 border-2 border-gray-300 border-t-black rounded-full animate-spin" />
+            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Checking table status...</p>
+          </div>
+        ) : isTableReserved ? (
+          <div className="flex flex-col items-center text-center space-y-6 py-8">
+            <div className="w-20 h-20 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center">
+              <CalendarX size={36} className="text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight uppercase">
+                Table Reserved
+              </h1>
+              <div className="h-1 w-14 bg-amber-400 mx-auto rounded-full" />
+              {reservationInfo && (
+                <p className="text-base text-gray-600 pt-1">
+                  Reserved at{" "}
+                  <span className="font-bold text-black">
+                    {format(new Date(reservationInfo.reservationTime), "hh:mm a")}
+                  </span>
+                </p>
+              )}
+              <p className="text-sm text-gray-500 max-w-xs mx-auto pt-1">
+                This table is reserved for another guest. Please ask a staff member for assistance or choose another seat.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-400 pt-2">
+              <RefreshCw size={12} className="animate-spin" />
+              <span>Checking for updates every 30 seconds</span>
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Header */}
         <div className="text-center space-y-3">
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight uppercase italic">
@@ -121,6 +208,8 @@ export default function ChooseMode() {
             </p>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

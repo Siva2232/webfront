@@ -265,7 +265,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6 lg:p-10 font-sans">
+    <div className="min-h-full bg-[#F8FAFC] p-4 sm:p-6 lg:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-10">
         
         {/* --- 1. PREMIUM HEADER --- */}

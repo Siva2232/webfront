@@ -84,7 +84,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       // Fetch active orders only â€” keeps the Orders page fast
-      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served,Paid");
+      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served,Paid,Closed");
       setOrders((prev) => {
         // Merge strategy: incoming data from server is the "source of truth",
         // but we preserve any very recent optimistic updates that haven't hit the DB yet.
@@ -92,7 +92,7 @@ export const OrderProvider = ({ children }) => {
         const serverMap = new Map(data.map(o => [o._id, o]));
         
         // Items in prev that are NOT in server data (might be new/local only)
-        const localOnly = prev.filter(o => !serverMap.has(o._id) && o._optimistic);
+        const localOnly = prev.filter(o => !serverMap.has(o._id) && (o._optimistic || ["served", "paid", "closed"].includes(normalizeStatus(o.status))));
         
         const merged = data.map(serverOrder => {
           const localOrder = prev.find(o => o._id === serverOrder._id);
@@ -159,7 +159,7 @@ export const OrderProvider = ({ children }) => {
       setOrders((prev) => {
         const now = Date.now();
         const incoming = new Map(patchedData.map((o) => [o._id, o]));
-        const merged = prev.map((o) => {
+        const merged = prev.filter(o => incoming.has(o._id) || ["served", "paid", "closed"].includes(normalizeStatus(o.status))).map((o) => {
           const server = incoming.get(o._id);
           if (!server) return o;
           if (o._optimisticAt && (now - o._optimisticAt) < 15000) {
@@ -785,10 +785,10 @@ export const OrderProvider = ({ children }) => {
         for (const order of prev) {
           const key = orderKey(order);
           if (!key) continue;
-          const isFinal = ["paid", "closed"].includes(normalizeStatus(order.status));
+          const isFinal = ["served", "paid", "closed"].includes(normalizeStatus(order.status));
           if (!isFinal) continue;
           const existing = mergedMap.get(key);
-          if (!existing || !["paid", "closed"].includes(normalizeStatus(existing.status))) {
+          if (!existing || !["served", "paid", "closed"].includes(normalizeStatus(existing.status))) {
             mergedMap.set(key, order);
           }
         }

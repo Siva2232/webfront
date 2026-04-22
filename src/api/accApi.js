@@ -6,6 +6,7 @@ const accApi = {
   getLedgerHistory: (ledgerId) => axios.get(`/accounting/ledgers/${ledgerId}/history`),
   createLedger: (data) => axios.post('/accounting/ledgers', data),
   getTransactions: () => axios.get('/accounting/transactions'),
+  getReports: (params) => axios.get('/accounting/reports', { params }),
   payBill: (data) => axios.post('/accounting/bill-payment', data),
 };
 

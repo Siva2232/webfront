@@ -173,7 +173,7 @@ export default function Analytics() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFDFF] pb-20 font-sans text-slate-900">
+    <div className="min-h-full bg-[#FBFDFF] pb-10 font-sans text-slate-900">
       {/* ── HEADER & FILTERS ───────────────────────────────────────────── */}
       <header className="top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-5 md:px-8 shadow-sm">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-5 md:gap-6">

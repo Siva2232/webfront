@@ -71,7 +71,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     
     const served = relevantOrders
       .filter((o) => ["served", "paid", "closed"].includes(normalizeStatus(o.status)))
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      .sort((a, b) => new Date(b._optimisticAt || b.updatedAt || b.createdAt || 0) - new Date(a._optimisticAt || a.updatedAt || a.createdAt || 0));
 
     // Fast reduction for stats
     let revenue = 0;
