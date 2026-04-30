@@ -1,376 +1,81 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { 
-  ChevronLeft, 
-  Receipt, 
-  Printer, 
-  Calendar, 
-  Hash,
-  Flame,
-  Package,
-  Plus,
-  Clock,
-  Coffee,
-  BellRing,
-  CheckCircle,
-  ChefHat,
-  MessageSquare
-} from "lucide-react";
-import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
-
-// Helper to check if order is takeaway
-const isTakeawayOrder = (kb) =>
-  kb.table === TAKEAWAY_TABLE || kb.table === DELIVERY_TABLE || !kb.table || kb.table === "TAKEAWAY" || kb.table === "DELIVERY";
-
-const statusColors = {
-  Pending: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
-  Preparing: { bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200" },
-  Cooking: { bg: "bg-orange-100", text: "text-orange-700", border: "border-orange-200" },
-  Ready: { bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-200" },
-  Served: { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
-};
+import { KitchenBillHeader } from "./kitchenBill/components/KitchenBillHeader";
+import KitchenBillEmptyState from "./kitchenBill/components/KitchenBillEmptyState";
+import KitchenBillCard from "./kitchenBill/components/KitchenBillCard";
+import { statusColors } from "./kitchenBill/utils/statusColors";
+import { printKitchenBillReceipt } from "./kitchenBill/utils/printKitchenBillReceipt";
 
 export default function KitchenBill({ embedded = false }) {
   const { kitchenBills, fetchActiveKitchenBills, updateKitchenBillStatus, isLoading } = useOrders();
   const navigate = useNavigate();
+  const [dateFilter, setDateFilter] = useState("");
 
   useEffect(() => {
     fetchActiveKitchenBills();
   }, []);
 
-  // Isolated Print Logic (OrderBill-style window popup)
   const handlePrintSingle = (billId) => {
     const kb = kitchenBills.find((bill) => (bill._id || bill.id) === billId);
-    if (!kb) return;
-
-    const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
-    const subtotal = kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
-    const tax = subtotal * 0.05;
-    const total = subtotal + tax;
-
-    const formatMoney = (value) => `₹${(value || 0).toLocaleString('en-IN')}`;
-
-    const padLine = (left, right, width = 40) => {
-      const pad = width - String(left).length - String(right).length;
-      return `${left}${' '.repeat(pad > 0 ? pad : 1)}${right}`;
-    };
-
-    const itemsText = kb.items?.map((item) => {
-      const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
-      const basePrice = item.price - addonsTotal;
-      const baseLine = item.name + (item.selectedPortion ? ` (${item.selectedPortion})` : '');
-      const qtyLine = padLine(`Qty: ${item.qty} × ₹${basePrice.toLocaleString('en-IN')}`, `₹${(basePrice * item.qty).toLocaleString('en-IN')}`);
-      const addonLines = item.selectedAddons?.map((addon) => padLine(`+ ${addon.name}`, `₹${((addon.price || 0) * item.qty).toLocaleString('en-IN')}`)) || [];
-      return [baseLine, qtyLine, ...addonLines].join('\n');
-    }).join('\n');
-
-    const w = window.open('', '_blank');
-    if (!w) return;
-
-    const html = `<html><head><style>
-@page{size:80mm auto;margin:0}
-body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;width:80mm;margin:0;padding:5mm;box-sizing:border-box}
-.header{text-align:center;font-weight:bold;margin-bottom:2mm}
-.line{border-bottom:1px dashed #000;margin:2mm 0}
-.text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}
-</style></head><body>
-<div class="header">
-MY CAFE
-01 SKYLINE DRIVE, BUSINESS DISTRICT
-+91 0000 000 000
-GST: 18AABCT1234H1Z0
-</div>
-<div class="text-center">Kitchen</div>
-<div class="line"></div>
-
-${padLine('Order Ref', '#' + (kb.orderRef || kb._id || '').toString().slice(-8))}
-${padLine('Table', isTakeawayOrder(kb) ? 'TAKEAWAY' : 'TBL-' + kb.table)}
-${isTakeawayOrder(kb) && kb.tokenNumber ? padLine('Token No', '#' + kb.tokenNumber) : ''}
-${padLine('Placed At', format(billTimestamp, 'dd/MM/yyyy • hh:mm a'))}
-
-<div class="line"></div>
-<div class="bold">Itemized Manifest</div>
-<div class="line"></div>
-${itemsText}
-
-
-<div class="line"></div>
-${padLine('Method', 'KITCHEN')}
-${kb.notes ? `<div class="line"></div><div class="bold">Notes:</div>\n${kb.notes}\n` : ''}
-<div class="line"></div>
-
-<div class="text-center">Official Receipt</div>
-<div class="text-center">THANK YOU</div>
-
-<script>window.print();window.onafterprint=()=>window.close();</script>
-</body></html>`;
-
-    w.document.write(html);
-    w.document.close();
+    printKitchenBillReceipt({ kb });
   };
 
-  // Sort: active first, then by date
   const sortedBills = [...kitchenBills].sort((a, b) => {
     if (a.status === "Served" && b.status !== "Served") return 1;
     if (a.status !== "Served" && b.status === "Served") return -1;
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 
-  if (!sortedBills || sortedBills.length === 0) {
-    return (
-      <div className={`flex flex-col items-center justify-center px-8 text-center bg-[#F4F4F5] ${embedded ? 'min-h-[60vh]' : 'min-h-screen'}`}>
-        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
-          <ChefHat size={32} className="text-slate-300" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tighter uppercase">No Kitchen Bills</h2>
-        <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Waiting for orders</p>
-        {!embedded && (
-          <button onClick={() => navigate(-1)} className="text-[10px] font-black text-indigo-600 border-b-2 border-indigo-600 pb-1 uppercase tracking-widest">
-            Go Back
-          </button>
-        )}
-      </div>
-    );
+  const filteredBills = useMemo(() => {
+    if (!dateFilter) return sortedBills;
+    return sortedBills.filter((kb) => {
+      const d = kb.createdAt ? new Date(kb.createdAt) : null;
+      if (!d || Number.isNaN(d.getTime())) return false;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}` === dateFilter;
+    });
+  }, [sortedBills, dateFilter]);
+
+  if (!filteredBills || filteredBills.length === 0) {
+    return <KitchenBillEmptyState embedded={embedded} />;
   }
 
   return (
-    <div className={`bg-[#F8FAFC] pb-20 font-mono relative ${embedded ? '' : 'min-h-screen'}`}>
-      {/* Header — only shown in standalone mode (admin panel) */}
+    <div className={`bg-[#FDFDFD] pb-8 font-sans ${embedded ? '' : 'min-h-screen'}`}>
+      {/* Header */}
       {!embedded && (
-        <header className="top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 no-print">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-              <ChevronLeft size={20} />
-            </button>
-            <div className="text-center">
-              <p className="text-[9px] font-black uppercase tracking-[0.4em] text-orange-500">Kitchen Terminal</p>
-              <h1 className="text-xs font-black uppercase tracking-widest">KOT</h1>
-            </div>
-            <div className="w-10" />
-          </div>
-        </header>
+        <KitchenBillHeader
+          isLoading={isLoading}
+          recordCount={filteredBills.length}
+          dateFilter={dateFilter}
+          onDateChange={setDateFilter}
+          onClearFilter={() => setDateFilter("")}
+          onRefresh={fetchActiveKitchenBills}
+        />
       )}
 
-
-      <main className="max-w-7xl mx-auto p-4 mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {sortedBills.map((kb, index) => {
+      {/* Main Grid - Changed to 4 cards per row on large screens */}
+      <main className="max-w-7xl mx-auto p-4 pt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        {filteredBills.map((kb, index) => {
           const batchTotal = kb.batchTotal || kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
           const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
-          const isServed = kb.status === "Served";
           const colors = statusColors[kb.status] || statusColors.Pending;
 
           return (
-            <div 
+            <KitchenBillCard
               key={kb._id || index}
-              className={`relative group w-full ${isServed ? 'opacity-60 grayscale-[0.3]' : ''}`}
-            >
-              {/* Floating Print Button */}
-              <button 
-                onClick={() => handlePrintSingle(kb._id || index)}
-                className="absolute -top-4 right-4 z-10 no-print bg-white border border-slate-200 shadow-lg px-4 py-2 rounded-full hover:bg-slate-900 hover:text-white transition-all duration-300 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest"
-              >
-                <Printer size={10} /> Print
-              </button>
-
-              {/* Kitchen Bill Receipt */}
-              <div 
-                id={`kitchen-bill-${kb._id || index}`}
-                className={`bg-white text-slate-900 border-2 ${colors.border} relative overflow-hidden print:border-none shadow-lg`}
-              >
-                {/* Kitchen Header */}
-                <div className={`p-6 text-center relative overflow-hidden border-b-4 border-double ${colors.border} ${colors.bg}`}>
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 opacity-[0.05] pointer-events-none">
-                    <ChefHat size={100} />
-                  </div>
-                  <div className={`inline-flex items-center justify-center w-10 h-10 bg-slate-900 text-white rounded-full mb-3`}>
-                    <ChefHat size={18} />
-                  </div>
-                  <h2 className="text-lg font-black uppercase tracking-tight mb-1">Kitchen Bill</h2>
-                  
-                  {/* Batch Badge */}
-                  {kb.batchNumber > 1 ? (
-                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-orange-500 text-white rounded-full text-[9px] font-black uppercase">
-                      <Plus size={10} /> Batch #{kb.batchNumber} - Added Items
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase">
-                      <Receipt size={10} /> Batch #1 - Initial Order
-                    </div>
-                  )}
-
-                  {/* Customer Name & Token */}
-                  <div className="mt-2 flex flex-col items-center gap-1">
-                    {kb.customerName && (
-                      <div className="text-[10px] font-black uppercase tracking-tight text-slate-500">
-                        Customer: <span className="text-slate-900">{kb.customerName}</span>
-                      </div>
-                    )}
-                    {isTakeawayOrder(kb) && kb.tokenNumber && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-lg text-[12px] font-black uppercase shadow-sm">
-                        Token: #{kb.tokenNumber}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Table/Order Info */}
-                <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-                  <div className="p-4 space-y-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1">
-                      <Hash size={8}/> Order Ref
-                    </p>
-                    <p className="text-[10px] font-black text-slate-900 uppercase">
-                      #{(kb.orderRef || kb._id || '').slice(-8)}
-                    </p>
-                  </div>
-                  <div className="p-4 text-right space-y-1">
-                    <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
-                      {isTakeawayOrder(kb) ? "Type" : "Table"}
-                    </p>
-                    <p className="text-xl font-black italic text-slate-900 leading-none flex items-center justify-end gap-2">
-                      {isTakeawayOrder(kb) ? (
-                        <>
-                          <Package size={18} className="text-rose-500" />
-                          <span className="text-rose-600">{kb.table && kb.table.toUpperCase() === 'DELIVERY' ? 'H/D' : 'T/A'}</span>
-                        </>
-                      ) : (
-                        <>TBL-{kb.table}</>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Time */}
-                <div className="px-4 py-2 bg-slate-50/50 flex justify-between items-center border-b border-slate-100">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <Calendar size={9} /> Received
-                  </span>
-                  <span className="text-[9px] font-black text-slate-800">
-                    {format(billTimestamp, "hh:mm a • dd MMM")}
-                  </span>
-                </div>
-
-                {/* Status Bar */}
-                <div className={`px-4 py-3 ${colors.bg} flex justify-between items-center border-b ${colors.border}`}>
-                  <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Status</span>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${colors.bg} ${colors.text} border ${colors.border}`}>
-                    {kb.status}
-                  </span>
-                </div>
-
-                {/* Items */}
-                <div className="p-4 space-y-3">
-                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] text-center underline underline-offset-4 decoration-slate-100">
-                    Items to Prepare
-                  </p>
-                  {kb.items?.map((item, idx) => {
-                    const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
-                    const basePrice = item.price - addonsTotal;
-                    return (
-                    <div 
-                      key={idx} 
-                      className={`p-3 rounded-xl ${
-                        item.isTakeaway ? 'bg-orange-50 border border-orange-100' : 'bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-black uppercase tracking-tight text-slate-800">
-                              {item.name}
-                            </span>
-                            {item.selectedPortion && (
-                              <span className="text-[9px] font-bold text-blue-600">({item.selectedPortion})</span>
-                            )}
-                            {item.isTakeaway && (
-                              <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase rounded">
-                                T/A
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[9px] text-slate-400 font-bold">₹{basePrice} × {item.qty}</span>
-                        </div>
-                        <span className="text-xl font-black text-slate-900 shrink-0">×{item.qty}</span>
-                      </div>
-                      {item.selectedAddons?.length > 0 && (
-                        <div className="mt-1.5 ml-1 space-y-0.5 border-l-2 border-emerald-200 pl-2">
-                          {item.selectedAddons.map((a, i) => (
-                            <div key={i} className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-emerald-700">+ {a.name}</span>
-                              <span className="text-[9px] font-bold text-slate-400">₹{(a.price || 0) * item.qty}</span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
-                            <span className="text-[8px] font-black text-slate-500 uppercase">Item Total</span>
-                            <span className="text-[10px] font-black text-slate-700">₹{(item.price * item.qty).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    );
-                  })}
-                </div>
-
-                {/* Notes */}
-                {kb.notes && (
-                  <div className="mx-4 mb-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2">
-                    <MessageSquare size={12} className="text-indigo-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-[10px] text-slate-700 italic">"{kb.notes}"</p>
-                  </div>
-                )}
-
-                {/* Batch Total */}
-                <div className="mx-4 mb-4 p-4 bg-slate-900 rounded-2xl text-white">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Batch Total</span>
-                    <span className="text-2xl font-black tracking-tight">₹{batchTotal.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 text-center border-t border-dashed border-slate-200 bg-slate-50/30">
-                  <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">Kitchen Copy</p>
-                </div>
-              </div>
-            </div>
+              kb={kb}
+              colors={colors}
+              batchTotal={batchTotal}
+              billTimestamp={billTimestamp}
+              onPrint={() => handlePrintSingle(kb._id || index)}
+            />
           );
         })}
       </main>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; margin: 0; padding: 0; }
-          main { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-          div[id^="kitchen-bill-"] {
-            page-break-after: always;
-            width: 80mm; 
-            margin: 0 auto !important;
-            padding: 5mm !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
-
-function StatBadge({ label, count, icon: Icon, color }) {
-  const colorClasses = {
-    slate: "bg-slate-100 text-slate-600",
-    amber: "bg-amber-100 text-amber-600",
-    orange: "bg-orange-100 text-orange-600",
-    indigo: "bg-indigo-100 text-indigo-600",
-  };
-  
-  return (
-    <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${colorClasses[color]} whitespace-nowrap`}>
-      <Icon size={14} />
-      <span className="text-[10px] font-black uppercase">{label}</span>
-      <span className="text-sm font-black">{count}</span>
-    </div>
-  );
-}
-
-

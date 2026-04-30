@@ -9,6 +9,7 @@ import {
   getAllStaff, createStaff, updateStaff, deleteStaff
 } from "../../api/hrApi";
 import toast from "react-hot-toast";
+import StaffBadge from "./staff/components/StaffBadge";
 
 const ROLES = ["admin", "manager", "staff"];
 const DEPARTMENTS = ["Kitchen", "Waiter", "Service", "Management", "Accounts", "Housekeeping", "Security", "Other"];
@@ -17,22 +18,6 @@ const EMPTY_FORM = {
   name: "", email: "", phone: "", role: "staff", department: "Kitchen",
   designation: "", baseSalary: "", joiningDate: "", status: "active", notes: ""
 };
-
-function Badge({ value }) {
-  const map = {
-    active: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
-    inactive: "bg-slate-100 text-slate-600 border-slate-200",
-    on_leave: "bg-amber-50 text-amber-700 border-amber-200/60",
-    admin: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
-    manager: "bg-blue-50 text-blue-700 border-blue-200/60",
-    staff: "bg-slate-50 text-slate-600 border-slate-200",
-  };
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border tracking-wide uppercase ${map[value] || "bg-slate-100 text-slate-600 border-slate-200"}`}>
-      {value?.replace("_", " ")}
-    </span>
-  );
-}
 
 export default function AdminStaff() {
   const [staff, setStaff] = useState([]);
@@ -217,7 +202,7 @@ export default function AdminStaff() {
                         <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5"><Phone className="w-3 h-3 opacity-40" />{s.phone || "—"}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4"><Badge value={s.role} /></td>
+                    <td className="px-6 py-4"><StaffBadge value={s.role} /></td>
                     <td className="px-6 py-4">
                         <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                             <Building2 className="w-3 h-3 text-slate-300" />
@@ -235,7 +220,7 @@ export default function AdminStaff() {
                         {s.joiningDate ? new Date(s.joiningDate).toLocaleDateString("en-IN", { month: 'short', day: '2-digit', year: 'numeric' }) : "—"}
                       </p>
                     </td>
-                    <td className="px-6 py-4"><Badge value={s.status} /></td>
+                    <td className="px-6 py-4"><StaffBadge value={s.status} /></td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => setViewStaff(s)} title="View Profile"
@@ -363,7 +348,7 @@ export default function AdminStaff() {
                     <Briefcase className="w-4 h-4" /> {viewStaff.designation || viewStaff.role}
                 </p>
                 <div className="flex gap-2 mt-4">
-                  <Badge value={viewStaff.role} /><Badge value={viewStaff.status} />
+                  <StaffBadge value={viewStaff.role} /><StaffBadge value={viewStaff.status} />
                 </div>
               </div>
 

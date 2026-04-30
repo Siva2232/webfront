@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: true,
+    watch: {
+      usePolling: true,
+      interval: 100,
+    },
     proxy: {
       "/api": {
         target: "http://localhost:5000",
