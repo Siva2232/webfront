@@ -6,7 +6,7 @@ import accApi from "../api/accApi";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { AnimatePresence } from "framer-motion";
 import { Receipt, RefreshCw } from "lucide-react";
-import { CASHIERS } from "../constants";
+import { useCashiers } from "../hooks/useCashiers";
 import { BillCard } from "./orderBill/components/BillCard";
 import { MarkPaidModal } from "./orderBill/components/MarkPaidModal";
 import { PrintCashierModal } from "./orderBill/components/PrintCashierModal";
@@ -14,17 +14,27 @@ import { CloseBillModal } from "./orderBill/components/CloseBillModal";
 import { OrderBillHeader } from "./orderBill/components/OrderBillHeader";
 import { printReceipt } from "./orderBill/receiptPrint";
 import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
+import { useTheme } from "../context/ThemeContext";
+import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
 
 /* ─── component ───────────────────────────────────────────── */
 
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
     useOrders();
+  const { cashiers, addCashier } = useCashiers();
+  const { features } = useTheme();
   const navigate = useNavigate();
+
+  // features comes directly from ThemeContext (always fresh from API, never from stale cache)
+  const accountingEnabled = features.accounting !== false;
 
   const [closedBillIds, setClosedBillIds] = useState(new Set());
   const [paidBillIds, setPaidBillIds] = useState(new Set());
   const [closeBillModal, setCloseBillModal] = useState(null); // { order }
+  /** Confirm-only modal when accounting is off */
+  const [confirmMarkPaid, setConfirmMarkPaid] = useState(null);
+  /** Record payment (cash/bank) — only when accounting is on */
   const [markPaidModal, setMarkPaidModal] = useState(null);
   const [paymentData, setPaymentData] = useState({ cash: 0, bank: 0, discount: 0, balance: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,6 +119,40 @@ export default function OrderBill() {
     }
   }, [markPaidModal, markBillPaid, paymentData]);
 
+  const handleCancelConfirmMarkPaid = useCallback(() => {
+    if (!isSubmitting) setConfirmMarkPaid(null);
+  }, [isSubmitting]);
+
+  /** Mark paid with no ledger (accounting off) — small confirm modal only */
+  const handleConfirmSimpleMarkPaid = useCallback(async () => {
+    if (!confirmMarkPaid) return;
+    setIsSubmitting(true);
+    try {
+      await markBillPaid(confirmMarkPaid.billId, confirmMarkPaid.orderRef);
+      setPaidBillIds((prev) => new Set(prev).add(confirmMarkPaid.billId));
+      toast.success("Bill marked as paid");
+      setConfirmMarkPaid(null);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "Failed to mark bill paid";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [confirmMarkPaid, markBillPaid]);
+
+  /** Accounting on: open Record Payment directly; off: only the small confirm */
+  const requestMarkPaid = useCallback(
+    (payload) => {
+      if (accountingEnabled) {
+        setMarkPaidModal(payload);
+      } else {
+        setConfirmMarkPaid(payload);
+      }
+    },
+    [accountingEnabled],
+  );
+
   /* close bill – opens confirmation modal */
   const handleCloseBill = useCallback((order) => {
     setCloseBillModal({ order });
@@ -151,10 +195,22 @@ export default function OrderBill() {
     setPrintModalOrder(order);
   }, []);
 
+  const handleAddCashier = useCallback(
+    (name) => {
+      const r = addCashier(name);
+      if (!r.ok) toast.error(r.error || "Could not add cashier");
+      else toast.success("Cashier added");
+      return r;
+    },
+    [addCashier]
+  );
+
   /* print */
   const handleConfirmPrint = useCallback(() => {
     if (!printModalOrder) return;
-    const cashier = CASHIERS.find((c) => c.id === selectedCashier);
+    const cashier = cashiers.find(
+      (c) => String(c.id) === String(selectedCashier)
+    );
     if (!cashier) {
       toast.error("Please select a cashier");
       return;
@@ -167,7 +223,7 @@ export default function OrderBill() {
     } finally {
       closePrintModal();
     }
-  }, [printModalOrder, selectedCashier, closePrintModal]);
+  }, [printModalOrder, selectedCashier, closePrintModal, cashiers]);
 
   /* ─── empty state ────────────────────────────────────────── */
   if (!uniqueBills.length && isLoading && !billsReady) {
@@ -226,7 +282,7 @@ export default function OrderBill() {
               isClosing={false}
               onPrint={openPrintModal}
               onClose={handleCloseBill}
-              onMarkPaid={setMarkPaidModal}
+              onMarkPaid={requestMarkPaid}
             />
           );
         })}
@@ -234,6 +290,13 @@ export default function OrderBill() {
 
       {/* Modals */}
       <AnimatePresence>
+        <MarkPaidConfirmModal
+          payload={confirmMarkPaid}
+          onCancel={handleCancelConfirmMarkPaid}
+          onConfirm={handleConfirmSimpleMarkPaid}
+          loading={isSubmitting}
+        />
+
         <MarkPaidModal
           markPaidModal={markPaidModal}
           paymentData={paymentData}
@@ -247,7 +310,8 @@ export default function OrderBill() {
           isOpen={!!printModalOrder}
           selectedCashier={selectedCashier}
           setSelectedCashier={setSelectedCashier}
-          cashiers={CASHIERS}
+          cashiers={cashiers}
+          onAddCashier={handleAddCashier}
           onCancel={closePrintModal}
           onConfirm={handleConfirmPrint}
         />

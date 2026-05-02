@@ -1,5 +1,5 @@
-import React from "react";
-import { Printer, User } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Printer, User } from "lucide-react";
 import { ModalOverlay } from "./ModalOverlay";
 
 export function PrintCashierModal({
@@ -7,14 +7,46 @@ export function PrintCashierModal({
   selectedCashier,
   setSelectedCashier,
   cashiers,
+  onAddCashier,
   onCancel,
   onConfirm,
 }) {
+  const [newName, setNewName] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setNewName("");
+  }, [isOpen]);
+
+  // When there is exactly one cashier, pre-select them in the dropdown
+  useEffect(() => {
+    if (!isOpen || cashiers.length !== 1) return;
+    const only = cashiers[0];
+    const isValid =
+      selectedCashier != null &&
+      cashiers.some((c) => String(c.id) === String(selectedCashier));
+    if (!isValid) setSelectedCashier(only.id);
+  }, [isOpen, cashiers, selectedCashier, setSelectedCashier]);
+
   if (!isOpen) return null;
 
   const hasValidCashier =
     selectedCashier != null &&
-    cashiers.some((c) => c.id === selectedCashier);
+    cashiers.some((c) => String(c.id) === String(selectedCashier));
+
+  const handleAdd = () => {
+    if (!onAddCashier) return;
+    setAdding(true);
+    try {
+      const result = onAddCashier(newName);
+      if (result?.ok && result.cashier) {
+        setSelectedCashier(result.cashier.id);
+        setNewName("");
+      }
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <ModalOverlay onClose={onCancel}>
@@ -27,23 +59,60 @@ export function PrintCashierModal({
       <p className="text-sm text-slate-500 text-center mb-6">
         Who is handling this bill?
       </p>
-      <div className="mb-6 max-h-64 overflow-y-auto">
+      <div className="mb-4 max-h-64 overflow-y-auto">
         <select
           value={selectedCashier == null ? "" : String(selectedCashier)}
           onChange={(e) => {
             const v = e.target.value;
-            setSelectedCashier(v === "" ? null : Number(v));
+            setSelectedCashier(v === "" ? null : v);
           }}
           className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">— Select Cashier —</option>
           {cashiers.map((c) => (
-            <option key={c.id} value={c.id}>
+            <option key={c.id} value={String(c.id)}>
               {c.name}
             </option>
           ))}
         </select>
+        {!cashiers.length && (
+          <p className="mt-2 text-xs text-amber-700 font-medium text-center">
+            No cashiers yet — add one below.
+          </p>
+        )}
       </div>
+
+      {onAddCashier && (
+        <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+            Add cashier
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+              placeholder="New cashier name"
+              className="flex-1 min-w-0 px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="button"
+              disabled={adding || !String(newName).trim()}
+              onClick={handleAdd}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-900 text-white text-xs font-black uppercase tracking-wide hover:bg-black disabled:opacity-40"
+            >
+              <Plus size={16} /> Add
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3">
         <button
           type="button"

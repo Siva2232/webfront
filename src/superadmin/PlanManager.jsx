@@ -13,11 +13,12 @@ const FEATURE_KEYS = [
   { key: "waiterPanel",  label: "Waiter Panel" },
   { key: "waiterCall",   label: "Waiter Call" },
   { key: "billRequest",  label: "Bill Request" },
+  { key: "accounting",   label: "Accounting" },
 ];
 
 const BLANK = {
   name: "", price: "", duration: 30, description: "",
-  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true },
+  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true },
   maxTables: 20, maxProducts: 100, maxStaff: 10,
 };
 

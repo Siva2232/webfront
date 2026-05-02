@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
-import { CASHIERS } from "../constants";
+import { useCashiers } from "../hooks/useCashiers";
 import { computeStats } from "./manualBill/utils";
 import { printSplitReceipt } from "./manualBill/printSplitReceipt";
 import BillDetailsCard from "./manualBill/components/BillDetailsCard";
@@ -19,6 +19,7 @@ import ConfirmRemoveItemModal from "./manualBill/components/ConfirmRemoveItemMod
 
 export default function ManualBill() {
   const { bills, fetchBills, isLoading } = useOrders();
+  const { cashiers, addCashier } = useCashiers();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,11 +81,20 @@ export default function ManualBill() {
 
   const stats = useMemo(() => computeStats(customItems), [customItems]);
 
+  const handleAddCashier = (name) => {
+    const r = addCashier(name);
+    if (!r.ok) toast.error(r.error || "Could not add cashier");
+    else toast.success("Cashier added");
+    return r;
+  };
+
   const handleConfirmPrint = () => {
     if (!selectedCashier) return toast.error("Select cashier");
     if (!customItems.length) return toast.error("No items to print");
 
-    const name = CASHIERS.find((c) => c.id === selectedCashier)?.name || "N/A";
+    const name =
+      cashiers.find((c) => String(c.id) === String(selectedCashier))?.name ||
+      "N/A";
     printSplitReceipt({ order: foundBill, items: customItems, cashierName: name, toast });
     setPrintModalOpen(false);
     setSelectedCashier(null);
@@ -175,9 +185,10 @@ export default function ManualBill() {
 
       <SelectCashierModal
         open={printModalOpen}
-        cashiers={CASHIERS}
+        cashiers={cashiers}
         selectedCashier={selectedCashier}
         onChangeCashier={setSelectedCashier}
+        onAddCashier={handleAddCashier}
         onCancel={() => setPrintModalOpen(false)}
         onConfirm={handleConfirmPrint}
       />

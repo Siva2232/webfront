@@ -27,11 +27,11 @@ export default function SuperAdminLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    if (!user || !isSuperAdmin) {
-      navigate("/superadmin/login");
-    }
-  }, [user, isSuperAdmin, navigate]);
+  // Guard BEFORE rendering any UI — avoid one-frame flash of the dark sidebar
+  // when a non–super-admin lands on a /superadmin/* URL.
+  if (!user || !isSuperAdmin) {
+    return <Navigate to="/superadmin/login" replace />;
+  }
 
   // Fetch unread notification count and poll every 30s
   useEffect(() => {

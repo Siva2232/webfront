@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { syncRestaurantCache, getCurrentRestaurantId } from "../utils/tenantCache";
 import toast from "react-hot-toast";
@@ -20,6 +21,7 @@ import {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const { loadBranding } = useTheme();
 
   const [email, setEmail] = useState("");
@@ -71,9 +73,9 @@ export default function Login() {
       // Hard reload whenever restaurant changes OR on any fresh login (prevRid empty = after logout)
       const isRestaurantSwitch = newRid && prevRid !== newRid;
 
-      // persist token and user info
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userInfo", JSON.stringify(data));
+      // Persist session + sync AuthContext — without login(), a prior Super Admin session
+      // can stay in React state while localStorage already shows the restaurant admin.
+      login(data);
 
       // Store restaurantId so ThemeContext can load branding/features
       if (data.restaurantId) {

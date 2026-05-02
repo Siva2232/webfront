@@ -23,10 +23,8 @@ export default function Navbar({ title }) {
   const [isNoOffersModalOpen, setIsNoOffersModalOpen] = useState(false);
 
   const { offers, banners: activeSlides } = useUI();
-  const { branding } = useTheme();
+  const { branding, features } = useTheme();
   const { orders } = useOrders();
-
-  const features = branding?.features || {};
 
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");

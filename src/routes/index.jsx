@@ -3,9 +3,22 @@ import { useTheme } from "../context/ThemeContext";
 
 /* Feature Guard — blocks direct URL access to disabled features */
 const FeatureGuard = ({ feature, children }) => {
-  const { branding } = useTheme();
-  const features = branding?.features || {};
+  const { features } = useTheme();
   if (features[feature] === false) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return children;
+};
+
+/** Allows /admin/hr/* when any HR area is enabled (parent `hr` off but hrStaff etc. on). */
+const HRModuleOutletGuard = ({ children }) => {
+  const { features } = useTheme();
+  const allowed =
+    features.hr !== false ||
+    features.hrStaff !== false ||
+    features.hrAttendance !== false ||
+    features.hrLeaves !== false;
+  if (!allowed) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   return children;
@@ -18,6 +31,7 @@ import CustomerLayout from "../customer/CustomerLayout";
 /* Auth */
 import Login from "../admin/Login";
 import ProtectedRoute from "./ProtectedRoute";
+import ProtectedSuperAdminRoute from "./ProtectedSuperAdminRoute";
 
 /* Super Admin */
 import SuperAdminLogin from "../superadmin/SuperAdminLogin";
@@ -156,7 +170,14 @@ export default function AppRoutes() {
           <Route path="kitchen-bill" element={<KitchenBill />} />
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
-          <Route path="accounting">
+          <Route
+            path="accounting"
+            element={
+              <FeatureGuard feature="accounting">
+                <Outlet />
+              </FeatureGuard>
+            }
+          >
             <Route index element={<AccDashboard />} />
             <Route path="ledgers" element={<AccLedgers />} />
             <Route path="ledgers/:ledgerId" element={<AccLedgerDetail />} />
@@ -183,24 +204,66 @@ export default function AppRoutes() {
           <Route path="subscription" element={<SubscriptionPage />} />
           <Route path="profile" element={<AdminProfile />} />
 
-          {/* HR Management — guarded by hr feature flag */}
+          {/* HR — outlet if any HR submodule or parent hr is on; each route has its own guard */}
           <Route
             path="hr"
             element={
-              <FeatureGuard feature="hr">
+              <HRModuleOutletGuard>
                 <div>
                   <Outlet />
                 </div>
-              </FeatureGuard>
+              </HRModuleOutletGuard>
             }
           >
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminHRDashboard />} />
-            <Route path="staff" element={<AdminStaff />} />
-            <Route path="attendance" element={<AdminAttendance />} />
-            <Route path="leaves" element={<AdminLeaves />} />
-            <Route path="shifts" element={<AdminShifts />} />
-            <Route path="payroll" element={<AdminPayroll />} />
+            <Route
+              path="dashboard"
+              element={
+                <FeatureGuard feature="hr">
+                  <AdminHRDashboard />
+                </FeatureGuard>
+              }
+            />
+            <Route
+              path="staff"
+              element={
+                <FeatureGuard feature="hrStaff">
+                  <AdminStaff />
+                </FeatureGuard>
+              }
+            />
+            <Route
+              path="attendance"
+              element={
+                <FeatureGuard feature="hrAttendance">
+                  <AdminAttendance />
+                </FeatureGuard>
+              }
+            />
+            <Route
+              path="leaves"
+              element={
+                <FeatureGuard feature="hrLeaves">
+                  <AdminLeaves />
+                </FeatureGuard>
+              }
+            />
+            <Route
+              path="shifts"
+              element={
+                <FeatureGuard feature="hr">
+                  <AdminShifts />
+                </FeatureGuard>
+              }
+            />
+            <Route
+              path="payroll"
+              element={
+                <FeatureGuard feature="hr">
+                  <AdminPayroll />
+                </FeatureGuard>
+              }
+            />
           </Route>
 
           <Route
@@ -227,22 +290,24 @@ export default function AppRoutes() {
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/menu" replace />} />
-
-      {/* ── Super Admin Routes ── */}
+      {/* ── Super Admin (before global * fallback so /superadmin/* is never mis-matched) ── */}
       <Route path="/superadmin/login" element={<SuperAdminLogin />} />
-      <Route path="/superadmin" element={<SuperAdminLayout />}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<SuperAdminDashboard />} />
-        <Route path="restaurants" element={<RestaurantList />} />
-        <Route path="plans" element={<PlanManager />} />
-        <Route path="analytics" element={<SuperAdminAnalytics />} />
-        <Route path="support-team" element={<SupportTeamManager />} />
-        <Route path="notifications" element={<SuperAdminNotifications />} />
-        <Route path="support" element={<SupportTicketManager />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      <Route element={<ProtectedSuperAdminRoute />}>
+        <Route path="/superadmin" element={<SuperAdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SuperAdminDashboard />} />
+          <Route path="restaurants" element={<RestaurantList />} />
+          <Route path="plans" element={<PlanManager />} />
+          <Route path="analytics" element={<SuperAdminAnalytics />} />
+          <Route path="support-team" element={<SupportTeamManager />} />
+          <Route path="notifications" element={<SuperAdminNotifications />} />
+          <Route path="support" element={<SupportTicketManager />} />
+          <Route path="*" element={<Navigate to="dashboard" replace />} />
+        </Route>
       </Route>
+
+      {/* Fallback: must stay after specific top-level routes */}
+      <Route path="*" element={<Navigate to="/menu" replace />} />
 
       {/* ── Dedicated Support Team Panel ── */}
       <Route path="/support-team/login" element={<SupportLogin />} />

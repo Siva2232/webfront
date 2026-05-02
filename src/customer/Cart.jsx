@@ -133,6 +133,7 @@ export default function Cart({ hideTable = false }) {
 
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
+  const tableParam = searchParams.get("table");
   const isTakeaway = table === TAKEAWAY_TABLE || mode === "takeaway" || hideTable;
 
   const { addOrder } = useOrders();
@@ -168,22 +169,20 @@ export default function Cart({ hideTable = false }) {
   const x = useMotionValue(0);
   const textOpacity = useTransform(x, [0, 150], [0.4, 0]);
 
+  // Sync table FROM URL only when the URL changes — do not depend on `table` or edits
+  // will be overwritten every keystroke (e.g. ?table=5 vs user typing another number).
   useEffect(() => {
-    const urlTable = searchParams.get("table");
-    const urlMode = searchParams.get("mode");
-    if (urlMode === "takeaway") {
+    if (mode === "takeaway") {
       setTable(TAKEAWAY_TABLE);
       setTableError("");
       return;
     }
-    if (urlTable?.trim()) {
-      const clean = urlTable.trim().replace(/^0+/, '') || "";
-      if (clean !== table) {
-        setTable(clean);
-        setTableError("");
-      }
+    if (tableParam?.trim()) {
+      const clean = tableParam.trim().replace(/^0+/, "") || "";
+      setTable(clean);
+      setTableError("");
     }
-  }, [searchParams, table, setTable]);
+  }, [tableParam, mode, setTable]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -369,29 +368,20 @@ export default function Cart({ hideTable = false }) {
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
                           Serving At
                         </p>
-                        <p className="text-lg font-black uppercase">
+                        {/* <p className="text-lg font-black uppercase">
                           {displayLocation || '??'}
-                        </p>
+                        </p> */}
                       </div>
                     </div>
 
                     <div className="relative flex flex-col items-end">
-                      <input 
-                        type="text"
-                        value={table}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setTable(val);
-                          if (val.trim()) setTableError("");
-                        }}
-                        placeholder="?"
-                        maxLength={3}
-                        className={`w-20 bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${
-                          tableError 
-                            ? "border-rose-500 focus:border-rose-500" 
-                            : "border-white/20 focus:border-orange-500"
-                        }`}
-                      />
+                   <p className={`w-20 bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${
+                        tableError
+                          ? "border-rose-500 focus:border-rose-500"
+                          : "border-white/20 focus:border-orange-500"
+                      }`}>
+                          {displayLocation || '??'}
+                        </p>
                       {tableError && (
                         <div className="mt-2 text-rose-400 text-[11px] font-medium flex items-center gap-1">
                           <AlertCircle size={14} />

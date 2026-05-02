@@ -4,6 +4,9 @@ import API from "./axios";
 export const getRestaurantBranding = (restaurantId) =>
   API.get(`/restaurants/${restaurantId}/branding`);
 
+export const getRestaurantFeatures = (restaurantId) =>
+  API.get(`/restaurants/${restaurantId}/features`);
+
 // ── Super Admin ────────────────────────────────────────────────────────────
 export const getRestaurants      = ()          => API.get("/restaurants");
 export const getRestaurantById   = (id)        => API.get(`/restaurants/${id}`);

@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
@@ -94,11 +94,9 @@ const menuItems = [
     name: "HR Management",
     icon: Building2,
     path: "hr",
+    /* Group modules only — Staff / Attendance / Leaves are separate nav rows (gated by hr + hrStaff etc.) */
     children: [
       { name: "HR Dashboard", icon: LayoutDashboard, path: "hr/dashboard" },
-      { name: "Staff", icon: UserCheck, path: "hr/staff" },
-      { name: "Attendance", icon: CalendarCheck2, path: "hr/attendance" },
-      { name: "Leaves", icon: CalendarX2, path: "hr/leaves" },
       { name: "Shifts", icon: Clock4, path: "hr/shifts" },
       { name: "Payroll", icon: Banknote, path: "hr/payroll" },
     ],
@@ -126,16 +124,15 @@ export default function AdminLayout() {
     supportTicketCount,
     markAllSupportTicketsRead,
   } = useUI();
-  const { branding } = useTheme();
+  const { branding, features, featuresReady } = useTheme();
 
-  // Feature-filtered nav items — hide sections the Super Admin has disabled
-  const features = branding?.features || {};
   const featureMap = {
     hr: "hr",
     reports: "reports",
     "kitchen-bill": "kitchenPanel",
     tables: "qrMenu",
     orders: "onlineOrders",
+    accounting: "accounting",
   };
 
   const serviceNotifications = notifications.filter((notif) => {
@@ -148,9 +145,52 @@ export default function AdminLayout() {
     features.waiterCall !== false || features.billRequest !== false;
   const visibleMenuItems = menuItems.filter((item) => {
     const featureKey = featureMap[item.path];
+    if (featureKey && !featuresReady) return false;
     if (featureKey && features[featureKey] === false) return false;
     return true;
   });
+
+  /**
+   * HR: Staff / Attendance / Leaves are individual top-level sidebar links injected after the
+   * HR Management group when `hr` is enabled. If `hr` is off but e.g. `hrStaff` is on, those links
+   * are inserted after “Add Offers” so Staff still appears without the HR dropdown.
+   */
+  const navMenuItems = useMemo(() => {
+    const HR_INDIVIDUAL = [
+      { name: "Staff",      icon: UserCheck,     path: "hr/staff",      flag: "hrStaff" },
+      { name: "Attendance", icon: CalendarCheck2, path: "hr/attendance", flag: "hrAttendance" },
+      { name: "Leaves",     icon: CalendarX2,     path: "hr/leaves",     flag: "hrLeaves" },
+    ];
+    const out = [];
+    for (const item of visibleMenuItems) {
+      out.push(item);
+      // Inject individual HR modules right after the HR Management group
+      if (item.path === "hr" && features.hr !== false) {
+        for (const row of HR_INDIVIDUAL) {
+          if (features[row.flag] === false) continue;
+          out.push({ name: row.name, icon: row.icon, path: row.path });
+        }
+      }
+    }
+    // Parent HR disabled but submodule flags on — standalone links after Offers
+    if (featuresReady && features.hr === false) {
+      const orphans = HR_INDIVIDUAL.filter((row) => features[row.flag] !== false);
+      if (orphans.length > 0) {
+        const insertAfter = "offers";
+        const idx = out.findIndex((i) => i.path === insertAfter);
+        const block = orphans.map((row) => ({
+          name: row.name,
+          icon: row.icon,
+          path: row.path,
+        }));
+        if (idx === -1) out.push(...block);
+        else out.splice(idx + 1, 0, ...block);
+      }
+    }
+    // Remove groups whose children have all been filtered away
+    return out.filter((item) => !item.children || item.children.length > 0);
+  }, [visibleMenuItems, features, featuresReady]);
+
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -444,10 +484,9 @@ export default function AdminLayout() {
               className="text-xl font-black tracking-tight"
               style={{ color: "var(--sidebar-text)" }}
             >
-              {branding.name || "KMC"}
+              {branding.name}
               <span style={{ color: branding.primaryColor || "#6366f1" }}>
-                {" "}
-                Admin
+                {branding.name ? " Admin" : "Admin Panel"}
               </span>
             </span>
           </div>
@@ -471,7 +510,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-4 space-y-1 mt-4 no-scrollbar">
-          {visibleMenuItems.map((item) => {
+          {navMenuItems.map((item) => {
             // Shared classes for both Disabled and Active states to maintain visual harmony
             const baseClasses = `
       group relative flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors duration-100
@@ -1237,7 +1276,7 @@ export default function AdminLayout() {
                     {user.name || "Alex Rivera"}
                   </p>
                   <p className="text-[10px] font-medium text-slate-400 mt-1">
-                    {user.role || "Super Admin"}
+                    {user.role === "superadmin" ? "Admin" : (user.role || "Admin")}
                   </p>
                 </div>
                 <ChevronDown

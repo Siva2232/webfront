@@ -1,5 +1,12 @@
 import { format } from "date-fns";
 import { TAKEAWAY_TABLE } from "../../context/CartContext";
+import { escapeReceiptHtml } from "../orderBill/receiptHeaderSettings";
+import {
+  RECEIPT_PRINT_CSS,
+  getReceiptHeaderBlock,
+  receiptPad as pad,
+  formatManifestItems,
+} from "../orderBill/receiptPrintCore";
 
 export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) => {
   const w = window.open("", "_blank");
@@ -11,57 +18,22 @@ export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
+  const safeCashier = escapeReceiptHtml(cashierName);
+  const headerHtml = getReceiptHeaderBlock();
+  const itemsText = formatManifestItems(items);
 
-  const pad = (l, r, width = 32) => {
-    const sp = width - l.length - r.length;
-    return l + " ".repeat(sp > 0 ? sp : 1) + r;
-  };
-
-  const itemLine = (name, qty, price) => {
-    const n = name.length > 18 ? name.substring(0, 18) : name;
-    return n.padEnd(18) + qty.toString().padStart(4) + price.toFixed(2).padStart(10);
-  };
-
-  const itemsText = items
-    .map((item) => {
-      const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
-      const base = item.price - addonsTotal;
-      let line = itemLine(item.name, item.qty, base * item.qty);
-      if (item.selectedPortion) line += "\n  Portion: " + item.selectedPortion;
-      if (item.selectedAddons?.length) {
-        item.selectedAddons.forEach((a) => {
-          line +=
-            "\n" +
-            ("  + " + a.name).padEnd(22) +
-            ("Rs." + ((a.price || 0) * item.qty).toFixed(2)).padStart(10);
-        });
-        line += "\n  " + "-".repeat(28);
-        line += "\n  " + "Item Total".padEnd(18) + ("Rs." + (item.price * item.qty).toFixed(2)).padStart(12);
-      }
-      return line;
-    })
-    .join("\n");
-
-  const html = `<html><head><style>
-@page{size:80mm auto;margin:0}
-body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;width:80mm;margin:0;padding:5mm;box-sizing:border-box}
-.header{text-align:center;font-weight:bold;margin-bottom:2mm}
-.line{border-bottom:1px dashed #000;margin:2mm 0}
-.text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}
-</style></head><body>
-<div class="header">
-MY CAFE
-01 SKYLINE DRIVE, BUSINESS DISTRICT
-+91 0000 000 000
-GST: 18AABCT1234H1Z0
-</div>
+  const html = `<html><head><style>${RECEIPT_PRINT_CSS}</style></head><body>
+<div class="header">${headerHtml}</div>
 <div class="text-center bold">CUSTOM BILL (SPLIT)</div>
-<div class="text-center">Cashier: ${cashierName}</div>
+<div class="text-center">Cashier: ${safeCashier}</div>
 <div class="line"></div>
 
 ${pad("Order Ref", "#" + (order._id || "").slice(-6))}
 ${pad("Location", order.table === TAKEAWAY_TABLE ? "TAKEAWAY" : "TBL-" + order.table)}
-${pad("Placed At", format(new Date(order.createdAt || order.billedAt || Date.now()), "dd/MM/yyyy  hh:mm a"))}
+${pad(
+    "Placed At",
+    format(new Date(order.createdAt || order.billedAt || Date.now()), "dd/MM/yyyy • hh:mm a")
+  )}
 
 <div class="line"></div>
 <div class="bold">Itemized Manifest</div>
@@ -86,4 +58,3 @@ ${pad("Tax (GST 5%)", "Rs." + tax.toFixed(2))}
   w.document.write(html);
   w.document.close();
 };
-

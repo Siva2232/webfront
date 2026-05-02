@@ -18,7 +18,11 @@ export default function SuperAdminLogin() {
     try {
       const { data } = await superAdminLogin(form);
       login(data);
-      localStorage.setItem("token", data.token);
+      // Ensure any leftover admin/waiter/kitchen flags are cleared so ProtectedRoute
+      // doesn't accidentally let a super-admin session pass as a restaurant admin.
+      localStorage.setItem("isAdminLoggedIn", "false");
+      localStorage.setItem("isKitchenLoggedIn", "false");
+      localStorage.setItem("isWaiterLoggedIn", "false");
       toast.success(`Welcome, ${data.name}!`);
       navigate("/superadmin/dashboard");
     } catch (err) {

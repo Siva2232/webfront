@@ -23,8 +23,64 @@ const DEFAULT_THEME = {
     waiterPanel:  true,
     waiterCall:   true,
     billRequest:  true,
+    accounting:   true,
+    hrStaff:      true,
+    hrAttendance: true,
+    hrLeaves:     true,
   },
 };
+
+/** Merged with `branding.features` so missing keys keep defaults and `false` still hides modules (e.g. Accounting). */
+export const DEFAULT_FEATURES = { ...DEFAULT_THEME.features };
+
+/**
+ * API/cache payloads often send a partial `features` object. Shallow-spreading would replace
+ * the whole features map and drop disabled flags / defaults — sidebar then shows wrong modules.
+ */
+function mergeBrandingPayload(data) {
+  if (!data || typeof data !== "object") {
+    return { ...DEFAULT_THEME };
+  }
+  const { features: incomingFeatures, ...rest } = data;
+  return {
+    ...DEFAULT_THEME,
+    ...rest,
+    features: {
+      ...DEFAULT_THEME.features,
+      ...(incomingFeatures && typeof incomingFeatures === "object" ? incomingFeatures : {}),
+    },
+  };
+}
+
+/**
+ * Load branding from any persistent cache (localStorage then sessionStorage).
+ * Returns merged branding or null if nothing is cached.
+ */
+function loadCachedBranding(restaurantId) {
+  if (!restaurantId) return null;
+  const rid = restaurantId.toUpperCase().trim();
+  let raw = null;
+  try {
+    const ls = localStorage.getItem(`restaurantBranding_${rid}`);
+    if (ls) raw = JSON.parse(ls);
+  } catch (_) {}
+  if (!raw) {
+    try {
+      const ss = sessionStorage.getItem(`restaurantBranding_${rid}`);
+      if (ss) raw = JSON.parse(ss);
+    } catch (_) {}
+  }
+  if (!raw) return null;
+  return mergeBrandingPayload(raw);
+}
+
+function persistBranding(restaurantId, data) {
+  if (!restaurantId) return;
+  const rid = restaurantId.toUpperCase().trim();
+  const serialised = JSON.stringify(data);
+  try { localStorage.setItem(`restaurantBranding_${rid}`, serialised); } catch (_) {}
+  try { sessionStorage.setItem(`restaurantBranding_${rid}`, serialised); } catch (_) {}
+}
 
 /**
  * Apply branding object to CSS custom properties on :root.
@@ -49,69 +105,110 @@ const applyThemeToDom = (branding) => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [branding, setBranding] = useState(DEFAULT_THEME);
-  const [loading, setLoading] = useState(false);
+  // Visual branding (name, colours, logo) — restored from cache for instant first paint.
+  const [branding, setBranding] = useState(() => {
+    const rid = localStorage.getItem("restaurantId");
+    const cached = rid ? loadCachedBranding(rid) : null;
+    if (cached) {
+      applyThemeToDom(cached);
+      // Strip cached features so stale flags never reach the sidebar.
+      // Features are always set from the fresh API call below.
+      return { ...cached, features: { ...DEFAULT_THEME.features } };
+    }
+    return DEFAULT_THEME;
+  });
 
   /**
-   * Fetches branding from backend and applies it.
-   * Called on login or page refresh when restaurantId is in localStorage.
+   * features is kept SEPARATE from branding so it is ONLY ever updated from a
+   * fresh API response — never from the localStorage/sessionStorage cache.
+   * This prevents the "Accounting still showing after Super Admin disabled it" bug.
    */
+  const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  /** After first branding fetch completes, sidebar uses API flags (avoids flash from DEFAULT_FEATURES). */
+  const [featuresReady, setFeaturesReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  /** Clears Super Admin preview / stale tenant colours before loading a new restaurant theme */
+  const resetBrandingToDefault = useCallback(() => {
+    setBranding(DEFAULT_THEME);
+    setFeatures(DEFAULT_FEATURES);
+    setFeaturesReady(false);
+    applyThemeToDom(DEFAULT_THEME);
+    try { sessionStorage.removeItem("restaurantBranding"); } catch (_) {}
+  }, []);
+
   const loadBranding = useCallback(async (restaurantId) => {
     if (!restaurantId) return;
     setLoading(true);
+    // Apply cached VISUAL branding instantly (name/colours) — prevents first-paint flash.
+    const immediate = loadCachedBranding(restaurantId);
+    if (immediate) {
+      setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
+      applyThemeToDom(immediate);
+    }
     try {
+      // Single call — branding endpoint returns all 13 feature flags when the
+      // request carries a valid auth token (admin/kitchen/waiter panels).
+      // Customer requests get only public flags (qrMenu, onlineOrders).
       const { data } = await API.get(`/restaurants/${restaurantId}/branding`);
-      const merged = { ...DEFAULT_THEME, ...data };
+      const merged = mergeBrandingPayload(data);
+
       setBranding(merged);
       applyThemeToDom(merged);
-      // Persist to session storage so reloads are instant (namespaced by restaurant)
-      sessionStorage.setItem(`restaurantBranding_${restaurantId}`, JSON.stringify(merged));
+      persistBranding(restaurantId, merged);
+
+      // features state is always set from the fresh API response — never from cache.
+      setFeatures({ ...DEFAULT_FEATURES, ...merged.features });
     } catch (err) {
       console.warn("[ThemeContext] Could not load branding:", err.message);
     } finally {
       setLoading(false);
+      setFeaturesReady(true);
     }
   }, []);
 
-  /**
-   * Live preview: Apply branding without saving to backend.
-   * Used in the Super Admin customization panel.
-   */
+  /** Live preview: apply visual overrides without saving. Used in the Super Admin panel. */
   const previewBranding = useCallback((overrides) => {
-    const merged = { ...branding, ...overrides };
+    const merged = mergeBrandingPayload({ ...branding, ...overrides });
     setBranding(merged);
     applyThemeToDom(merged);
   }, [branding]);
 
-  /**
-   * Reset branding to whatever is stored (cancel live preview).
-   */
+  /** Cancel live preview — restore whatever is stored. */
   const resetPreview = useCallback(() => {
     applyThemeToDom(branding);
   }, [branding]);
 
-  // On mount: restore from sessionStorage for instant paint
   useEffect(() => {
     const restaurantId = localStorage.getItem("restaurantId");
-    const cacheKey = restaurantId ? `restaurantBranding_${restaurantId}` : "restaurantBranding";
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        setBranding(parsed);
-        applyThemeToDom(parsed);
-      } catch (_) {}
-    } else {
-      // Apply defaults
-      applyThemeToDom(DEFAULT_THEME);
-    }
-
-    // Also load fresh from backend if restaurantId is known
     if (restaurantId) loadBranding(restaurantId);
   }, [loadBranding]);
 
+  /** Re-fetch when the tab regains focus so feature changes by Super Admin are picked up. */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const rid = localStorage.getItem("restaurantId");
+      if (rid) loadBranding(rid);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadBranding]);
+
   return (
-    <ThemeContext.Provider value={{ branding, loading, loadBranding, previewBranding, resetPreview, applyThemeToDom }}>
+    <ThemeContext.Provider
+      value={{
+        branding,
+        features,
+        featuresReady,
+        loading,
+        loadBranding,
+        resetBrandingToDefault,
+        previewBranding,
+        resetPreview,
+        applyThemeToDom,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

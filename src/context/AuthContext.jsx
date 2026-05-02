@@ -15,12 +15,16 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback((userData) => {
     setUser(userData);
     localStorage.setItem("userInfo", JSON.stringify(userData));
-    if (userData.token)        localStorage.setItem("token", userData.token);
+    if (userData.token) localStorage.setItem("token", userData.token);
     if (userData.restaurantId) {
       syncRestaurantCache(userData.restaurantId); // wipe stale cache from previous restaurant
       localStorage.setItem("restaurantId", userData.restaurantId);
     }
-    if (userData.role === "superadmin") localStorage.setItem("isSuperAdmin", "true");
+    if (userData.role === "superadmin") {
+      localStorage.setItem("isSuperAdmin", "true");
+    } else {
+      localStorage.removeItem("isSuperAdmin");
+    }
   }, []);
 
   const updateUser = useCallback((updates) => {
