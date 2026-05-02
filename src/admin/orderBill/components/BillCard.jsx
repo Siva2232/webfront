@@ -9,7 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../../../context/CartContext";
-import { computeBillStats, isPaid } from "../billUtils";
+import { computeBillStats } from "../billUtils";
 
 export const BillCard = React.memo(function BillCard({
   order,
@@ -21,12 +21,7 @@ export const BillCard = React.memo(function BillCard({
   onMarkPaid,
 }) {
   const {
-    subtotal,
-    tax,
-    grandTotal,
-    sessions,
     unpaidAmount: rawUnpaidAmount,
-    allOnlinePaid,
     hasUnpaidCod: rawHasUnpaidCod,
     allCodPaid: rawAllCodPaid,
   } = useMemo(() => computeBillStats(order), [order]);
@@ -129,7 +124,9 @@ export const BillCard = React.memo(function BillCard({
         <div className="mx-4 mb-4 p-4 bg-slate-900 text-white rounded-2xl mt-auto">
           <div className="flex justify-between items-center">
             <span className="uppercase text-xs tracking-widest text-slate-400">Total Due</span>
-            <span className="text-2xl font-bold tracking-tight">₹{grandTotal.toLocaleString()}</span>
+            <span className="text-2xl font-bold tracking-tight">
+              ₹{unpaidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
 
@@ -152,7 +149,8 @@ export const BillCard = React.memo(function BillCard({
                   }
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                 >
-                  <Wallet size={17} /> Mark Paid • ₹{unpaidAmount}
+                  <Wallet size={17} /> Mark Paid • ₹
+                  {unpaidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </button>
               )}
 

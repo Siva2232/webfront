@@ -4,6 +4,12 @@ import { useNavigate } from "react-router-dom";
 import API from "../api/axios";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { getCurrentRestaurantId } from "../utils/tenantCache";
+import {
+  DEFAULT_RECEIPT_HEADER,
+  loadReceiptHeaderForRestaurant,
+  saveReceiptHeader,
+} from "./orderBill/receiptHeaderSettings";
 import {
   User,
   Mail,
@@ -14,8 +20,8 @@ import {
   ArrowRight,
   Save,
   Loader2,
-  Shield,
   AlertTriangle,
+  Store,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -37,10 +43,17 @@ export default function AdminProfile() {
   const [loading, setLoading] = useState(true);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [receiptHeader, setReceiptHeader] = useState(DEFAULT_RECEIPT_HEADER);
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    const rid = getCurrentRestaurantId() || profile.restaurantId;
+    if (!rid) return;
+    setReceiptHeader(loadReceiptHeaderForRestaurant(rid));
+  }, [profile.restaurantId]);
 
   const fetchProfile = async () => {
     try {
@@ -61,6 +74,7 @@ export default function AdminProfile() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setUpdatingProfile(true);
+    const rid = getCurrentRestaurantId() || profile.restaurantId;
 
     try {
       const { data } = await API.put("/auth/profile", {
@@ -76,7 +90,12 @@ export default function AdminProfile() {
 
       updateUser({ name: data.name, email: data.email });
 
-      toast.success("Profile updated successfully");
+      if (rid) {
+        saveReceiptHeader(rid, receiptHeader);
+        toast.success("Profile and receipt header saved.");
+      } else {
+        toast.success("Profile updated — add restaurant context to save receipt header.");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
@@ -226,7 +245,12 @@ export default function AdminProfile() {
               <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500">
                 <User size={20} />
               </div>
-              <h3 className="text-lg font-bold text-slate-800">My Profile</h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">My Profile</h3>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Account details and what prints at the top of Invoice Center receipts.
+                </p>
+              </div>
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-6">
@@ -259,7 +283,82 @@ export default function AdminProfile() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="pt-8 border-t border-slate-100">
+                {/* <div className="flex items-start gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
+                    <Store size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-800">Receipt header</h4>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      Printed on receipts from Invoice Center (thermal / browser print).
+                    </p>
+                  </div>
+                </div> */}
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Restaurant name
+                    </label>
+                    <input
+                      type="text"
+                      value={receiptHeader.restaurantName}
+                      onChange={(e) =>
+                        setReceiptHeader({ ...receiptHeader, restaurantName: e.target.value })
+                      }
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                      placeholder="e.g. MY CAFE"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Address
+                    </label>
+                    <textarea
+                      value={receiptHeader.address}
+                      onChange={(e) =>
+                        setReceiptHeader({ ...receiptHeader, address: e.target.value })
+                      }
+                      rows={3}
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                      placeholder="Street, area, city"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                        Phone
+                      </label>
+                      <input
+                        type="text"
+                        value={receiptHeader.phone}
+                        onChange={(e) =>
+                          setReceiptHeader({ ...receiptHeader, phone: e.target.value })
+                        }
+                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                        placeholder="+91 …"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                        GST number
+                      </label>
+                      <input
+                        type="text"
+                        value={receiptHeader.gstNumber}
+                        onChange={(e) =>
+                          setReceiptHeader({ ...receiptHeader, gstNumber: e.target.value })
+                        }
+                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                        placeholder="e.g. 22AAAAA0000A1Z5"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
                 <button
                   disabled={updatingProfile}
                   type="submit"

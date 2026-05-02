@@ -1,10 +1,12 @@
 import { useMemo } from "react";
+import { billIdentityKey } from "../../../utils/billIdentity";
 
 export function useFilteredBills({ bills, dateFilter, displayLimit }) {
   const filteredBills = useMemo(() => {
     const dedupedMap = new Map();
-    (bills || []).forEach((b) => {
-      const key = b.orderRef || b._id || b.id;
+    (bills || []).forEach((b, i) => {
+      let key = billIdentityKey(b);
+      if (!key) key = `__bill_${i}`;
       if (!dedupedMap.has(key)) dedupedMap.set(key, b);
     });
 

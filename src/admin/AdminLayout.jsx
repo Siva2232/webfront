@@ -409,9 +409,10 @@ export default function AdminLayout() {
       </AnimatePresence>
 
       {/* Sidebar */}
+      {/* fixed on lg too — sticky scrolled away with the page; fixed keeps nav + footer anchored */}
       <aside
         className={`
-          fixed lg:sticky top-0 left-0 z-[70] h-screen flex flex-col
+          fixed top-0 left-0 z-[70] h-screen flex flex-col overflow-hidden
           border-r border-slate-200 transition-all duration-150 ease-out
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           ${isCollapsed ? "lg:w-[90px]" : "w-72"}
@@ -421,7 +422,7 @@ export default function AdminLayout() {
           borderRightColor: "color-mix(in srgb, var(--sidebar-bg), black 10%)",
         }}
       >
-        <div className="h-24 flex items-center px-6 justify-between">
+        <div className="h-24 shrink-0 flex items-center px-6 justify-between">
           <div
             className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}
           >
@@ -469,7 +470,7 @@ export default function AdminLayout() {
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 mt-4 max-h-[calc(100vh-160px)] overflow-y-auto no-scrollbar">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-4 space-y-1 mt-4 no-scrollbar">
           {visibleMenuItems.map((item) => {
             // Shared classes for both Disabled and Active states to maintain visual harmony
             const baseClasses = `
@@ -704,7 +705,7 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-        <div className="px-2 py-3 border-t border-white/10 flex justify-center">
+        <div className="shrink-0 px-2 py-3 border-t border-white/10 flex justify-center">
           <div
             className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 shadow-sm"
             style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
@@ -729,9 +730,11 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main: offset by sidebar width on desktop (fixed sidebar is out of flex flow) */}
       <div
-        className="flex-1 flex flex-col min-w-0"
+        className={`flex-1 flex flex-col min-w-0 transition-[margin] duration-150 ease-out ${
+          isCollapsed ? "lg:ml-[90px]" : "lg:ml-72"
+        }`}
         style={{ backgroundColor: "#F8FAFC" }}
       >
         {/* Header */}

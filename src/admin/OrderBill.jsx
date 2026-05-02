@@ -31,7 +31,7 @@ export default function OrderBill() {
   const [printModalOrder, setPrintModalOrder] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [dateFilter, setDateFilter] = useState(""); // "" = all
-  const [displayLimit] = useState(20);
+  const [displayLimit] = useState(100);
 
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
@@ -141,17 +141,33 @@ export default function OrderBill() {
     }
   }, [closeBillModal, closeBill]);
 
+  const closePrintModal = useCallback(() => {
+    setPrintModalOrder(null);
+    setSelectedCashier(null);
+  }, []);
+
+  const openPrintModal = useCallback((order) => {
+    setSelectedCashier(null);
+    setPrintModalOrder(order);
+  }, []);
+
   /* print */
   const handleConfirmPrint = useCallback(() => {
-    if (!printModalOrder || !selectedCashier) {
+    if (!printModalOrder) return;
+    const cashier = CASHIERS.find((c) => c.id === selectedCashier);
+    if (!cashier) {
       toast.error("Please select a cashier");
       return;
     }
-    const name = CASHIERS.find((c) => c.id === selectedCashier)?.name || "N/A";
-    printReceipt(printModalOrder, name);
-    setPrintModalOrder(null);
-    setSelectedCashier(null);
-  }, [printModalOrder, selectedCashier]);
+    try {
+      printReceipt(printModalOrder, cashier.name);
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || "Could not open print preview");
+    } finally {
+      closePrintModal();
+    }
+  }, [printModalOrder, selectedCashier, closePrintModal]);
 
   /* ─── empty state ────────────────────────────────────────── */
   if (!uniqueBills.length && isLoading && !billsReady) {
@@ -208,7 +224,7 @@ export default function OrderBill() {
               isClosed={order.status === "Closed" || closedBillIds.has(billId) || closedBillIds.has(orderRefId)}
               isMarkedPaid={paidBillIds.has(billId) || paidBillIds.has(orderRefId)}
               isClosing={false}
-              onPrint={setPrintModalOrder}
+              onPrint={openPrintModal}
               onClose={handleCloseBill}
               onMarkPaid={setMarkPaidModal}
             />
@@ -232,7 +248,7 @@ export default function OrderBill() {
           selectedCashier={selectedCashier}
           setSelectedCashier={setSelectedCashier}
           cashiers={CASHIERS}
-          onCancel={() => setPrintModalOrder(null)}
+          onCancel={closePrintModal}
           onConfirm={handleConfirmPrint}
         />
 

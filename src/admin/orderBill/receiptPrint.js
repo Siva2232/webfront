@@ -1,6 +1,8 @@
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { TAKEAWAY_TABLE } from "../../context/CartContext";
+import { computeBillStats } from "./billUtils";
+import { getReceiptHeader, escapeReceiptHtml } from "./receiptHeaderSettings";
 
 export const printReceipt = (order, cashierName = "N/A") => {
   const w = window.open("", "_blank");
@@ -9,9 +11,15 @@ export const printReceipt = (order, cashierName = "N/A") => {
     return;
   }
 
-  const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
+  const { subtotal, tax, grandTotal: total } = computeBillStats(order);
+  const hdr = getReceiptHeader();
+  const headerLines = [
+    escapeReceiptHtml(hdr.restaurantName),
+    escapeReceiptHtml(hdr.address),
+    escapeReceiptHtml(hdr.phone),
+    hdr.gstNumber ? `GST: ${escapeReceiptHtml(hdr.gstNumber)}` : "",
+  ].filter((line) => line.trim() !== "");
+  const headerHtml = headerLines.join("\n");
 
   const pad = (l, r, width = 32) => {
     const sp = width - l.length - r.length;
@@ -27,7 +35,8 @@ export const printReceipt = (order, cashierName = "N/A") => {
     );
   };
 
-  const itemsText = order.items
+  const lineItems = Array.isArray(order.items) ? order.items : [];
+  const itemsText = lineItems
     .map((item) => {
       const addonsTotal =
         item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
@@ -58,12 +67,7 @@ body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;
 .line{border-bottom:1px dashed #000;margin:2mm 0}
 .text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}
 </style></head><body>
-<div class="header">
-MY CAFE
-01 SKYLINE DRIVE, BUSINESS DISTRICT
-+91 0000 000 000
-GST: 18AABCT1234H1Z0
-</div>
+<div class="header">${headerHtml}</div>
 <div class="text-center bold">${
     order.paymentStatus === "paid" ? "PAID" : "Collect Cash"
   }</div>

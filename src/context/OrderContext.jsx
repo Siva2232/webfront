@@ -3,6 +3,7 @@ import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
+import { billIdentityKey } from "../utils/billIdentity";
 
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
 const orderKey = (order) => String(order?._id || order?.id || "");
@@ -199,7 +200,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       // Very lean fetch: limit to 20 for fast TTI
-      const { data } = await API.get("/bills?limit=20");
+      const { data } = await API.get("/bills?limit=100");
       if (!Array.isArray(data)) {
         _billsFetchInFlight.current = false;
         return;
@@ -209,14 +210,14 @@ export const OrderProvider = ({ children }) => {
         const now = Date.now();
         const prevMap = new Map();
         // Index existing bills by unique ID
-        prev.forEach(p => {
-          const key = p.orderRef || p._id || p.id;
+        prev.forEach((p) => {
+          const key = billIdentityKey(p);
           if (key) prevMap.set(key, p);
         });
-        
+
         // Merge server data
-        data.forEach(serverBill => {
-          const key = serverBill.orderRef || serverBill._id || serverBill.id;
+        data.forEach((serverBill) => {
+          const key = billIdentityKey(serverBill);
           if (!key) return;
 
           const localBill = prevMap.get(key);
@@ -231,7 +232,7 @@ export const OrderProvider = ({ children }) => {
         // Keep active/unpaid ones regardless
         const final = Array.from(prevMap.values())
           .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
-          .slice(0, 50); // Hard memory cap
+          .slice(0, 120); // memory cap; keep in sync with API limit so newer channels (e.g. delivery) aren’t dropped
           
         try { _tSet('cachedBills', final); } catch (_) {}
         return final;
@@ -585,9 +586,11 @@ export const OrderProvider = ({ children }) => {
     if (status === "Closed") {
       setBills((prev) => {
         prevBills = prev;
-        return prev.map(b => {
-          const key = b.orderRef || b._id || b.id;
-          if (key === id) return { ...b, status: "Closed" };
+        const idStr = String(id);
+        return prev.map((b) => {
+          if (billIdentityKey(b) === idStr || String(b.orderRef ?? "") === idStr) {
+            return { ...b, status: "Closed" };
+          }
           return b;
         });
       });
@@ -683,13 +686,18 @@ export const OrderProvider = ({ children }) => {
     socket.on("billCreated", (bill) => {
       console.log("Socket: billCreated RECEIVED", bill);
       setBills((prev) => {
-        const key = bill.orderRef || bill._id || bill.id;
-        const exists = prev.find((b) => (b._id === key || b.id === key) || b.orderRef === key);
-        
-        if (exists) return prev.map((b) => ((b._id === key || b.id === key) || b.orderRef === key) ? bill : b);
-        
-        const next = [bill, ...prev];
-        try { _tSet('cachedBills', next.slice(0, 100)); } catch (_) {}
+        const nk = billIdentityKey(bill);
+        const idx = nk ? prev.findIndex((b) => billIdentityKey(b) === nk) : -1;
+        let next;
+        if (idx >= 0) {
+          next = [...prev];
+          next[idx] = bill;
+        } else {
+          next = [bill, ...prev];
+        }
+        try {
+          _tSet("cachedBills", next.slice(0, 100));
+        } catch (_) {}
         return next;
       });
     });
@@ -704,7 +712,12 @@ export const OrderProvider = ({ children }) => {
     socket.on("billUpdated", (updatedBill) => {
       setBills((prev) => {
         const id = updatedBill._id || updatedBill.id;
-        const exists = prev.find((b) => (b._id === id || b.id === id) || b.orderRef === updatedBill.orderRef);
+        const nk = billIdentityKey(updatedBill);
+        const exists = prev.find(
+          (b) =>
+            billIdentityKey(b) === nk ||
+            (id != null && (b._id === id || b.id === id))
+        );
         
         // If a bill is closed, we don't necessarily remove it from "bills" (since history is fine),
         // but we DO want to ensure the "orders" state is also updated.
@@ -718,12 +731,12 @@ export const OrderProvider = ({ children }) => {
 
         let next;
         if (exists) {
-          next = prev.map((b) => 
-            ((b._id === id || b.id === id) || b.orderRef === updatedBill.orderRef) ? updatedBill : b
+          next = prev.map((b) =>
+            billIdentityKey(b) === nk || (id != null && (b._id === id || b.id === id))
+              ? updatedBill
+              : b
           );
         } else {
-          // If a new bill arrives via socket (e.g. from manual ordering or first addition),
-          // ensure we don't duplicate it.
           next = [updatedBill, ...prev];
         }
 

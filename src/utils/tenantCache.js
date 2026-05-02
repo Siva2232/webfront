@@ -22,6 +22,7 @@ const BASE_CACHE_KEYS = [
   'ui_offers',
   'lastUsedTable',
   'restaurantBranding',
+  'receiptHeaderSettings',
 ];
 
 /**

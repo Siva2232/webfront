@@ -12,6 +12,10 @@ export function PrintCashierModal({
 }) {
   if (!isOpen) return null;
 
+  const hasValidCashier =
+    selectedCashier != null &&
+    cashiers.some((c) => c.id === selectedCashier);
+
   return (
     <ModalOverlay onClose={onCancel}>
       <div className="flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-full mx-auto mb-4">
@@ -25,8 +29,11 @@ export function PrintCashierModal({
       </p>
       <div className="mb-6 max-h-64 overflow-y-auto">
         <select
-          value={selectedCashier || ""}
-          onChange={(e) => setSelectedCashier(Number(e.target.value))}
+          value={selectedCashier == null ? "" : String(selectedCashier)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setSelectedCashier(v === "" ? null : Number(v));
+          }}
           className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">— Select Cashier —</option>
@@ -39,14 +46,16 @@ export function PrintCashierModal({
       </div>
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={onCancel}
           className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition"
         >
           Cancel
         </button>
         <button
+          type="button"
           onClick={onConfirm}
-          disabled={!selectedCashier}
+          disabled={!hasValidCashier}
           className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Printer size={16} /> Print Bill
