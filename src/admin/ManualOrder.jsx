@@ -3,7 +3,7 @@ import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../context/CartContext";
-import { ClipboardList, AlertCircle,Package,ShoppingCart,MapPin } from "lucide-react";
+import { ClipboardList, AlertCircle, CheckCircle, Package, ShoppingCart, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { AnimatePresence, motion } from "framer-motion";
 import SubItemModal from "../components/SubItemModal";
