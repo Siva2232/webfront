@@ -123,8 +123,10 @@ export const OrderProvider = ({ children }) => {
   };
 
   const fetchTableOrders = async (tableNum) => {
+    if (tableNum == null || String(tableNum).trim() === "") return;
     try {
       const { data } = await API.get(`/orders/table/${tableNum}`);
+      const rows = Array.isArray(data) ? data : [];
 
       // if we have a persisted optimistic patch from before refresh, reapply it
       let optimisticPatch;
@@ -134,9 +136,11 @@ export const OrderProvider = ({ children }) => {
         optimisticPatch = null;
       }
 
-      const patchedData = data.map((order) => {
+      const patchedData = rows.map((order) => {
         if (optimisticPatch && order._id === optimisticPatch.orderId) {
-          const mergedItems = [...order.items, ...optimisticPatch.mergedItems.map(item => ({
+          const baseItems = order.items || order.orderItems || [];
+          const patchItems = optimisticPatch.mergedItems || [];
+          const mergedItems = [...baseItems, ...patchItems.map(item => ({
             ...item,
             addedAt: new Date().toISOString(),
             isNewItem: true,
@@ -159,9 +163,12 @@ export const OrderProvider = ({ children }) => {
 
       setOrders((prev) => {
         const now = Date.now();
-        const incoming = new Map(patchedData.map((o) => [o._id, o]));
-        const merged = prev.filter(o => incoming.has(o._id) || ["served", "paid", "closed"].includes(normalizeStatus(o.status))).map((o) => {
-          const server = incoming.get(o._id);
+        const incomingById = new Map(patchedData.map((o) => [o._id, o]));
+
+        // Merge table-scoped fetch into global orders WITHOUT dropping other tables'
+        // active orders (the previous filter did that and broke dashboard / floor plan).
+        const updated = prev.map((o) => {
+          const server = incomingById.get(o._id);
           if (!server) return o;
           if (o._optimisticAt && (now - o._optimisticAt) < 15000) {
             if (server.items && o.items && server.items.length < o.items.length) {
@@ -170,7 +177,11 @@ export const OrderProvider = ({ children }) => {
           }
           return { ...server, _optimisticAt: undefined };
         });
-        patchedData.forEach((o) => { if (!prev.find((p) => p._id === o._id)) merged.push(o); });
+
+        const prevIds = new Set(prev.map((p) => p._id));
+        const additions = patchedData.filter((o) => o && o._id != null && !prevIds.has(o._id));
+        const merged = [...additions, ...updated];
+
         try { _tSet('cachedOrders', merged); } catch {}
         return merged;
       });
