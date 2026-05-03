@@ -256,7 +256,7 @@ export default function OrderSummary() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-6 pb-40">
+      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-6 pb-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
@@ -418,6 +418,46 @@ export default function OrderSummary() {
           )}
         </motion.div>
 
+        <div className="w-full shrink-0 px-2 pb-6 pt-8">
+          <div className={`${mode === "takeaway" ? "flex" : "grid grid-cols-2"} gap-3`}>
+            {mode !== "takeaway" && (
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
+                onClick={handleRequestBill}
+                disabled={isRequestingBill || order?.isBillRequested || order?.paymentStatus === 'paid'}
+                className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
+                  ${(order?.isBillRequested || order?.paymentStatus === 'paid')
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
+                    : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
+              >
+                {order?.paymentStatus === 'paid' ? (
+                  <><CheckCircle size={14} /> Paid</>
+                ) : order?.isBillRequested ? (
+                  <><CheckCircle size={14} /> Requested</>
+                ) : (
+                  <><Receipt size={14} /> Get Bill</>
+                )}
+              </motion.button>
+            )}
+
+            <motion.div 
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`relative group ${mode === "takeaway" ? "w-full" : ""}`}
+            >
+              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+              <Link 
+                to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
+                className="relative flex items-center justify-center gap-2 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all"
+              >
+                <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+                Add Items
+                <ArrowRight size={12} className="opacity-50" />
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+
         <p className="text-center mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">
           Pulse Server Connection: Active 📡
         </p>
@@ -492,46 +532,6 @@ export default function OrderSummary() {
   )}
 </AnimatePresence>
 
-      {/* FLOATING BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 inset-x-0 p-6 z-50 mb-4 lg:mb-0 lg:relative lg:p-0">
-        <div className={`max-w-md mx-auto ${mode === "takeaway" ? "flex" : "grid grid-cols-2"} gap-3`}>
-          {mode !== "takeaway" && (
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
-              onClick={handleRequestBill}
-              disabled={isRequestingBill || order?.isBillRequested || order?.paymentStatus === 'paid'}
-              className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
-                ${(order?.isBillRequested || order?.paymentStatus === 'paid')
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
-                  : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
-            >
-              {order?.paymentStatus === 'paid' ? (
-                <><CheckCircle size={14} /> Paid</>
-              ) : order?.isBillRequested ? (
-                <><CheckCircle size={14} /> Requested</>
-              ) : (
-                <><Receipt size={14} /> Get Bill</>
-              )}
-            </motion.button>
-          )}
-
-          <motion.div 
-            whileHover={{ y: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className={`relative group ${mode === "takeaway" ? "w-full" : ""}`}
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-            <Link 
-              to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
-              className="relative flex items-center justify-center gap-2 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all"
-            >
-              <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
-              Add Items
-              <ArrowRight size={12} className="opacity-50" />
-            </Link>
-          </motion.div>
-        </div>
-      </div>
     </div>
   );
 }

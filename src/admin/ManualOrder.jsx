@@ -430,8 +430,8 @@ export default function ManualOrder() {
           isAddMoreMode ? "border-zinc-300" : "border-zinc-200"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="min-w-0 text-left">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="min-w-0 w-full text-center sm:flex-1">
             <p className="text-xs font-bold uppercase text-zinc-500">
               {isAddMoreMode ? "Adding items worth" : "Current subtotal"}
             </p>
@@ -439,7 +439,7 @@ export default function ManualOrder() {
               ₹{totalAmount.toFixed(2)}
             </p>
             {isAddMoreMode && selectedExistingOrder && (
-              <p className="mt-1 break-words text-xs font-medium leading-snug text-zinc-600">
+              <p className="mt-1 break-words text-center text-xs font-medium leading-snug text-zinc-600">
                 + ₹{selectedExistingOrder.totalAmount?.toFixed(0) || 0} existing → ₹
                 {(totalAmount + (selectedExistingOrder.totalAmount || 0)).toFixed(2)} total
               </p>
