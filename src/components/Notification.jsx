@@ -45,6 +45,65 @@ _orderAudio.preload = "auto";
 let _audioUnlocked = false;
 let _socketListenersAttached = false;
 
+/** UI only needs id, table, count — never persist full order/socket payloads (localStorage quota). */
+function slimAddMoreNotification(data, notifId) {
+  const order = data.order || {};
+  const table = data.table ?? order.table;
+  const rawItems = data.newItems;
+  const count =
+    typeof data.newItemCount === "number"
+      ? data.newItemCount
+      : typeof data.newItemsCount === "number"
+        ? data.newItemsCount
+        : Array.isArray(rawItems)
+          ? rawItems.length
+          : Array.isArray(order.items)
+            ? order.items.length
+            : 0;
+  return { id: notifId, table, newItemCount: count };
+}
+
+function normalizeLoadedAddMore(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((n) => ({
+      id: n.id,
+      table: n.table ?? n.order?.table,
+      newItemCount:
+        typeof n.newItemCount === "number"
+          ? n.newItemCount
+          : Array.isArray(n.newItems)
+            ? n.newItems.length
+            : 0,
+    }))
+    .filter((n) => n.id);
+}
+
+function persistPendingAddMore(_rid, list) {
+  const payload = JSON.stringify(list.slice(0, 12));
+  const key = tenantKey("pendingAddMore", _rid);
+  try {
+    localStorage.setItem(key, payload);
+  } catch (err) {
+    if (
+      err &&
+      (err.name === "QuotaExceededError" ||
+        err.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+        err.code === 22 ||
+        err.code === 1014)
+    ) {
+      try {
+        localStorage.removeItem(key);
+        localStorage.setItem(key, JSON.stringify(list.slice(0, 5)));
+      } catch {
+        try {
+          localStorage.removeItem(key);
+        } catch (_) {}
+      }
+    }
+  }
+}
+
 export default function Notification({ targetPath = "/admin/orders" }) {
   // toast for pop‑ups
   const navigate = useNavigate();
@@ -117,16 +176,18 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     try {
       const _rid = getCurrentRestaurantId();
       const saved = localStorage.getItem(tenantKey("pendingAddMore", _rid));
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return normalizeLoadedAddMore(parsed);
     } catch {
       return [];
     }
   });
 
-  // Persistence for addMoreNotifications
+  // Persistence for addMoreNotifications (small payloads only — avoids QuotaExceededError)
   useEffect(() => {
     const _rid = getCurrentRestaurantId();
-    localStorage.setItem(tenantKey("pendingAddMore", _rid), JSON.stringify(addMoreNotifications));
+    persistPendingAddMore(_rid, addMoreNotifications);
   }, [addMoreNotifications]);
 
   const seenOrderIds = useRef(new Set());
@@ -457,7 +518,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
                             {notif.table === "TAKEAWAY" ? "Takeaway" : `Table ${notif.table}`}
                           </p>
                           <p className="text-[9px] font-bold text-emerald-600 uppercase">
-                            +{notif.newItems?.length || 0} items added
+                            +{notif.newItemCount ?? notif.newItems?.length ?? 0} items added
                           </p>
                         </div>
                       </div>
