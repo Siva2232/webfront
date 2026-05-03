@@ -10,64 +10,59 @@ export function KitchenBillHeader({
   onRefresh,
 }) {
   return (
-    <header className="top-0 z-50 border-b border-zinc-200 bg-white px-6 py-5 md:px-10">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 lg:flex-row">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-5">
-            <div className="rounded-[1.25rem] bg-zinc-900 p-3.5 text-white shadow-[0_12px_40px_-18px_rgba(24,24,27,0.35)] ring-1 ring-zinc-900/10">
-              <ChefHat size={26} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Kitchen Operations
-              </p>
-              <h1 className="text-2xl font-black uppercase tracking-tighter leading-none text-zinc-900">
-                Kitchen Bill
-              </h1>
-            </div>
+    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
+            <ChefHat size={22} strokeWidth={2.25} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Kitchen</p>
+            <h1 className="text-xl font-black tracking-tight text-zinc-900 md:text-2xl">Kitchen bill</h1>
+            <p className="text-[11px] text-zinc-500">Live tickets, batches, and prep status</p>
           </div>
         </div>
 
-        <div className="flex w-full flex-wrap items-center justify-center gap-4 lg:w-auto lg:justify-end">
-          <div className="hidden items-center gap-4 rounded-2xl border border-zinc-200 bg-zinc-50/80 px-6 py-3 shadow-inner md:flex">
-            <div className="rounded-lg bg-white p-2 shadow-sm ring-1 ring-zinc-200/80">
-              <Receipt size={18} className="text-zinc-700" />
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:justify-end">
+          <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+              <Receipt size={16} className="text-zinc-700" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col pr-1">
               <span className="text-sm font-black tabular-nums leading-none text-zinc-900">
                 {recordCount.toLocaleString()}
               </span>
-              <span className="mt-1 text-[9px] font-bold uppercase tracking-tight text-zinc-500">
-                Active records
-              </span>
+              <span className="text-[9px] font-bold uppercase tracking-tight text-zinc-500">Active</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-zinc-50/80 p-2 transition-all focus-within:ring-4 focus-within:ring-zinc-900/10 hover:border-zinc-300">
-            <Calendar size={18} className="ml-3 text-zinc-600" />
+          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 focus-within:ring-2 focus-within:ring-zinc-900/10">
+            <Calendar size={14} className="ml-1 shrink-0 text-zinc-500" />
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => onDateChange(e.target.value)}
-              className="bg-transparent px-1 py-2 text-xs font-black uppercase tracking-wider text-zinc-800 outline-none"
+              className="min-w-0 bg-transparent text-[10px] font-bold uppercase tracking-wide text-zinc-800 outline-none"
             />
             {dateFilter && (
               <button
+                type="button"
                 onClick={onClearFilter}
-                className="rounded-lg px-3 py-1.5 text-[10px] font-black text-zinc-700 transition-colors hover:bg-zinc-200/80"
+                className="shrink-0 rounded-lg px-2 py-1 text-[9px] font-black text-zinc-600 hover:bg-zinc-200/80"
               >
-                RESET
+                Reset
               </button>
             )}
           </div>
 
           <button
+            type="button"
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center gap-3 rounded-2xl bg-zinc-900 px-7 py-3.5 text-xs font-black uppercase text-white shadow-lg shadow-zinc-900/15 transition-all hover:bg-zinc-800 active:scale-95 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
           >
-            <RefreshCw size={16} className={`${isLoading ? "animate-spin" : ""} transition-transform duration-500`} />
-            {isLoading ? "Syncing" : "Refresh Data"}
+            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            {isLoading ? "Syncing" : "Refresh"}
           </button>
         </div>
       </div>

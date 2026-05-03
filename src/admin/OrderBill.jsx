@@ -17,8 +17,16 @@ import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
 import { useTheme } from "../context/ThemeContext";
 import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
 
-/** When true, skip “Select cashier” if exactly one POS cashier exists — print immediately */
-const SKIP_CASHIER_MODAL_WHEN_SINGLE = true;
+/** POS cashier picker: only when 2+ HR staff have POS cashier enabled. 0 = admin-only → print as logged-in user; 1 = print as that cashier */
+function defaultCashierLabelFromSession() {
+  try {
+    const u = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    const n = u?.name != null ? String(u.name).trim() : "";
+    return n || "Admin";
+  } catch {
+    return "Admin";
+  }
+}
 
 /* ─── component ───────────────────────────────────────────── */
 
@@ -196,19 +204,21 @@ export default function OrderBill() {
   const openPrintModal = useCallback(
     async (order) => {
       const list = await reloadCashiers();
-      if (
-        SKIP_CASHIER_MODAL_WHEN_SINGLE &&
-        Array.isArray(list) &&
-        list.length === 1
-      ) {
+      const n = Array.isArray(list) ? list.length : 0;
+
+      // Fewer than 2 POS cashiers: no modal — admin-only setup uses session name; one cashier uses their name
+      if (n < 2) {
         try {
-          printReceipt(order, list[0].name);
+          const cashierName =
+            n === 1 ? list[0].name : defaultCashierLabelFromSession();
+          printReceipt(order, cashierName);
         } catch (err) {
           console.error(err);
           toast.error(err?.message || "Could not open print preview");
         }
         return;
       }
+
       setSelectedCashier(null);
       setPrintModalOrder(order);
     },
@@ -235,52 +245,68 @@ export default function OrderBill() {
     }
   }, [printModalOrder, selectedCashier, closePrintModal, cashiers]);
 
-  /* ─── empty state ────────────────────────────────────────── */
+  /* ─── empty / loading (same chrome as Analytics — header always present to avoid layout jump) ── */
+  const billShell = (
+    className,
+    children
+  ) => (
+    <div className={`relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900 ${className || ""}`}>
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+      <OrderBillHeader
+        isLoading={isLoading}
+        dateFilter={dateFilter}
+        onDateChange={setDateFilter}
+        onClearFilter={() => setDateFilter("")}
+        recordCount={uniqueBills.length}
+        onBack={() => navigate(-1)}
+        onRefresh={handleRefresh}
+      />
+      {children}
+    </div>
+  );
+
   if (!uniqueBills.length && isLoading && !billsReady) {
-    return (
-      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans">
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
-          aria-hidden
-        />
-        <RefreshCw size={28} className="animate-spin text-zinc-300" />
-      </div>
-    );
+    return billShell("", (
+      <main className="mx-auto flex max-w-7xl justify-center px-4 py-16 md:px-8">
+        <RefreshCw size={28} className="animate-spin text-zinc-300" aria-hidden />
+      </main>
+    ));
   }
 
   if (!uniqueBills.length && billsReady) {
-    return (
-      <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 px-8 text-center font-sans">
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
-          aria-hidden
-        />
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
+    return billShell("", (
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-10 text-center md:px-8">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
           <Receipt size={32} className="text-zinc-400" />
         </div>
         <h2 className="mb-2 text-xl font-bold uppercase tracking-tighter text-zinc-900">No records</h2>
         <p className="mb-8 text-xs font-bold uppercase tracking-widest text-zinc-500">No active invoices</p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <button
+            type="button"
             onClick={handleRefresh}
             className="flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-sm shadow-zinc-900/15 transition-all hover:bg-zinc-800 active:scale-95"
           >
             <RefreshCw size={14} /> Refresh bills
           </button>
           <button
+            type="button"
             onClick={handleGoBack}
             className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800"
           >
             {dateFilter ? "Clear filter" : "Go back"}
           </button>
         </div>
-      </div>
-    );
+      </main>
+    ));
   }
 
   /* ─── main render ────────────────────────────────────────── */
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-20 font-sans">
+    <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
@@ -296,7 +322,7 @@ export default function OrderBill() {
       />
 
       {/* Bills Grid */}
-      <main className="max-w-7xl mx-auto p-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
         {uniqueBills.map((order, index) => {
           const billId = order._id || order.id || index;
           const orderRefId = order.orderRef || order._id || order.id;

@@ -357,7 +357,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="flex items-center gap-3 text-xl font-black text-zinc-900">
               <TableIcon className="text-zinc-700" size={24} />
-              Kitchen floor
+              Kitchen Floor
             </h2>
             <Link to="/admin/tables" className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800">
               View all tables
@@ -464,7 +464,7 @@ export default function Dashboard() {
                   <TrendingUp size={20} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black tracking-tight text-zinc-900">Best sellers</h3>
+                  <h3 className="text-xl font-black tracking-tight text-zinc-900">Best Sellers</h3>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Performance volume</p>
                 </div>
               </div>
@@ -537,7 +537,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           <h2 className="flex items-center gap-3 text-2xl font-black text-zinc-900 md:text-3xl">
             <ShieldCheck className="text-zinc-700" size={28} />
-            Inventory &amp; fiscal health
+            Inventory &amp; Fiscal Health
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

@@ -39,14 +39,16 @@ export default function KitchenBill({ embedded = false }) {
     });
   }, [sortedBills, dateFilter]);
 
-  if (!filteredBills || filteredBills.length === 0) {
-    return <KitchenBillEmptyState embedded={embedded} />;
+  if ((!filteredBills || filteredBills.length === 0) && embedded) {
+    return <KitchenBillEmptyState embedded />;
   }
+
+  const recordCount = filteredBills?.length ?? 0;
 
   return (
     <div
-      className={`relative font-sans ${
-        embedded ? "pb-8" : "min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-10"
+      className={`relative font-sans text-zinc-900 ${
+        embedded ? "pb-8" : "min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12"
       }`}
     >
       {!embedded && (
@@ -55,11 +57,10 @@ export default function KitchenBill({ embedded = false }) {
           aria-hidden
         />
       )}
-      {/* Header */}
       {!embedded && (
         <KitchenBillHeader
           isLoading={isLoading}
-          recordCount={filteredBills.length}
+          recordCount={recordCount}
           dateFilter={dateFilter}
           onDateChange={setDateFilter}
           onClearFilter={() => setDateFilter("")}
@@ -67,8 +68,10 @@ export default function KitchenBill({ embedded = false }) {
         />
       )}
 
-      {/* Main Grid - Changed to 4 cards per row on large screens */}
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 p-4 pt-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {(!filteredBills || filteredBills.length === 0) && !embedded ? (
+        <KitchenBillEmptyState embedded={false} />
+      ) : (
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
         {filteredBills.map((kb, index) => {
           const batchTotal = kb.batchTotal || kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
           const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
@@ -86,6 +89,7 @@ export default function KitchenBill({ embedded = false }) {
           );
         })}
       </main>
+      )}
     </div>
   );
 }
