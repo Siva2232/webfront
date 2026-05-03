@@ -221,12 +221,18 @@ const Reservations = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Pending": return "bg-amber-100 text-amber-700 border-amber-200";
-      case "Confirmed": return "bg-blue-100 text-blue-700 border-blue-200";
-      case "Seated": return "bg-indigo-100 text-indigo-700 border-indigo-200";
-      case "Completed": return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      case "Cancelled": return "bg-rose-100 text-rose-700 border-rose-200";
-      default: return "bg-gray-100 text-gray-700 border-gray-200";
+      case "Pending":
+        return "bg-slate-100 text-slate-800 border-slate-200";
+      case "Confirmed":
+        return "bg-zinc-100 text-zinc-800 border-zinc-200";
+      case "Seated":
+        return "bg-neutral-100 text-neutral-900 border-neutral-200";
+      case "Completed":
+        return "bg-slate-50 text-slate-700 border-slate-200";
+      case "Cancelled":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+      default:
+        return "bg-slate-100 text-slate-600 border-slate-200";
     }
   };
 
@@ -242,63 +248,72 @@ const Reservations = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-zinc-50 p-4 md:p-6">
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <CalendarDays className="text-orange-500" />
+          <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-zinc-900">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm">
+              <CalendarDays className="h-5 w-5" strokeWidth={2} />
+            </span>
             Table Reservations
           </h1>
-          <p className="text-gray-500 mt-1">Manage guest bookings and table availability</p>
+          <p className="mt-1.5 text-sm text-zinc-500">
+            Manage guest bookings and table availability
+          </p>
         </div>
-        
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="pl-4 pr-3 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+              className="rounded-xl border border-zinc-200 bg-white py-2 pl-4 pr-3 text-sm text-zinc-900 shadow-sm outline-none transition-all focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/15"
             />
           </div>
-          <button 
+          <button
+            type="button"
             onClick={openNewReservationModal}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-orange-100 transition-all font-medium active:scale-95"
+            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.98]"
           >
-            <Plus size={20} />
+            <Plus size={20} strokeWidth={2} />
             New Booking
           </button>
         </div>
       </div>
 
-      {/* Advanced Quick Stats & Filtering */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="md:col-span-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
+      {/* Search & filters */}
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="flex flex-col items-stretch gap-4 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm md:col-span-3 md:flex-row md:items-center">
+          <div className="relative w-full flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-zinc-400"
+              strokeWidth={2}
+            />
+            <input
               type="text"
               placeholder="Search by name, phone or table..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
             />
           </div>
-          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+          <div className="no-scrollbar flex w-full items-center gap-2 overflow-x-auto pb-1 md:w-auto md:pb-0">
             {[
               { label: "All", value: "All" },
               { label: "Upcoming", value: "Upcoming" },
               { label: "Pending", value: "Pending" },
               { label: "Confirmed (seated)", value: "Seated" },
-              { label: "Cancelled", value: "Cancelled" }
+              { label: "Cancelled", value: "Cancelled" },
             ].map((status) => (
               <button
                 key={status.value}
+                type="button"
                 onClick={() => setStatusFilter(status.value)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
-                  statusFilter === status.value 
-                    ? "bg-orange-500 text-white shadow-md shadow-orange-100" 
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-semibold transition-all md:text-sm ${
+                  statusFilter === status.value
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                 }`}
               >
                 {status.label}
@@ -307,13 +322,19 @@ const Reservations = () => {
           </div>
         </div>
 
-        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-orange-900 font-bold text-sm">Today's Load</p>
-            <Users size={16} className="text-orange-500" />
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-bold text-zinc-900">Today&apos;s load</p>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-white">
+              <Users size={16} strokeWidth={2} />
+            </span>
           </div>
-          <p className="text-2xl font-black text-orange-600">{reservations.length}</p>
-          <p className="text-xs text-orange-700 mt-1 font-medium">{reservations.filter(r => r.status === "Pending").length} waiting check-in</p>
+          <p className="text-3xl font-black tabular-nums tracking-tight text-zinc-900">
+            {reservations.length}
+          </p>
+          <p className="mt-1 text-xs font-medium text-zinc-500">
+            {reservations.filter((r) => r.status === "Pending").length} awaiting check-in
+          </p>
         </div>
       </div>
 
@@ -322,16 +343,16 @@ const Reservations = () => {
         <div className="flex-1 order-2 lg:order-1">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div>
-              <p className="text-gray-500">Loading reservations...</p>
+              <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
+              <p className="text-sm text-zinc-500">Loading reservations…</p>
             </div>
           ) : filteredReservations.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-200 shadow-sm">
-              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="text-gray-300" size={32} />
+            <div className="rounded-3xl border border-dashed border-zinc-200 bg-white p-12 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100">
+                <Calendar className="text-zinc-400" size={32} strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">No results found</h3>
-              <p className="text-gray-500 mt-1 max-w-sm mx-auto">
+              <h3 className="text-lg font-semibold text-zinc-900">No results found</h3>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500">
                 {searchQuery || statusFilter !== "All" 
                   ? "Try adjusting your search or filters to find what you're looking for." 
                   : "There are no table bookings for the selected date. Click \"New Booking\" to add one."}
@@ -340,88 +361,98 @@ const Reservations = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filteredReservations.map((res) => (
-                <motion.div 
+                <motion.div
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  key={res._id} 
-                  className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative group"
+                  key={res._id}
+                  className="group relative rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border ${getStatusColor(res.status)}`}>
+                  <div className="mb-4 flex items-start justify-between">
+                    <div
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusColor(res.status)}`}
+                    >
                       {getStatusIcon(res.status)}
                       {res.status}
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                       <button 
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
                         onClick={() => openEditReservationModal(res)}
-                        className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100"
+                        className="rounded-lg p-1.5 text-zinc-400 opacity-0 transition-colors hover:bg-zinc-100 hover:text-zinc-900 group-hover:opacity-100"
                       >
                         <Edit3 size={16} />
                       </button>
-                       <button 
+                      <button
+                        type="button"
                         onClick={() => deleteReservation(res._id)}
-                        className="p-1.5 text-gray-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                        className="rounded-lg p-1.5 text-zinc-400 opacity-0 transition-colors hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">{res.customerName}</h3>
+                  <h3 className="mb-3 text-lg font-bold text-zinc-900">{res.customerName}</h3>
 
-                  <div className="space-y-2.5 mb-5">
-                    <div className="flex items-center gap-2.5 text-gray-600 text-sm">
-                      <span className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-500">
-                        <Clock size={16} />
+                  <div className="mb-5 space-y-2.5">
+                    <div className="flex items-center gap-2.5 text-sm text-zinc-600">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-800">
+                        <Clock size={16} strokeWidth={2} />
                       </span>
-                      <span className="font-medium">{format(new Date(res.reservationTime), "hh:mm a")}</span>
+                      <span className="font-medium text-zinc-900">
+                        {format(new Date(res.reservationTime), "hh:mm a")}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2.5 text-gray-600 text-sm">
-                      <span className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
-                        <Users size={16} />
+                    <div className="flex items-center gap-2.5 text-sm text-zinc-600">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-800">
+                        <Users size={16} strokeWidth={2} />
                       </span>
-                      <span>{res.guests} Guests</span>
+                      <span>{res.guests} guests</span>
                       {res.table && (
-                         <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded text-xs font-semibold border">Table {res.table}</span>
+                        <span className="ml-auto rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-semibold text-zinc-800">
+                          Table {res.table}
+                        </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2.5 text-gray-600 text-sm">
-                      <span className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500">
-                        <Phone size={16} />
+                    <div className="flex items-center gap-2.5 text-sm text-zinc-600">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-800">
+                        <Phone size={16} strokeWidth={2} />
                       </span>
                       <span>{res.customerPhone}</span>
                     </div>
                   </div>
 
                   {res.notes && (
-                    <div className="mb-5 p-3 bg-gray-50 rounded-xl text-xs text-gray-500 border border-gray-100 italic">
-                      "{res.notes}"
+                    <div className="mb-5 rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs italic text-zinc-600">
+                      &ldquo;{res.notes}&rdquo;
                     </div>
                   )}
 
-                  <div className="pt-4 border-t border-gray-50 flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-zinc-100 pt-4">
                     {["Pending", "Confirmed"].includes(res.status) && (
                       <>
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => updateStatus(res._id, "Seated")}
-                          className="flex-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-zinc-900 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                         >
-                          <UtensilsCrossed size={14} /> Confirm Seat
+                          <UtensilsCrossed size={14} /> Confirm seat
                         </button>
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => updateStatus(res._id, "Cancelled")}
-                          className="flex-1 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white py-2 rounded-xl text-sm font-semibold transition-all"
+                          className="flex flex-1 rounded-xl border border-zinc-200 bg-white py-2 text-sm font-semibold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                         >
                           Cancel
                         </button>
                       </>
                     )}
                     {["Seated", "Completed", "Cancelled"].includes(res.status) && (
-                       <div className="w-full text-center text-xs text-gray-400 font-medium">
-                         No further actions available
-                       </div>
+                      <div className="w-full text-center text-xs font-medium text-zinc-400">
+                        No further actions
+                      </div>
                     )}
                   </div>
                 </motion.div>
@@ -430,36 +461,43 @@ const Reservations = () => {
           )}
         </div>
 
-        {/* Sidebar for Upcoming alerts */}
-        <div className="w-full lg:w-80 order-1 lg:order-2 space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm h-fit">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-4">
-              <Clock4 className="text-orange-500" size={18} />
-              Upcoming Arrivals
+        {/* Upcoming */}
+        <div className="order-1 w-full space-y-6 lg:order-2 lg:w-80">
+          <div className="h-fit rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-base font-bold text-zinc-900">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-900 text-white">
+                <Clock4 size={18} strokeWidth={2} />
+              </span>
+              Upcoming arrivals
             </h3>
-            
+
             <div className="space-y-3">
               {upcomingReservations.length > 0 ? (
-                upcomingReservations.map(res => (
-                  <div key={res._id} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 hover:border-orange-200 transition-colors">
-                    <div className="flex justify-between items-start mb-1">
-                      <p className="font-bold text-gray-900 text-sm truncate max-w-[120px]">{res.customerName}</p>
-                      <span className="text-[10px] font-black uppercase text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
+                upcomingReservations.map((res) => (
+                  <div
+                    key={res._id}
+                    className="rounded-2xl border border-zinc-100 bg-zinc-50/80 p-3 transition-colors hover:border-zinc-300"
+                  >
+                    <div className="mb-1 flex items-start justify-between gap-2">
+                      <p className="max-w-[120px] truncate text-sm font-bold text-zinc-900">
+                        {res.customerName}
+                      </p>
+                      <span className="shrink-0 rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
                         {format(new Date(res.reservationTime), "hh:mm a")}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
                       <span className="flex items-center gap-1">
                         <Users size={12} /> {res.guests}
                       </span>
-                      <span>•</span>
-                      <span className="font-bold text-gray-700">Table {res.table}</span>
+                      <span className="text-zinc-300">•</span>
+                      <span className="font-bold text-zinc-800">Table {res.table}</span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="py-4 text-center">
-                  <p className="text-xs text-gray-400 font-medium">No pending check-ins</p>
+                <div className="py-6 text-center">
+                  <p className="text-xs font-medium text-zinc-400">No pending check-ins</p>
                 </div>
               )}
             </div>
@@ -474,39 +512,46 @@ const Reservations = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center"
           >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden"
+              exit={{ scale: 0.96, opacity: 0, y: 16 }}
+              className="max-h-[min(92dvh,720px)] w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl sm:rounded-[1.75rem]"
             >
-              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-500 to-amber-500 text-white">
-                <div>
-                  <h2 className="text-2xl font-bold">{editingReservation ? "Edit Reservation" : "New Reservation"}</h2>
-                  <p className="text-orange-100 text-sm mt-1">{editingReservation ? "Update the reservation details below." : "Fill in details for the guest booking"}</p>
+              <div className="flex items-start justify-between gap-4 border-b border-zinc-100 bg-zinc-900 px-6 py-5 text-white">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold tracking-tight">
+                    {editingReservation ? "Edit reservation" : "New reservation"}
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {editingReservation
+                      ? "Update the details below."
+                      : "Guest booking details"}
+                  </p>
                 </div>
-                <button 
+                <button
+                  type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
                 >
-                  <XCircle size={24} />
+                  <XCircle size={22} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-8 space-y-5">
+              <form onSubmit={handleSubmit} className="max-h-[calc(min(92dvh,720px)-88px)] space-y-5 overflow-y-auto overscroll-contain p-6 sm:p-8">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">Guest Name</label>
-                    <input 
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Guest name</label>
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       placeholder="e.g. John Doe"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={formData.customerName}
                       onChange={(e) => {
                         setFormData({...formData, customerName: e.target.value});
@@ -519,12 +564,12 @@ const Reservations = () => {
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">Phone Number</label>
-                    <input 
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Phone number</label>
+                    <input
                       required
-                      type="tel" 
+                      type="tel"
                       placeholder="e.g. 0123456789"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={formData.customerPhone}
                       onChange={(e) => {
                         const digitsOnly = e.target.value.replace(/\D/g, "");
@@ -538,10 +583,10 @@ const Reservations = () => {
                   </div>
                   
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">Table Number</label>
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Table</label>
                     <select
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={formData.table}
                       onChange={(e) => {
                         setFormData({...formData, table: e.target.value});
@@ -567,10 +612,10 @@ const Reservations = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">No. of Guests</label>
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Guests</label>
                     <select
                       required
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={String(formData.guests)}
                       onChange={(e) => {
                         setFormData({...formData, guests: Number(e.target.value)});
@@ -587,11 +632,11 @@ const Reservations = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">Date</label>
-                    <input 
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Date</label>
+                    <input
                       required
-                      type="date" 
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      type="date"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={formData.date}
                       onChange={(e) => {
                         setFormData({...formData, date: e.target.value});
@@ -604,11 +649,11 @@ const Reservations = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700 ml-1">Time</label>
-                    <input 
+                    <label className="ml-1 text-sm font-bold text-zinc-800">Time</label>
+                    <input
                       required
-                      type="time" 
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                      type="time"
+                      className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                       value={formData.time}
                       onChange={(e) => {
                         setFormData({...formData, time: e.target.value});
@@ -622,32 +667,32 @@ const Reservations = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700 ml-1">Special Notes (Optional)</label>
-                  <textarea 
-                    rows="3"
-                    placeholder="e.g. Window seat, anniversary celebration..."
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all resize-none"
+                  <label className="ml-1 text-sm font-bold text-zinc-800">Notes (optional)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Window seat, anniversary…"
+                    className="w-full resize-none rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:ring-2 focus:ring-zinc-900/15"
                     value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
 
-                <div className="pt-2 flex gap-3">
-                   <button 
+                <div className="flex gap-3 pt-2">
+                  <button
                     type="button"
                     onClick={() => {
                       setShowModal(false);
                       resetForm();
                     }}
-                    className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-colors"
+                    className="flex-1 rounded-2xl border border-zinc-200 bg-white py-3.5 text-sm font-bold text-zinc-700 transition-colors hover:bg-zinc-50"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     type="submit"
-                    className="flex-[2] py-4 bg-orange-500 text-white rounded-2xl font-bold hover:bg-orange-600 shadow-xl shadow-orange-100 transition-all active:scale-95"
+                    className="flex-[2] rounded-2xl bg-zinc-900 py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-zinc-800 active:scale-[0.99]"
                   >
-                    {editingReservation ? "Update Booking" : "Confirm Booking"}
+                    {editingReservation ? "Save changes" : "Confirm booking"}
                   </button>
                 </div>
               </form>

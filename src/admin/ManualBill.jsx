@@ -19,7 +19,7 @@ import ConfirmRemoveItemModal from "./manualBill/components/ConfirmRemoveItemMod
 
 export default function ManualBill() {
   const { bills, fetchBills, isLoading } = useOrders();
-  const { cashiers, addCashier } = useCashiers();
+  const { cashiers } = useCashiers();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,13 +81,6 @@ export default function ManualBill() {
 
   const stats = useMemo(() => computeStats(customItems), [customItems]);
 
-  const handleAddCashier = (name) => {
-    const r = addCashier(name);
-    if (!r.ok) toast.error(r.error || "Could not add cashier");
-    else toast.success("Cashier added");
-    return r;
-  };
-
   const handleConfirmPrint = () => {
     if (!selectedCashier) return toast.error("Select cashier");
     if (!customItems.length) return toast.error("No items to print");
@@ -112,36 +105,51 @@ export default function ManualBill() {
   const removedCount = foundBill ? (foundBill.items?.length || 0) - customItems.length : 0;
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-10 font-sans text-slate-900">
-      <div className="max-w-3xl mx-auto space-y-10">
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 p-4 font-sans text-zinc-900 sm:p-10">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+      <div className="mx-auto max-w-3xl space-y-10">
 
         {/* Header */}
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/admin/dashboard")} className="p-3 -ml-3 rounded-2xl hover:bg-slate-100">
+          <button
+            onClick={() => navigate("/admin/dashboard")}
+            className="-ml-3 rounded-2xl p-3 text-zinc-700 transition-colors hover:bg-zinc-100"
+          >
             <ChevronLeft size={28} />
           </button>
-          <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Split Bill</h1>
-            <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">
-              CUSTOMISE &amp; PRINT PARTIAL BILLS
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-sm shadow-zinc-900/20">
+              <Receipt size={26} />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Billing</p>
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-zinc-900 md:text-4xl">
+                Split bill
+              </h1>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
+                Customise &amp; print partial bills
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-2 flex items-center shadow-sm">
-          <div className="flex-1 flex items-center gap-3 px-6">
-            <Search size={20} className="text-slate-400" />
+        <div className="flex items-center rounded-[2rem] border border-zinc-200 bg-white p-2 shadow-sm shadow-zinc-900/5">
+          <div className="flex flex-1 items-center gap-3 px-5 sm:px-6">
+            <Search size={20} className="shrink-0 text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter Order Reference # (e.g. aec38903f7)"
-              className="bg-transparent outline-none flex-1 text-lg placeholder-slate-400"
+              placeholder="Enter order reference # (e.g. aec38903f7)"
+              className="flex-1 bg-transparent text-base outline-none placeholder:text-zinc-400 sm:text-lg"
             />
             {searchQuery && (
-              <button onClick={handleClearSearch} className="text-slate-400 hover:text-slate-600">
+              <button onClick={handleClearSearch} className="shrink-0 text-zinc-400 transition-colors hover:text-zinc-600">
                 <X size={20} />
               </button>
             )}
@@ -149,7 +157,7 @@ export default function ManualBill() {
           <button
             onClick={handleSearch}
             disabled={isLoading}
-            className="bg-slate-900 hover:bg-black text-white px-10 py-4 rounded-[1.75rem] font-black uppercase tracking-widest text-sm transition-all"
+            className="rounded-[1.75rem] bg-zinc-900 px-8 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-zinc-800 disabled:opacity-50 sm:px-10"
           >
             Search
           </button>
@@ -157,16 +165,16 @@ export default function ManualBill() {
 
         {/* Content Area */}
         {!searchedRef && (
-          <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-            <Receipt size={64} className="mx-auto text-slate-200 mb-6" />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-sm">Search an order to split bill</p>
+          <div className="rounded-[3rem] border border-dashed border-zinc-200 bg-white/80 py-20 text-center shadow-sm shadow-zinc-900/5">
+            <Receipt size={56} className="mx-auto mb-6 text-zinc-200" />
+            <p className="text-sm font-black uppercase tracking-widest text-zinc-500">Search an order to split bill</p>
           </div>
         )}
 
         {searchedRef && !foundBill && (
-          <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
-            <Search size={64} className="mx-auto text-slate-200 mb-6" />
-            <p className="text-slate-400 font-black uppercase tracking-widest">No order found for #{searchedRef}</p>
+          <div className="rounded-[3rem] border border-dashed border-zinc-200 bg-white/80 py-20 text-center shadow-sm shadow-zinc-900/5">
+            <Search size={56} className="mx-auto mb-6 text-zinc-200" />
+            <p className="font-black uppercase tracking-widest text-zinc-500">No order found for #{searchedRef}</p>
           </div>
         )}
 
@@ -188,7 +196,6 @@ export default function ManualBill() {
         cashiers={cashiers}
         selectedCashier={selectedCashier}
         onChangeCashier={setSelectedCashier}
-        onAddCashier={handleAddCashier}
         onCancel={() => setPrintModalOpen(false)}
         onConfirm={handleConfirmPrint}
       />

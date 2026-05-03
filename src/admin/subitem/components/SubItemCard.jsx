@@ -4,79 +4,87 @@ import { CheckCircle, Edit3, IndianRupee, Trash2, XCircle } from "lucide-react";
 export default function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) {
   return (
     <div
-      className={`bg-white rounded-[2rem] border transition-all p-6 space-y-4 shadow-sm hover:shadow-md ${
-        item.isAvailable === false ? "opacity-75 border-rose-200 bg-rose-50/10" : "border-slate-100"
+      className={`space-y-4 rounded-2xl border p-5 shadow-sm transition-all hover:shadow-md ${
+        item.isAvailable === false
+          ? "border-rose-200/90 bg-rose-50/30 ring-1 ring-rose-100/60"
+          : "border-zinc-200/80 bg-white ring-1 ring-zinc-100/80"
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span
-              className={`inline-block px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                item.type === "portion" ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+              className={`inline-block rounded-md px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                item.type === "portion" ? "bg-zinc-100 text-zinc-800" : "bg-emerald-50 text-emerald-800"
               }`}
             >
-              {item.type === "portion" ? "Portion" : "Add-on Group"}
+              {item.type === "portion" ? "Portion" : "Add-on group"}
             </span>
             {item.isAvailable === false && (
-              <span className="px-2 py-1 bg-rose-600 text-white text-[8px] font-black uppercase rounded-lg">Stock Out</span>
+              <span className="rounded-md bg-rose-600 px-2 py-0.5 text-[8px] font-bold uppercase text-white">
+                Unavailable
+              </span>
             )}
           </div>
-          <div className="flex flex-col">
-            <h3
-              className={`text-lg font-black uppercase tracking-tight ${
-                item.isAvailable === false
-                  ? "text-slate-400 line-through decoration-rose-500 decoration-2"
-                  : "text-slate-900"
-              }`}
-            >
-              {item.name}
-            </h3>
-          </div>
+          <h3
+            className={`text-base font-bold leading-snug tracking-tight ${
+              item.isAvailable === false ? "text-zinc-400 line-through decoration-rose-400" : "text-zinc-900"
+            }`}
+          >
+            {item.name}
+          </h3>
         </div>
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex shrink-0 gap-1">
           <button
+            type="button"
             onClick={() => onToggleStatus(item)}
-            className={`p-2.5 rounded-xl transition-all shadow-sm ${
+            className={`rounded-lg p-2 transition ${
               item.isAvailable !== false
-                ? "bg-white border border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
-                : "bg-emerald-600 text-white border border-emerald-600 shadow-lg shadow-emerald-100"
+                ? "border border-zinc-200 bg-white text-zinc-500 hover:border-rose-200 hover:text-rose-600"
+                : "border border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
             }`}
           >
             {item.isAvailable !== false ? <XCircle size={14} /> : <CheckCircle size={14} />}
           </button>
           <button
+            type="button"
             onClick={() => onEdit(item)}
-            className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-100"
+            className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-zinc-600 transition hover:border-zinc-300 hover:bg-white"
           >
-            <Edit3 size={14} className="text-slate-500" />
+            <Edit3 size={14} />
           </button>
           <button
+            type="button"
             onClick={() => onDelete(item)}
-            className="p-2.5 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-100"
+            className="rounded-lg border border-rose-100 bg-rose-50 p-2 text-rose-600 transition hover:border-rose-200 hover:bg-rose-100"
           >
-            <Trash2 size={14} className="text-rose-500" />
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
 
       {item.type === "portion" && (
-        <div className="flex items-center gap-1.5 text-violet-600 font-black">
-          <IndianRupee size={14} strokeWidth={3} />
-          <span className="text-xl tracking-tighter italic">{item.price}</span>
+        <div className="flex items-center gap-1 font-black text-zinc-900">
+          <IndianRupee size={14} strokeWidth={2.5} className="text-zinc-500" />
+          <span className="text-lg tabular-nums">{item.price}</span>
         </div>
       )}
 
       {item.type === "addonGroup" && (
         <div className="space-y-2">
           {item.maxSelections > 0 && (
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Max select: {item.maxSelections}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              Max select · {item.maxSelections}
+            </p>
           )}
           <div className="flex flex-wrap gap-1.5">
             {item.addons?.map((a, i) => (
-              <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg">
+              <span
+                key={i}
+                className="rounded-lg border border-emerald-100 bg-emerald-50/80 px-2 py-1 text-[10px] font-semibold text-emerald-900"
+              >
                 {a.name}
-                {a.price > 0 ? ` +₹${a.price}` : ""}
+                {a.price > 0 ? ` · ₹${a.price}` : ""}
               </span>
             ))}
           </div>
@@ -85,4 +93,3 @@ export default function SubItemCard({ item, onEdit, onDelete, onToggleStatus }) 
     </div>
   );
 }
-

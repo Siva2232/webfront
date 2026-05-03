@@ -15,54 +15,64 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <div
-      className={`relative p-4 border-2 transition-all flex flex-col justify-between 
-      ${qty > 0 ? "border-black bg-gray-50" : "border-gray-100"}
-      ${isTakeawayItem ? "bg-orange-50 border-orange-200" : ""}`}
+      className={`relative flex min-h-[8.5rem] min-w-0 flex-col justify-between rounded-2xl border-2 p-4 transition-all ${
+        qty > 0
+          ? isTakeawayItem
+            ? "border-amber-300 bg-amber-50/80"
+            : "border-zinc-900 bg-zinc-50"
+          : "border-zinc-100 bg-white"
+      }`}
     >
       {qty > 0 && (
         <button
+          type="button"
           onClick={() => onToggleTakeaway(prodId)}
-          className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${
-            isTakeawayItem ? "bg-orange-500 text-white" : "bg-white text-gray-300 hover:bg-gray-200"
+          className={`absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+            isTakeawayItem
+              ? "bg-amber-600 text-white shadow-sm"
+              : "bg-white text-zinc-400 shadow-sm ring-1 ring-zinc-200 hover:bg-zinc-100"
           }`}
-          title="Mark item as takeaway"
+          title="Toggle takeaway for this line"
         >
           <Package size={16} />
         </button>
       )}
-      <div className="flex justify-between items-start gap-4 mb-4">
-        <div className="flex-1">
-          <p className="font-bold text-lg leading-tight uppercase tracking-tight line-clamp-2">
+      <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 pr-8">
+          <p className="break-words font-bold leading-snug tracking-tight text-zinc-900 line-clamp-3">
             {product.name}
           </p>
-          <p className="text-sm font-medium text-gray-500 italic">₹{product.price}</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-600">₹{product.price}</p>
           {hasCustomisation && (
-            <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-wider mt-0.5">
+            <p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500">
               Customisable
             </p>
           )}
         </div>
         {product.image && (
-          <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-100 shrink-0 bg-white">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-zinc-200 bg-white sm:h-16 sm:w-16">
             <img
               src={product.image}
               alt={product.name}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
               loading="lazy"
             />
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-center gap-3 sm:gap-4">
         <button
+          type="button"
           onClick={() => onAdjustQty(product, -1)}
-          className="w-8 h-8 flex items-center justify-center border border-black hover:bg-black hover:text-white transition-colors"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-zinc-300 transition-colors hover:border-zinc-900 hover:bg-zinc-900 hover:text-white"
+          aria-label="Decrease quantity"
         >
-          <Minus size={14} />
+          <Minus size={16} />
         </button>
-        <span className="text-lg font-black w-6 text-center">{qty}</span>
+        <span className="min-w-[2rem] text-center text-lg font-black tabular-nums text-zinc-900">{qty}</span>
         <button
+          type="button"
           onClick={() => {
             if (hasCustomisation) {
               onOpenCustomise(product);
@@ -70,9 +80,10 @@ const ProductCard = memo(function ProductCard({
               onAdjustQty(product, 1);
             }
           }}
-          className="w-8 h-8 flex items-center justify-center border border-black hover:bg-black hover:text-white transition-colors"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white transition-colors hover:bg-zinc-800"
+          aria-label={hasCustomisation ? "Customise and add" : "Increase quantity"}
         >
-          <Plus size={14} />
+          <Plus size={16} />
         </button>
       </div>
     </div>

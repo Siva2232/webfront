@@ -2,9 +2,16 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useProducts } from "../context/ProductContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { 
-  Plus, Package, CheckCircle2, AlertCircle,
-  Search, XCircle, RefreshCw, X, CheckCircle
+import {
+  Plus,
+  Package,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  XCircle,
+  RefreshCw,
+  CheckCircle,
+  Trash2,
 } from "lucide-react";
 import API from "../api/axios";
 import ProductCard from "./products/components/ProductCard";
@@ -281,79 +288,92 @@ export default function AdminProducts() {
   }, [products, searchTerm, filter]);
 
   const stats = [
-    { label: "Assets", value: products.length, icon: Package, color: "indigo" },
-    { label: "Live", value: products.filter(p => p.isAvailable).length, icon: CheckCircle2, color: "emerald" },
-    { label: "Sold Out", value: products.filter(p => !p.isAvailable).length, icon: AlertCircle, color: "rose" },
+    { label: "Total items", value: products.length, icon: Package, color: "zinc" },
+    { label: "On menu", value: products.filter((p) => p.isAvailable).length, icon: CheckCircle2, color: "emerald" },
+    { label: "Sold out", value: products.filter((p) => !p.isAvailable).length, icon: AlertCircle, color: "rose" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-8 lg:p-12 font-sans text-slate-950">
-      <div className="max-w-[1400px] mx-auto space-y-12">
-        
-        {/* --- PREMIUM HEADER --- */}
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="h-1 w-10 bg-indigo-600 rounded-full" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Inventory Management</span>
+    <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(24,24,27,0.05),transparent)]"
+        aria-hidden
+      />
+      <div className="mx-auto max-w-[1400px] space-y-10 px-4 pt-8 sm:px-6 lg:space-y-12 lg:px-8 lg:pt-10">
+        <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
+              <Package size={26} strokeWidth={2} />
             </div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-950">
-              Product <span className="text-slate-300 font-light italic">Vault</span>
-            </h1>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Catalog</p>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">Products</h1>
+              <p className="mt-1 max-w-lg text-sm text-zinc-500">
+                Manage menu items, availability, and portions — aligned with your live POS catalog.
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+          <div className="flex w-full flex-col gap-3 md:max-w-xl md:flex-row md:items-center xl:w-auto xl:max-w-none">
             {filter === "out-of-stock" && (
-              <div className="w-full md:w-auto bg-rose-50 text-rose-600 px-4 py-2 rounded-[1.5rem] font-bold uppercase text-[10px] tracking-widest text-center">
-                Showing only sold‑out items
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                Sold-out filter active
               </div>
             )}
-            <div className="relative group w-full md:w-80">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Search collection..."
-                className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-medium"
+            <div className="relative flex-1 md:min-w-[240px]">
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                strokeWidth={2}
+              />
+              <input
+                type="text"
+                placeholder="Search products…"
+                className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10"
+                value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <button
+              type="button"
               onClick={() => setShowAddModal(true)}
-              className="w-full md:w-auto bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[11px] tracking-widest hover:bg-indigo-600 transition-all shadow-xl hover:shadow-indigo-200 active:scale-95 flex items-center justify-center gap-3"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-md transition hover:bg-zinc-800 active:scale-[0.99]"
             >
-              <Plus size={18} />
-              Add New Product
+              <Plus size={18} strokeWidth={2.5} />
+              Add product
             </button>
           </div>
         </header>
 
-        {/* --- ANALYTICS HUD --- */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {stats.map((stat, i) => (
-            <div 
+            <div
               key={i}
-              className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-150 flex items-center justify-between group"
+              className="flex items-center justify-between rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm ring-1 ring-zinc-100/80 transition hover:border-zinc-300"
             >
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
-                <p className="text-4xl font-black text-slate-950 tracking-tighter italic">{stat.value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">{stat.label}</p>
+                <p className="mt-1 text-3xl font-black tabular-nums tracking-tight text-zinc-900">{stat.value}</p>
               </div>
-              <div className={`p-5 rounded-2xl 
-                ${stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' : 
-                  stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
-                  'bg-rose-50 text-rose-600'}`}>
-                <stat.icon size={28} strokeWidth={2.5} />
+              <div
+                className={`rounded-xl p-4 ${
+                  stat.color === "zinc"
+                    ? "bg-zinc-100 text-zinc-700"
+                    : stat.color === "emerald"
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-rose-50 text-rose-600"
+                }`}
+              >
+                <stat.icon size={24} strokeWidth={2.25} />
               </div>
             </div>
           ))}
         </section>
 
-        {/* --- PRODUCT GRID --- */}
         <main>
           {filteredProducts.length === 0 ? (
             <EmptyState />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
               {filteredProducts.map((p) => (
                 <ProductCard 
                   key={p._id} 

@@ -189,28 +189,38 @@ export default function Token() {
   const activeCount = tokens.filter(t => t.status !== "Closed").length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 font-sans">
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-20 font-sans">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
       {/* Header */}
-      <header className="top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <header className="top-0 z-50 border-b border-zinc-200 bg-white/90 px-6 py-4 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <button
+              onClick={() => navigate(-1)}
+              className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-100"
+            >
               <ChevronLeft size={20} />
             </button>
-            <div>
-              <h1 className="text-xl font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
-                <Ticket className="text-indigo-600" /> Token Management
-              </h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Real-time takeaway tracking
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-sm shadow-zinc-900/20">
+                <Ticket size={20} />
+              </div>
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-tight text-zinc-900">Token management</h1>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Real-time takeaway tracking
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => fetchTokens(false)}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
+              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100"
               title="Refresh"
             >
               <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
@@ -218,66 +228,66 @@ export default function Token() {
             <button
               onClick={handleReset}
               disabled={isResetting}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-xs font-black text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
             >
               {isResetting ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
-              Reset Tokens
+              Reset tokens
             </button>
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-lg border border-indigo-100">
-              <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">Live System</span>
+            <div className="hidden items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 md:flex">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-700" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-700">Live</span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-6">
+      <main className="mx-auto max-w-5xl p-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total Active" value={activeCount} color="indigo" icon={Ticket} />
-          <StatCard label="Pending" value={statusCounts.Pending} color="orange" icon={Timer} />
-          <StatCard label="Preparing" value={statusCounts.Preparing} color="blue" icon={UtensilsCrossed} />
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard label="Total Active" value={activeCount} color="zinc" icon={Ticket} />
+          <StatCard label="Pending" value={statusCounts.Pending} color="amber" icon={Timer} />
+          <StatCard label="Preparing" value={statusCounts.Preparing} color="slate" icon={UtensilsCrossed} />
           <StatCard label="Ready" value={statusCounts.Ready} color="emerald" icon={CheckCircle2} />
         </div>
 
         {/* Search */}
         <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
           <input
             type="text"
             placeholder="Search by token number or customer name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none font-medium"
+            className="w-full rounded-2xl border border-zinc-200 bg-white py-4 pl-12 pr-6 font-medium shadow-sm shadow-zinc-900/5 outline-none transition-all focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
           />
         </div>
 
         {/* Token Grid */}
         {isFetching && filteredTokens.length === 0 ? (
           /* Loading skeleton — shown only on first load with no cache */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden animate-pulse">
-                <div className="h-1.5 w-full bg-slate-200" />
-                <div className="p-6 space-y-4">
-                  <div className="h-12 w-20 bg-slate-100 rounded-xl" />
-                  <div className="h-4 w-full bg-slate-100 rounded-lg" />
-                  <div className="h-4 w-3/4 bg-slate-100 rounded-lg" />
-                  <div className="h-10 w-full bg-slate-100 rounded-xl" />
+              <div key={i} className="overflow-hidden rounded-3xl border border-zinc-100 bg-white shadow-sm shadow-zinc-900/5 animate-pulse">
+                <div className="h-1.5 w-full bg-zinc-200" />
+                <div className="space-y-4 p-6">
+                  <div className="h-12 w-20 rounded-xl bg-zinc-100" />
+                  <div className="h-4 w-full rounded-lg bg-zinc-100" />
+                  <div className="h-4 w-3/4 rounded-lg bg-zinc-100" />
+                  <div className="h-10 w-full rounded-xl bg-zinc-100" />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredTokens.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Ticket size={40} className="text-slate-200" />
+          <div className="rounded-3xl border border-zinc-200 bg-white py-20 text-center shadow-sm shadow-zinc-900/5">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-zinc-100">
+              <Ticket size={40} className="text-zinc-300" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 uppercase">No Active Tokens</h3>
-            <p className="text-slate-400 text-xs mt-1">New takeaway orders will appear here automatically.</p>
+            <h3 className="text-lg font-black uppercase text-zinc-900">No active tokens</h3>
+            <p className="mt-1 text-xs text-zinc-500">New takeaway orders will appear here automatically.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {filteredTokens.map((token) => (
               <TokenCard key={token._id} token={token} onClose={closeToken} />
             ))}
@@ -290,18 +300,18 @@ export default function Token() {
 
 function StatCard({ label, value, color, icon: Icon }) {
   const themes = {
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    orange: "bg-orange-50 text-orange-600 border-orange-100",
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    zinc: "border-zinc-200 bg-white text-zinc-800",
+    amber: "border-amber-100 bg-amber-50 text-amber-800",
+    slate: "border-zinc-200 bg-zinc-50 text-zinc-700",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-800",
   };
   return (
-    <div className={`p-4 rounded-2xl border ${themes[color]} shadow-sm`}>
-      <div className="flex items-center justify-between mb-2">
-        <Icon size={18} />
-        <span className="text-sm font-black">{value}</span>
+    <div className={`rounded-2xl border p-4 shadow-sm shadow-zinc-900/5 ${themes[color]}`}>
+      <div className="mb-2 flex items-center justify-between">
+        <Icon size={18} className="opacity-90" />
+        <span className="text-sm font-black tabular-nums">{value}</span>
       </div>
-      <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
+      <p className="text-[10px] font-black uppercase tracking-widest opacity-90">{label}</p>
     </div>
   );
 }
@@ -320,8 +330,8 @@ function TokenCard({ token, onClose }) {
 
   return (
     <div
-      className={`bg-white rounded-3xl border shadow-sm hover:shadow-md transition-all overflow-hidden relative group ${
-        isClosed ? "border-slate-200" : "border-slate-100"
+      className={`group relative overflow-hidden rounded-3xl border bg-white shadow-sm shadow-zinc-900/5 transition-all hover:shadow-md ${
+        isClosed ? "border-zinc-200" : "border-zinc-200"
       }`}
     >
       {/* Closed overlay stamp */}
@@ -335,12 +345,17 @@ function TokenCard({ token, onClose }) {
       )}
 
       {/* Status strip */}
-      <div className={`h-1.5 w-full ${
-        isClosed ? "bg-slate-300" :
-        token.status === "Ready" ? "bg-emerald-500" :
-        token.status === "Preparing" ? "bg-blue-500" :
-        "bg-orange-500"
-      }`} />
+      <div
+        className={`h-1.5 w-full ${
+          isClosed
+            ? "bg-zinc-300"
+            : token.status === "Ready"
+              ? "bg-emerald-500"
+              : token.status === "Preparing"
+                ? "bg-zinc-500"
+                : "bg-amber-500"
+        }`}
+      />
 
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
@@ -411,7 +426,7 @@ function TokenCard({ token, onClose }) {
         {/* Footer */}
         <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
           <span>₹{token.totalAmount?.toLocaleString()}</span>
-          <span className={isClosed ? "text-slate-400" : "text-indigo-600"}>
+          <span className={isClosed ? "text-zinc-400" : "text-zinc-700"}>
             #{token._id?.slice(-6)}
           </span>
         </div>

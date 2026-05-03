@@ -44,7 +44,17 @@ export default function KitchenBill({ embedded = false }) {
   }
 
   return (
-    <div className={`bg-[#FDFDFD] pb-8 font-sans ${embedded ? '' : 'min-h-screen'}`}>
+    <div
+      className={`relative font-sans ${
+        embedded ? "pb-8" : "min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-10"
+      }`}
+    >
+      {!embedded && (
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+          aria-hidden
+        />
+      )}
       {/* Header */}
       {!embedded && (
         <KitchenBillHeader
@@ -58,7 +68,7 @@ export default function KitchenBill({ embedded = false }) {
       )}
 
       {/* Main Grid - Changed to 4 cards per row on large screens */}
-      <main className="max-w-7xl mx-auto p-4 pt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 p-4 pt-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredBills.map((kb, index) => {
           const batchTotal = kb.batchTotal || kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
           const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();

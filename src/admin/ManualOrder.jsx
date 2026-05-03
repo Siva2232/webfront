@@ -271,31 +271,41 @@ export default function ManualOrder() {
   );
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans antialiased pb-32">
+    <div
+      className="relative flex min-h-full w-full max-w-full flex-col overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-[max(11rem,calc(env(safe-area-inset-bottom,0px)+10rem))] font-sans text-zinc-900 antialiased"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
       {/* Header */}
-      <header className="p-6 border-b border-black/5 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-10">
-        <h1 className="text-2xl font-black uppercase tracking-tighter italic">
-          {isAddMoreMode ? "Add More Items" : "Manual Order"}
-        </h1>
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200/90 bg-white/95 px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Orders</p>
+          <h1 className="truncate text-xl font-black uppercase tracking-tighter text-zinc-900 sm:text-2xl">
+            {isAddMoreMode ? "Add more items" : "Manual order"}
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           {isAddMoreMode && (
             <button
+              type="button"
               onClick={handleCancelAddMore}
-              className="px-3 py-1 border-2 border-gray-300 font-bold text-xs uppercase hover:border-black transition-colors"
+              className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-bold uppercase text-zinc-800 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
             >
               Cancel
             </button>
           )}
-          <div className="px-3 py-1 border-2 border-black font-bold text-xs uppercase">
-            Admin Portal
+          <div className="hidden rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase text-zinc-700 sm:block">
+            Admin
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-6 sm:px-6">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-12 xl:items-start xl:gap-10">
           
-          {/* Left Column: Product Selection */}
+          {/* Products — wide column */}
           <ProductSelection
             filteredProducts={filteredProducts}
             itemsMap={itemsMap}
@@ -306,8 +316,8 @@ export default function ManualOrder() {
             onOpenCustomise={openCustomise}
           />
 
-          {/* Right Column: Order Details */}
-          <div className="space-y-8">
+          {/* Order details — scrollable panel on wide screens */}
+          <div className="min-w-0 space-y-6 xl:sticky xl:top-20 xl:col-span-4 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 xl:[scrollbar-gutter:stable]">
             {/* Add More Items Section */}
             <ExistingOrderPicker
               isAddMoreMode={isAddMoreMode}
@@ -324,26 +334,29 @@ export default function ManualOrder() {
 
             {/* Order Mode - only show when not in Add More mode */}
             {!isAddMoreMode && (
-            <section className="space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Order Mode</h2>
-              <div className="grid grid-cols-3 gap-2">
+            <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/5 sm:p-5">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Order mode</h2>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button 
+                  type="button"
                   onClick={() => { setIsDineIn(!isDineIn); if(!isDineIn) { setIsTakeaway(false); setIsDelivery(false); }}}
-                  className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isDineIn ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-100 hover:border-black'}`}
+                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isDineIn ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <Package size={16} /> Dine-in
+                  <Package size={16} className="shrink-0" /> <span className="truncate">Dine-in</span>
                 </button>
                 <button 
+                  type="button"
                   onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setIsDelivery(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
-                  className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isTakeaway ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
+                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isTakeaway ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <ShoppingCart size={16} /> Takeaway
+                  <ShoppingCart size={16} className="shrink-0" /> <span className="truncate">Takeaway</span>
                 </button>
                 <button 
+                  type="button"
                   onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
-                  className={`flex items-center justify-center gap-2 p-3 border-2 font-bold text-xs uppercase transition-all ${isDelivery ? 'bg-black text-white border-black' : 'border-gray-100 hover:border-black'}`}
+                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isDelivery ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <MapPin size={16} /> Delivery
+                  <MapPin size={16} className="shrink-0" /> <span className="truncate">Delivery</span>
                 </button>
               </div>
 
@@ -354,8 +367,8 @@ export default function ManualOrder() {
                     type="text"
                     value={dineInTable}
                     onChange={(e) => setDineInTable(e.target.value)}
-                    placeholder="TABLE NUMBER (E.G. 5, A1)"
-                    className="w-full p-3 border-2 border-emerald-200 bg-emerald-50 font-bold focus:border-emerald-500 outline-none uppercase text-sm"
+                    placeholder="Table number (e.g. 5, A1)"
+                    className="w-full min-w-0 rounded-xl border-2 border-emerald-200 bg-emerald-50/80 p-3 text-sm font-bold uppercase outline-none focus:border-emerald-500"
                   />
                 </div>
               )}
@@ -364,45 +377,46 @@ export default function ManualOrder() {
             )}
 
             {isDelivery && (
-              <section className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Customer Details</h2>
-                <div className="space-y-2">
+              <section className="animate-in fade-in slide-in-from-top-2 space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/5 sm:p-5">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Customer details</h2>
+                <div className="space-y-3">
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="NAME"
-                    className="w-full p-3 border-2 border-gray-100 font-bold focus:border-black outline-none uppercase text-sm"
+                    placeholder="Name"
+                    className="w-full min-w-0 rounded-xl border-2 border-zinc-200 p-3 text-sm font-bold uppercase outline-none focus:border-zinc-900"
                   />
                   <textarea
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="DELIVERY ADDRESS"
-                    rows={2}
-                    className="w-full p-3 border-2 border-gray-100 font-bold focus:border-black outline-none uppercase text-sm resize-none"
+                    placeholder="Delivery address"
+                    rows={3}
+                    className="w-full min-w-0 resize-y rounded-xl border-2 border-zinc-200 p-3 text-sm font-bold uppercase outline-none focus:border-zinc-900"
                   />
                   <input
                     type="text"
                     value={deliveryTime}
                     onChange={(e) => setDeliveryTime(e.target.value)}
-                    placeholder="ESTIMATED DELIVERY TIME (E.G. 30-40 MINS)"
-                    className="w-full p-3 border-2 border-gray-100 font-bold focus:border-black outline-none uppercase text-sm"
+                    placeholder="Estimated delivery time"
+                    className="w-full min-w-0 rounded-xl border-2 border-zinc-200 p-3 text-sm font-bold uppercase outline-none focus:border-zinc-900"
                   />
                 </div>
               </section>
             )}
 
-            <section className="space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Additional Info</h2>
-              <div className="relative border-2 border-gray-100 focus-within:border-black transition-colors">
-                <div className="absolute top-3 left-3 text-gray-300">
+            <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/5 sm:p-5">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Additional info</h2>
+              <div className="relative rounded-xl border-2 border-zinc-200 transition-colors focus-within:border-zinc-400">
+                <div className="pointer-events-none absolute left-3 top-3 text-zinc-400">
                   <ClipboardList size={18} />
                 </div>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="SPECIAL INSTRUCTIONS..."
-                  className="w-full p-3 pl-10 bg-transparent font-medium outline-none text-sm min-h-25"
+                  placeholder="Special instructions…"
+                  rows={4}
+                  className="min-h-[6.5rem] w-full min-w-0 resize-y bg-transparent p-3 pl-10 text-sm font-medium outline-none"
                 />
               </div>
             </section>
@@ -410,28 +424,36 @@ export default function ManualOrder() {
         </div>
       </main>
 
-      {/* Floating Action Bar */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t-4 p-6 z-20 ${isAddMoreMode ? 'border-indigo-500' : 'border-black'}`}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-left">
-            <p className="text-xs font-bold text-gray-400 uppercase">
-              {isAddMoreMode ? "Adding Items Worth" : "Current Subtotal"}
+      {/* Floating action bar — safe-area aware so content isn’t hidden behind home indicator */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-[35] border-t bg-white/98 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pt-4 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.08)] backdrop-blur-md ${
+          isAddMoreMode ? "border-zinc-300" : "border-zinc-200"
+        }`}
+      >
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="min-w-0 text-left">
+            <p className="text-xs font-bold uppercase text-zinc-500">
+              {isAddMoreMode ? "Adding items worth" : "Current subtotal"}
             </p>
-            <p className="text-3xl font-black italic tracking-tighter">₹{totalAmount.toFixed(2)}</p>
+            <p className="text-2xl font-black tabular-nums tracking-tighter text-zinc-900 sm:text-3xl">
+              ₹{totalAmount.toFixed(2)}
+            </p>
             {isAddMoreMode && selectedExistingOrder && (
-              <p className="text-xs text-indigo-600 font-medium mt-1">
-                + ₹{selectedExistingOrder.totalAmount?.toFixed(0) || 0} existing = ₹{(totalAmount + (selectedExistingOrder.totalAmount || 0)).toFixed(2)} total
+              <p className="mt-1 break-words text-xs font-medium leading-snug text-zinc-600">
+                + ₹{selectedExistingOrder.totalAmount?.toFixed(0) || 0} existing → ₹
+                {(totalAmount + (selectedExistingOrder.totalAmount || 0)).toFixed(2)} total
               </p>
             )}
           </div>
           <button
+            type="button"
             onClick={handleConfirmClick}
             disabled={isSubmitting}
-            className={`w-full sm:w-auto px-12 py-4 text-white font-black uppercase italic transition-all active:scale-95 disabled:bg-gray-200 disabled:cursor-not-allowed ${
-              isAddMoreMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-black hover:bg-gray-800'
+            className={`w-full shrink-0 rounded-xl px-8 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-zinc-900/15 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:shadow-none sm:w-auto sm:min-w-[14rem] sm:py-4 ${
+              isAddMoreMode ? "bg-zinc-800 hover:bg-zinc-900" : "bg-zinc-900 hover:bg-zinc-800"
             }`}
           >
-            {isAddMoreMode ? "Add Items to Order" : "Confirm & Place Order"}
+            {isAddMoreMode ? "Add items to order" : "Confirm & place order"}
           </button>
         </div>
       </div>

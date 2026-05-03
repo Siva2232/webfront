@@ -56,7 +56,7 @@ export const BillCard = React.memo(function BillCard({
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] text-slate-400 uppercase tracking-widest">Order Ref</p>
-              <p className="font-mono font-bold text-sm text-slate-900">
+              <p className="font-bold tabular-nums text-sm text-zinc-900">
                 #{(orderId || "").slice(-8)}
               </p>
             </div>
@@ -74,7 +74,7 @@ export const BillCard = React.memo(function BillCard({
             <div className="flex items-center gap-3">
               {isTA || isDelivery ? (
                 <div className="flex items-center gap-2">
-                  <Package size={18} className="text-rose-500" />
+                  <Package size={18} className="text-zinc-600" />
                   <span className="font-semibold text-base">
                     {isDelivery ? "Delivery" : "Takeaway"}
                   </span>
@@ -85,7 +85,7 @@ export const BillCard = React.memo(function BillCard({
             </div>
 
             {isTA && order.tokenNumber && (
-              <div className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-xl">
+              <div className="rounded-xl bg-zinc-900 px-3 py-1 text-xs font-bold text-white">
                 Token #{order.tokenNumber}
               </div>
             )}
@@ -102,7 +102,7 @@ export const BillCard = React.memo(function BillCard({
                 <div className="flex-1 pr-3">
                   <p className="font-medium leading-tight line-clamp-1">{item.name}</p>
                   {item.selectedPortion && (
-                    <p className="text-xs text-blue-600">({item.selectedPortion})</p>
+                    <p className="text-xs text-zinc-600">({item.selectedPortion})</p>
                   )}
                 </div>
                 <div className="text-right whitespace-nowrap">

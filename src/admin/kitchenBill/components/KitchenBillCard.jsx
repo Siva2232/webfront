@@ -26,11 +26,11 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
           <h2 className="font-bold text-lg tracking-tight">Kitchen Bill</h2>
 
           {kb.batchNumber > 1 ? (
-            <div className="inline-flex items-center gap-1 mt-2 px-3 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-full">
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-zinc-800 px-3 py-0.5 text-[10px] font-bold text-white">
               <Plus size={10} /> Batch #{kb.batchNumber}
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1 mt-2 px-3 py-0.5 bg-slate-800 text-white text-[10px] font-bold rounded-full">
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-0.5 text-[10px] font-bold text-zinc-800">
               Initial Order
             </div>
           )}
@@ -73,7 +73,7 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-2">
                     <p className="font-medium leading-tight">{item.name}</p>
-                    {item.selectedPortion && <p className="text-xs text-blue-600">({item.selectedPortion})</p>}
+                    {item.selectedPortion && <p className="text-xs text-zinc-600">({item.selectedPortion})</p>}
                   </div>
                   <p className="font-bold shrink-0">×{item.qty}</p>
                 </div>
@@ -94,8 +94,8 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
         </div>
 
         {kb.notes && (
-          <div className="mx-4 mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-2xl flex gap-2 text-sm">
-            <MessageSquare size={16} className="text-indigo-600 mt-0.5 flex-shrink-0" />
+          <div className="mx-4 mb-4 flex gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-sm">
+            <MessageSquare size={16} className="mt-0.5 flex-shrink-0 text-zinc-600" />
             <p className="italic text-slate-700 leading-tight">"{kb.notes}"</p>
           </div>
         )}

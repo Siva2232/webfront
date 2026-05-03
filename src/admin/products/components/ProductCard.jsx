@@ -19,15 +19,15 @@ export default function ProductCard({
 }) {
   const cardContent = useMemo(
     () => (
-      <div className="p-8 space-y-6 flex-1 flex flex-col justify-between">
+      <div className="flex flex-1 flex-col justify-between space-y-6 p-6 sm:p-7">
         <div className="space-y-4">
           <div className="space-y-1">
-            <h3 className="text-xl font-black text-slate-950 truncate tracking-tight uppercase italic transition-colors group-hover:text-indigo-600">
+            <h3 className="truncate text-lg font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-zinc-700">
               {product.name}
             </h3>
-            <div className="flex items-center gap-1.5 text-indigo-600 font-black">
-              <IndianRupee size={16} strokeWidth={3} />
-              <span className="text-2xl tracking-tighter italic">{product.price.toLocaleString()}</span>
+            <div className="flex items-center gap-1 font-black text-zinc-900">
+              <IndianRupee size={15} strokeWidth={2.5} className="text-zinc-500" />
+              <span className="text-2xl tabular-nums tracking-tight">{product.price.toLocaleString()}</span>
             </div>
           </div>
 
@@ -97,7 +97,7 @@ export default function ProductCard({
                     onChange={(e) => {
                       if (e.target.value) onQuickAdd(product._id, "portion", e.target.value);
                     }}
-                    className="w-full appearance-none bg-blue-50/50 text-blue-700 font-bold text-[9px] uppercase tracking-wider py-2.5 pl-3 pr-6 rounded-xl border border-blue-100 outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                    className="w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-3 pr-6 text-[9px] font-bold uppercase tracking-wider text-zinc-800 outline-none transition hover:border-zinc-300 hover:bg-zinc-100"
                   >
                     <option value="" disabled>
                       + Portion
@@ -141,7 +141,7 @@ export default function ProductCard({
                   </select>
                   <ChevronDown
                     size={12}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none"
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400"
                   />
                 </div>
               )}
@@ -198,7 +198,7 @@ export default function ProductCard({
           <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
             <button
               onClick={() => onEdit(product._id)}
-              className="flex items-center justify-center gap-2 py-4 bg-slate-950 text-white rounded-2xl transition-all duration-300 hover:bg-indigo-600 shadow-lg shadow-slate-100"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-white shadow-md transition hover:bg-zinc-800"
             >
               <Edit3 size={14} />
               <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
@@ -220,9 +220,11 @@ export default function ProductCard({
   return (
     <div className="group relative">
       <div
-        className={`relative bg-white rounded-[3rem] overflow-hidden border transition-shadow duration-150 hover:shadow-lg flex flex-col h-full
-        ${product.isAvailable ? "border-slate-100 shadow-sm" : "border-rose-100 shadow-none opacity-90"}
-      `}
+        className={`relative flex h-full flex-col overflow-hidden rounded-3xl border bg-white transition-shadow duration-150 hover:shadow-md ${
+          product.isAvailable
+            ? "border-zinc-200/90 shadow-sm ring-1 ring-zinc-100/80"
+            : "border-rose-200/90 opacity-90 shadow-none ring-1 ring-rose-100/50"
+        }`}
       >
         <div className="relative aspect-[11/13] overflow-hidden bg-slate-100 shrink-0">
           <img
@@ -232,17 +234,15 @@ export default function ProductCard({
             className={`w-full h-full object-cover ${!product.isAvailable && "grayscale blur-[2px] contrast-75"}`}
           />
 
-          <div className="absolute top-6 left-6">
+          <div className="absolute left-4 top-4 sm:left-5 sm:top-5">
             <div
-              className={`px-4 py-2 rounded-2xl backdrop-blur-xl border text-[10px] font-black uppercase tracking-widest shadow-xl transition-all
-                ${
-                  product.isAvailable
-                    ? "bg-white/90 text-emerald-600 border-white/20"
-                    : "bg-rose-600 text-white border-rose-400"
-                }
-            `}
+              className={`rounded-xl border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide shadow-sm backdrop-blur-md ${
+                product.isAvailable
+                  ? "border-white/30 bg-white/90 text-emerald-700"
+                  : "border-rose-300 bg-rose-600 text-white"
+              }`}
             >
-              {product.isAvailable ? "● Live" : "✕ Sold Out"}
+              {product.isAvailable ? "Live" : "Sold out"}
             </div>
           </div>
         </div>

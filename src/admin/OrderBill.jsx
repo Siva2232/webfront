@@ -17,12 +17,15 @@ import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
 import { useTheme } from "../context/ThemeContext";
 import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
 
+/** When true, skip “Select cashier” if exactly one POS cashier exists — print immediately */
+const SKIP_CASHIER_MODAL_WHEN_SINGLE = true;
+
 /* ─── component ───────────────────────────────────────────── */
 
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
     useOrders();
-  const { cashiers, addCashier } = useCashiers();
+  const { cashiers, reload: reloadCashiers } = useCashiers();
   const { features } = useTheme();
   const navigate = useNavigate();
 
@@ -190,19 +193,26 @@ export default function OrderBill() {
     setSelectedCashier(null);
   }, []);
 
-  const openPrintModal = useCallback((order) => {
-    setSelectedCashier(null);
-    setPrintModalOrder(order);
-  }, []);
-
-  const handleAddCashier = useCallback(
-    (name) => {
-      const r = addCashier(name);
-      if (!r.ok) toast.error(r.error || "Could not add cashier");
-      else toast.success("Cashier added");
-      return r;
+  const openPrintModal = useCallback(
+    async (order) => {
+      const list = await reloadCashiers();
+      if (
+        SKIP_CASHIER_MODAL_WHEN_SINGLE &&
+        Array.isArray(list) &&
+        list.length === 1
+      ) {
+        try {
+          printReceipt(order, list[0].name);
+        } catch (err) {
+          console.error(err);
+          toast.error(err?.message || "Could not open print preview");
+        }
+        return;
+      }
+      setSelectedCashier(null);
+      setPrintModalOrder(order);
     },
-    [addCashier]
+    [reloadCashiers],
   );
 
   /* print */
@@ -228,26 +238,40 @@ export default function OrderBill() {
   /* ─── empty state ────────────────────────────────────────── */
   if (!uniqueBills.length && isLoading && !billsReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <RefreshCw size={28} className="animate-spin text-slate-300" />
+      <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans">
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+          aria-hidden
+        />
+        <RefreshCw size={28} className="animate-spin text-zinc-300" />
       </div>
     );
   }
 
   if (!uniqueBills.length && billsReady) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center bg-[#F4F4F5]">
-        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
-          <Receipt size={32} className="text-slate-300" />
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 px-8 text-center font-sans">
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+          aria-hidden
+        />
+        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
+          <Receipt size={32} className="text-zinc-400" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tighter uppercase">No Records</h2>
-        <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest font-bold">Clear of active invoices</p>
-        <div className="flex gap-4">
-          <button onClick={handleRefresh} className="text-[10px] font-black text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-full uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95">
-            <RefreshCw size={14} /> Refresh Bills
+        <h2 className="mb-2 text-xl font-bold uppercase tracking-tighter text-zinc-900">No records</h2>
+        <p className="mb-8 text-xs font-bold uppercase tracking-widest text-zinc-500">No active invoices</p>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-sm shadow-zinc-900/15 transition-all hover:bg-zinc-800 active:scale-95"
+          >
+            <RefreshCw size={14} /> Refresh bills
           </button>
-          <button onClick={handleGoBack} className="text-[10px] font-black text-indigo-600 border-b-2 border-indigo-600 pb-1 uppercase tracking-widest">
-            {dateFilter ? "Clear Filter" : "Go Back"}
+          <button
+            onClick={handleGoBack}
+            className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800"
+          >
+            {dateFilter ? "Clear filter" : "Go back"}
           </button>
         </div>
       </div>
@@ -256,7 +280,11 @@ export default function OrderBill() {
 
   /* ─── main render ────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 font-mono relative">
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-20 font-sans">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
       <OrderBillHeader
         isLoading={isLoading}
         dateFilter={dateFilter}
@@ -311,7 +339,6 @@ export default function OrderBill() {
           selectedCashier={selectedCashier}
           setSelectedCashier={setSelectedCashier}
           cashiers={cashiers}
-          onAddCashier={handleAddCashier}
           onCancel={closePrintModal}
           onConfirm={handleConfirmPrint}
         />

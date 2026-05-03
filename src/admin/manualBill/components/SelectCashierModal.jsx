@@ -1,23 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, User } from "lucide-react";
+import { User } from "lucide-react";
 
 export default function SelectCashierModal({
   open,
   cashiers,
   selectedCashier,
   onChangeCashier,
-  onAddCashier,
   onCancel,
   onConfirm,
 }) {
-  const [newName, setNewName] = useState("");
-  const [adding, setAdding] = useState(false);
-
-  useEffect(() => {
-    if (!open) setNewName("");
-  }, [open]);
-
   useEffect(() => {
     if (!open || cashiers.length !== 1) return;
     const only = cashiers[0];
@@ -30,20 +22,6 @@ export default function SelectCashierModal({
   const hasValidCashier =
     selectedCashier != null &&
     cashiers.some((c) => String(c.id) === String(selectedCashier));
-
-  const handleAdd = () => {
-    if (!onAddCashier) return;
-    setAdding(true);
-    try {
-      const result = onAddCashier(newName);
-      if (result?.ok && result.cashier) {
-        onChangeCashier(result.cashier.id);
-        setNewName("");
-      }
-    } finally {
-      setAdding(false);
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -84,40 +62,10 @@ export default function SelectCashierModal({
               </select>
 
               {!cashiers.length && (
-                <p className="text-xs text-amber-700 font-bold">
-                  No cashiers yet — add one below.
+                <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                  No POS cashiers yet. In <strong className="text-slate-900">HR → Staff</strong>,
+                  enable <strong className="text-slate-900">POS cashier</strong> on a staff profile.
                 </p>
-              )}
-
-              {onAddCashier && (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Add cashier
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAdd();
-                        }
-                      }}
-                      placeholder="New cashier name"
-                      className="flex-1 min-w-0 px-3 py-3 border border-slate-200 rounded-xl text-sm font-semibold"
-                    />
-                    <button
-                      type="button"
-                      disabled={adding || !String(newName).trim()}
-                      onClick={handleAdd}
-                      className="shrink-0 inline-flex items-center gap-1 px-3 py-3 rounded-xl bg-slate-900 text-white text-xs font-black uppercase disabled:opacity-40"
-                    >
-                      <Plus size={16} /> Add
-                    </button>
-                  </div>
-                </div>
               )}
 
               <div className="flex gap-4 pt-2">

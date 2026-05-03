@@ -3,13 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import API from "../api/axios";
 import toast from "react-hot-toast";
 import { ProductContext } from "../context/ProductContext";
-import {
-  Plus,
-  Trash2,
-  Search,
-  Layers,
-  AlertTriangle,
-} from "lucide-react";
+import { Plus, Search, Layers, AlertTriangle } from "lucide-react";
 import SubItemCard from "./subitem/components/SubItemCard";
 import BulkCreateModal from "./subitem/components/BulkCreateModal";
 import ConfirmToggleStatusModal from "./subitem/components/ConfirmToggleStatusModal";
@@ -305,126 +299,120 @@ export default function SubItemLibrary() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-8 lg:p-12 font-sans text-slate-950">
-      <div className="max-w-[1100px] mx-auto space-y-10">
-        {/* ── Header ── */}
-        <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
-          <div className="space-y-4 flex-1">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-1 w-10 bg-violet-600 rounded-full" />
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
-                  Master Library
-                </span>
-              </div>
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-950">
-                Sub <span className="text-slate-300 font-light italic">Items</span>
-              </h1>
+    <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(24,24,27,0.05),transparent)]"
+        aria-hidden
+      />
+      <div className="mx-auto max-w-[1100px] space-y-8 px-4 pt-8 sm:px-6 lg:space-y-10 lg:px-8 lg:pt-10">
+        <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
+              <Layers size={26} strokeWidth={2} />
             </div>
-            <p className="text-sm text-slate-400 font-medium max-w-lg leading-relaxed">
-              Save reusable portions and add-on groups here. Pick them instantly
-              when editing any product — no need to type every time.
-            </p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Library</p>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">Sub-items</h1>
+              <p className="mt-1 max-w-lg text-sm leading-relaxed text-zinc-500">
+                Reusable portions and add-on groups. Attach them from any product — no retyping.
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full xl:w-auto self-end">
-            <div className="relative group w-full sm:w-64">
-              <Search
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors"
-                size={18}
-              />
+          <div className="flex w-full flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-center xl:w-auto xl:max-w-none">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" strokeWidth={2} />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search library…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] w-full shadow-sm focus:ring-4 focus:ring-violet-50/50 outline-none transition-all font-medium text-sm"
+                className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10"
               />
             </div>
-            
-            <div className="flex gap-3 w-full sm:w-auto">
+            <div className="flex gap-2">
               <button
+                type="button"
                 onClick={openBulkCreate}
-                className={`flex-1 sm:flex-none px-6 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 border-2 ${
-                  tab === "portion" 
-                    ? "border-violet-600 text-violet-600 hover:bg-violet-50" 
-                    : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-                }`}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm transition hover:border-zinc-400 hover:bg-zinc-50 sm:flex-none"
               >
-                <Plus size={16} /> Bulk {tab === "portion" ? "Portion" : "Add-on"}
+                <Plus size={16} strokeWidth={2.5} /> Bulk
               </button>
-              
               <button
+                type="button"
                 onClick={openCreate}
-                className="flex-1 sm:flex-none bg-slate-950 text-white px-8 py-4 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest hover:bg-violet-600 transition-all shadow-xl hover:shadow-violet-200 active:scale-95 flex items-center justify-center gap-3"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-white shadow-md transition hover:bg-zinc-800 sm:flex-none"
               >
-                <Plus size={18} />
-                New {tab === "portion" ? "Portion" : "Add-on"}
+                <Plus size={18} strokeWidth={2.5} />
+                New
               </button>
             </div>
           </div>
         </header>
 
-        {/* ── Tab Switcher ── */}
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {[
             { key: "portion", label: "Portions" },
-            { key: "addonGroup", label: "Add-on Groups" },
+            { key: "addonGroup", label: "Add-on groups" },
           ].map((t) => (
             <button
               key={t.key}
+              type="button"
               onClick={() => setTab(t.key)}
-              className={`px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all border-2 ${
+              className={`rounded-xl px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide transition ${
                 tab === t.key
-                  ? "bg-violet-600 text-white border-violet-600 shadow-lg shadow-violet-100"
-                  : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
+                  ? "bg-zinc-900 text-white shadow-md"
+                  : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
               }`}
             >
-              {t.label} ({items.filter((i) => i.type === t.key).length})
+              {t.label}{" "}
+              <span className={tab === t.key ? "text-zinc-300" : "text-zinc-400"}>
+                ({items.filter((i) => i.type === t.key).length})
+              </span>
             </button>
           ))}
         </div>
 
         {outOfStockOnly && (
-          <div className="mt-4 mb-2 inline-flex items-center gap-2 px-4 py-2 rounded-full text-white bg-rose-500 text-xs font-bold">
-            <AlertTriangle size={14} /> Showing only sold-out sub-items
+          <div className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-800">
+            <AlertTriangle size={14} className="shrink-0" />
+            Showing unavailable items only
           </div>
         )}
 
         {/* ── Grid ── */}
         {loading ? (
-          <div className="py-20 flex justify-center">
-            <span className="w-8 h-8 border-4 border-slate-200 border-t-violet-600 rounded-full animate-spin" />
+          <div className="flex justify-center py-20">
+            <span className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 bg-white border border-slate-100 rounded-[3rem] text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6 border border-slate-100">
-              <Layers className="text-violet-400" size={36} />
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-200 bg-white/80 py-20 text-center ring-1 ring-zinc-100/80">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-100 bg-zinc-50">
+              <Layers className="text-zinc-400" size={30} strokeWidth={1.75} />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tighter italic uppercase">
-              No {tab === "portion" ? "Portions" : "Add-on Groups"} yet
+            <h3 className="text-lg font-black text-zinc-900">
+              No {tab === "portion" ? "portions" : "add-on groups"} yet
             </h3>
-            <p className="text-slate-400 font-medium max-w-sm mt-2">
-              Create your first {tab === "portion" ? "portion" : "add-on group"} to
-              reuse across products.
+            <p className="mt-2 max-w-sm text-sm text-zinc-500">
+              Create one with <span className="font-semibold text-zinc-700">New</span> or use{" "}
+              <span className="font-semibold text-zinc-700">Bulk</span> for a whole set.
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {/* 1. Grouped Items (Portions or Add-on Groups with Category) */}
+          <div className="space-y-10">
             {Object.entries(groupedData.groups).map(([groupName, groupItems]) => (
-              <div key={groupName} className="space-y-6">
+              <div key={groupName} className="space-y-5">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
-                    <Layers className="text-violet-600" size={24} />
-                    {groupName} <span className="text-slate-300 font-light italic">Group</span>
+                  <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-zinc-900">
+                    <Layers className="text-zinc-500" size={18} strokeWidth={2} />
+                    {groupName}
                   </h2>
-                  <div className="h-px flex-1 bg-slate-100" />
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-                    {groupItems.length} Variants
+                  <div className="h-px flex-1 bg-zinc-200/80" />
+                  <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    {groupItems.length} items
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {groupItems.map((item) => (
                     <SubItemCard 
                       key={item._id} 
@@ -440,17 +428,17 @@ export default function SubItemLibrary() {
 
             {/* 2. Ungrouped Items */}
             {groupedData.ungrouped.length > 0 && (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {Object.keys(groupedData.groups).length > 0 && (
                   <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
-                      <Plus className="text-slate-400" size={24} />
-                      Individual <span className="text-slate-300 font-light italic">Items</span>
+                    <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-zinc-900">
+                      <Plus className="text-zinc-400" size={18} strokeWidth={2} />
+                      Ungrouped
                     </h2>
-                    <div className="h-px flex-1 bg-slate-100" />
+                    <div className="h-px flex-1 bg-zinc-200/80" />
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {groupedData.ungrouped.map((item) => (
                     <SubItemCard 
                       key={item._id} 

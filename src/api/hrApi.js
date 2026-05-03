@@ -7,6 +7,8 @@ export const changeMyHRPassword = (data) => API.put('/hr/staff/me/password', dat
 
 // ── Staff ─────────────────────────────────────────────────────────────────────
 export const getAllStaff = (params) => API.get('/hr/staff', { params });
+/** Active HR staff with `isCashier` — for POS bill print picker */
+export const getStaffCashiers = () => API.get('/hr/staff/cashiers');
 export const getStaffById = (id) => API.get(`/hr/staff/${id}`);
 export const createStaff = (data) => API.post('/hr/staff', data);
 export const updateStaff = (id, data) => API.put(`/hr/staff/${id}`, data);

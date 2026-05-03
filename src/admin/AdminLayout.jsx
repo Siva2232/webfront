@@ -57,6 +57,13 @@ import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
+/** Match `/admin/{segment}` exactly or a nested route — avoids `includes()` bugs (e.g. `bill` vs `manual-bill`). */
+function adminChildPathActive(pathname, childPath) {
+  if (!childPath) return false;
+  const base = `/admin/${childPath}`;
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
 const menuItems = [
   { name: "Analytics", icon: BarChart2, path: "reports" },
   { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -94,11 +101,13 @@ const menuItems = [
     name: "HR Management",
     icon: Building2,
     path: "hr",
-    /* Group modules only — Staff / Attendance / Leaves are separate nav rows (gated by hr + hrStaff etc.) */
     children: [
       { name: "HR Dashboard", icon: LayoutDashboard, path: "hr/dashboard" },
       { name: "Shifts", icon: Clock4, path: "hr/shifts" },
       { name: "Payroll", icon: Banknote, path: "hr/payroll" },
+      { name: "Staff", icon: UserCheck, path: "hr/staff", flag: "hrStaff" },
+      { name: "Attendance", icon: CalendarCheck2, path: "hr/attendance", flag: "hrAttendance" },
+      { name: "Leaves", icon: CalendarX2, path: "hr/leaves", flag: "hrLeaves" },
     ],
   },
   {
@@ -151,43 +160,41 @@ export default function AdminLayout() {
   });
 
   /**
-   * HR: Staff / Attendance / Leaves are individual top-level sidebar links injected after the
-   * HR Management group when `hr` is enabled. If `hr` is off but e.g. `hrStaff` is on, those links
-   * are inserted after “Add Offers” so Staff still appears without the HR dropdown.
+   * HR: All HR routes live under the “HR Management” submenu. Staff / Attendance / Leaves are
+   * optional per `hrStaff` / `hrAttendance` / `hrLeaves`. If parent `hr` is off but a submodule
+   * flag is on, show one HR group after “Add Offers” with only those links.
    */
   const navMenuItems = useMemo(() => {
-    const HR_INDIVIDUAL = [
-      { name: "Staff",      icon: UserCheck,     path: "hr/staff",      flag: "hrStaff" },
-      { name: "Attendance", icon: CalendarCheck2, path: "hr/attendance", flag: "hrAttendance" },
-      { name: "Leaves",     icon: CalendarX2,     path: "hr/leaves",     flag: "hrLeaves" },
-    ];
-    const out = [];
-    for (const item of visibleMenuItems) {
-      out.push(item);
-      // Inject individual HR modules right after the HR Management group
-      if (item.path === "hr" && features.hr !== false) {
-        for (const row of HR_INDIVIDUAL) {
-          if (features[row.flag] === false) continue;
-          out.push({ name: row.name, icon: row.icon, path: row.path });
+    const hrTemplate = menuItems.find((i) => i.path === "hr");
+
+    const filterHrChildren = (children, { includeCore }) =>
+      (children || []).filter((c) => {
+        if (c.flag) {
+          if (!featuresReady) return false;
+          return features[c.flag] !== false;
         }
-      }
-    }
-    // Parent HR disabled but submodule flags on — standalone links after Offers
-    if (featuresReady && features.hr === false) {
-      const orphans = HR_INDIVIDUAL.filter((row) => features[row.flag] !== false);
-      if (orphans.length > 0) {
+        return includeCore;
+      });
+
+    const out = visibleMenuItems.map((item) => {
+      if (item.path !== "hr") return item;
+      return {
+        ...item,
+        children: filterHrChildren(item.children, { includeCore: true }),
+      };
+    });
+
+    if (featuresReady && features.hr === false && hrTemplate) {
+      const orphanChildren = filterHrChildren(hrTemplate.children, { includeCore: false });
+      if (orphanChildren.length > 0) {
         const insertAfter = "offers";
         const idx = out.findIndex((i) => i.path === insertAfter);
-        const block = orphans.map((row) => ({
-          name: row.name,
-          icon: row.icon,
-          path: row.path,
-        }));
-        if (idx === -1) out.push(...block);
-        else out.splice(idx + 1, 0, ...block);
+        const orphanGroup = { ...hrTemplate, children: orphanChildren };
+        if (idx === -1) out.push(orphanGroup);
+        else out.splice(idx + 1, 0, orphanGroup);
       }
     }
-    // Remove groups whose children have all been filtered away
+
     return out.filter((item) => !item.children || item.children.length > 0);
   }, [visibleMenuItems, features, featuresReady]);
 
@@ -339,7 +346,7 @@ export default function AdminLayout() {
       (item) =>
         item.children &&
         item.children.some((child) =>
-          location.pathname.startsWith(`/admin/${child.path}`),
+          adminChildPathActive(location.pathname, child.path),
         ),
     );
 
@@ -365,6 +372,28 @@ export default function AdminLayout() {
     }
   }, [location.pathname, location.search]);
 
+  // When a parent submenu opens, scroll its block into view inside the sidebar (nav is overflow-y-auto)
+  useEffect(() => {
+    if (!openSubmenu) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      const safe =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+          ? CSS.escape(openSubmenu)
+          : String(openSubmenu).replace(/"/g, '\\"');
+      const el = document.querySelector(`[data-nav-group="${safe}"]`);
+      el?.scrollIntoView({ block: "nearest", behavior: "smooth", inline: "nearest" });
+    };
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  }, [openSubmenu, location.pathname, isCollapsed]);
+
   // Helper to close mobile sidebar only on mobile
   const closeMobileMenu = () => {
     if (window.innerWidth < 1024) {
@@ -373,18 +402,49 @@ export default function AdminLayout() {
     }
   };
 
-  // toggle a top‑level submenu open/closed
-  const toggleSubmenu = (name) => {
-    setOpenSubmenu((prev) => (prev === name ? null : name));
+  /** Top-level routes (no submenu): collapse every dropdown so only one nav “mode” at a time */
+  const handleLeafNavClick = () => {
+    setOpenSubmenu(null);
+    closeMobileMenu();
   };
 
-  // click handler for items that have children; opens submenu and optionally navigates
+  const isSidebarSectionActive = (item) => {
+    if (!item.children?.length) return false;
+    const base = `/admin/${item.path}`.replace(/\/$/, "");
+    return item.children.some((c) => {
+      if (c.path) return adminChildPathActive(location.pathname, c.path);
+      if (c.tab) {
+        const tab = new URLSearchParams(location.search).get("tab");
+        return (
+          location.pathname.replace(/\/$/, "") === base &&
+          tab === c.tab
+        );
+      }
+      return false;
+    });
+  };
+
+  /** First sub-link for parent rows (Manage Menu → Menu Item, Tables & QR → Tables, etc.) */
   const handleParentItemClick = (item) => {
+    const children = item.children || [];
+    const firstPathChild = children.find((c) => c.path);
+    const firstTabChild = children.find((c) => c.tab && !c.path);
+
     const isOpen = openSubmenu === item.name;
-    if (isOpen) {
+    const sectionActive = isSidebarSectionActive(item);
+
+    // Second click on same group while already inside it: collapse only
+    if (isOpen && sectionActive) {
       setOpenSubmenu(null);
-    } else {
-      setOpenSubmenu(item.name);
+      closeMobileMenu();
+      return;
+    }
+
+    setOpenSubmenu(item.name);
+    if (firstPathChild) {
+      navigate(`/admin/${firstPathChild.path}`);
+    } else if (firstTabChild) {
+      navigate(`/admin/${item.path}?tab=${firstTabChild.tab}`);
     }
     closeMobileMenu();
   };
@@ -568,18 +628,26 @@ export default function AdminLayout() {
             if (item.children) {
               const isOpen = openSubmenu === item.name;
               const isActive = item.children.some((child) =>
-                location.pathname.includes(child.path),
+                adminChildPathActive(location.pathname, child.path),
               );
+              const expandedBg =
+                isOpen && !isActive
+                  ? "color-mix(in srgb, var(--sidebar-text) 10%, transparent)"
+                  : "transparent";
               return (
-                <div key={item.name} className="relative">
+                <div
+                  key={item.name}
+                  className="relative scroll-my-2"
+                  data-nav-group={item.name}
+                >
                   <button
                     onClick={() => handleParentItemClick(item)}
                     className={`w-full text-left ${baseClasses}`}
                     style={{
-                      backgroundColor:
-                        isOpen || isActive ? "var(--primary)" : "transparent",
-                      color:
-                        isOpen || isActive ? "#fff" : "var(--sidebar-text)",
+                      backgroundColor: isActive
+                        ? "var(--primary)"
+                        : expandedBg,
+                      color: isActive ? "#fff" : "var(--sidebar-text)",
                     }}
                   >
                     <item.icon size={22} className="flex-shrink-0" />
@@ -597,8 +665,7 @@ export default function AdminLayout() {
                         size={16}
                         className={`ml-auto transition-transform duration-100 ${isOpen ? "rotate-180" : ""}`}
                         style={{
-                          color:
-                            isOpen || isActive ? "#fff" : "var(--sidebar-text)",
+                          color: isActive ? "#fff" : "var(--sidebar-text)",
                         }}
                       />
                     )}
@@ -655,14 +722,13 @@ export default function AdminLayout() {
                             to={`/admin/${child.path}`}
                             end
                             onClick={closeMobileMenu}
-                            className={({ isActive }) =>
-                              `w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors ${
-                                isActive ? "bg-slate-200" : "bg-transparent"
-                              }`
-                            }
+                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold"
                             style={({ isActive }) => ({
-                              color: "var(--sidebar-text)",
-                              opacity: isActive ? 1 : 0.8,
+                              backgroundColor: isActive
+                                ? "var(--primary)"
+                                : "transparent",
+                              color: isActive ? "#fff" : "var(--sidebar-text)",
+                              opacity: isActive ? 1 : 0.88,
                             })}
                           >
                             {icon}
@@ -675,13 +741,13 @@ export default function AdminLayout() {
                               navigate(`/admin/${item.path}?tab=${child.tab}`);
                               closeMobileMenu();
                             }}
-                            className={`w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors`}
+                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold"
                             style={{
                               backgroundColor: isActiveChild
-                                ? "rgba(0,0,0,0.15)"
+                                ? "var(--primary)"
                                 : "transparent",
-                              color: "var(--sidebar-text)",
-                              opacity: isActiveChild ? 1 : 0.8,
+                              color: isActiveChild ? "#fff" : "var(--sidebar-text)",
+                              opacity: isActiveChild ? 1 : 0.88,
                             }}
                           >
                             {icon}
@@ -701,7 +767,7 @@ export default function AdminLayout() {
               <NavLink
                 key={item.path}
                 to={`/admin/${item.path}`}
-                onClick={closeMobileMenu}
+                onClick={handleLeafNavClick}
                 className={({ isActive }) => `
           ${baseClasses}
         `}
@@ -744,23 +810,48 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-        <div className="shrink-0 px-2 py-3 border-t border-white/10 flex justify-center">
+
+        {/* Bottom brand — compact */}
+        <div
+          className="shrink-0 px-2 pb-2 pt-1"
+          style={{
+            borderTopWidth: 1,
+            borderTopStyle: "solid",
+            borderColor:
+              "color-mix(in srgb, var(--sidebar-text) 12%, var(--sidebar-bg))",
+          }}
+        >
           <div
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3 py-2 shadow-sm"
-            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+              isCollapsed ? "justify-center px-1" : ""
+            }`}
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, var(--sidebar-text) 6%, var(--sidebar-bg))",
+            }}
+            title="Powered by MyCafe"
           >
             <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
-              style={{ backgroundColor: branding.primaryColor || "#6366f1" }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-white shadow-sm ring-1 ring-black/5"
+              aria-hidden
             >
-              <Sparkles size={16} />
+              <Sparkles size={13} strokeWidth={2.25} className="text-white" />
             </div>
             {!isCollapsed && (
-              <div className="text-center">
-                <p className="text-[9px] uppercase tracking-[0.35em] text-white/70 leading-none">
-                  powered by
+              <div className="min-w-0 text-left leading-none">
+                <p
+                  className="text-[8px] font-semibold uppercase tracking-[0.18em]"
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--sidebar-text) 50%, var(--sidebar-bg))",
+                  }}
+                >
+                  Powered by
                 </p>
-                <p className="text-xs font-black tracking-tight text-white leading-none">
+                <p
+                  className="mt-0.5 truncate text-[11px] font-black tracking-tight"
+                  style={{ color: "var(--sidebar-text)" }}
+                >
                   MyCafe
                 </p>
               </div>

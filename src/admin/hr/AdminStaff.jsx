@@ -12,11 +12,14 @@ import toast from "react-hot-toast";
 import StaffBadge from "./staff/components/StaffBadge";
 
 const ROLES = ["admin", "manager", "staff"];
-const DEPARTMENTS = ["Kitchen", "Waiter", "Service", "Management", "Accounts", "Housekeeping", "Security", "Other"];
+const DEPARTMENTS = [
+  "Kitchen", "Waiter", "Service", "Management", "Accounts", "Housekeeping",
+  "Security", "POS Cashier", "Other",
+];
 const STATUSES = ["active", "inactive", "on_leave"];
 const EMPTY_FORM = {
   name: "", email: "", phone: "", role: "staff", department: "Kitchen",
-  designation: "", baseSalary: "", joiningDate: "", status: "active", notes: ""
+  designation: "", baseSalary: "", joiningDate: "", status: "active", notes: "",
 };
 
 export default function AdminStaff() {
@@ -51,7 +54,10 @@ export default function AdminStaff() {
     const q = search.toLowerCase();
     const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q) || s.phone?.includes(q);
     const matchRole = !roleFilter || s.role === roleFilter;
-    const matchDept = !deptFilter || s.department === deptFilter;
+    const matchDept =
+      !deptFilter ||
+      s.department === deptFilter ||
+      (deptFilter === "POS Cashier" && s.isCashier);
     const matchStatus = !statusFilter || s.status === statusFilter;
     return matchSearch && matchRole && matchDept && matchStatus;
   });
@@ -61,10 +67,11 @@ export default function AdminStaff() {
     setEditing(s);
     setForm({
       name: s.name || "", email: s.email || "", phone: s.phone || "",
-      role: s.role || "staff", department: s.department || "",
+      role: s.role || "staff",
+      department: s.isCashier ? "POS Cashier" : (s.department || ""),
       designation: s.designation || "", baseSalary: s.baseSalary || "",
       joiningDate: s.joiningDate ? s.joiningDate.split("T")[0] : "",
-      status: s.status || "active", notes: s.notes || ""
+      status: s.status || "active", notes: s.notes || "",
     });
     setShowModal(true);
   };
@@ -74,12 +81,16 @@ export default function AdminStaff() {
     if (!form.name.trim() || !form.email.trim()) { toast.error("Name and email are required"); return; }
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        isCashier: form.department === "POS Cashier",
+      };
       if (editing) {
-        await updateStaff(editing._id, form);
+        await updateStaff(editing._id, payload);
         toast.success("Staff profile updated");
       } else {
         if (!form.password) { toast.error("Password is required for new accounts"); setSaving(false); return; }
-        await createStaff(form);
+        await createStaff(payload);
         toast.success("Staff member added");
       }
       setShowModal(false);
@@ -206,7 +217,9 @@ export default function AdminStaff() {
                     <td className="px-6 py-4">
                         <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                             <Building2 className="w-3 h-3 text-slate-300" />
-                            {s.department || "—"}
+                            {s.isCashier || s.department === "POS Cashier"
+                              ? "POS Cashier"
+                              : (s.department || "—")}
                         </p>
                     </td>
                     <td className="px-6 py-4">
@@ -245,141 +258,230 @@ export default function AdminStaff() {
         )}
       </div>
 
-      {/* Profile/Upsert Modal */}
+      {/* Profile/Upsert Modal — fits viewport; body scrolls inside card */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between px-8 py-6 bg-slate-50 border-b border-slate-100">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">{editing ? "Update Record" : "Onboard New Staff"}</h2>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mt-1">Personnel Management System</p>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center box-border overflow-x-hidden overflow-y-auto overscroll-contain bg-slate-900/60 backdrop-blur-[2px] p-2 sm:p-4"
+          style={{
+            paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+            paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div
+            className="relative my-auto flex w-full max-w-lg min-h-0 max-h-[calc(100svh-1rem)] sm:max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl animate-in fade-in zoom-in duration-200"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-between gap-3 px-4 py-3 shrink-0 bg-slate-50 border-b border-slate-100">
+              <div className="min-w-0">
+                <h2 className="text-base font-black text-slate-900 tracking-tight truncate">
+                  {editing ? "Update staff" : "New staff"}
+                </h2>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">HR</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2.5 hover:bg-white rounded-xl text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-200 transition-all">
-                <X className="w-5 h-5" />
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="p-2 shrink-0 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-            
-            <form onSubmit={handleSave} className="overflow-y-auto p-8 space-y-6 flex-1 bg-white">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                {[
-                  { label: "Full Name", key: "name", type: "text", required: true },
-                  { label: "Official Email", key: "email", type: "email", required: true },
-                  { label: "Phone Number", key: "phone", type: "tel" },
-                  { label: "Job Title / Designation", key: "designation", type: "text" },
-                  { label: "Monthly Base Salary (₹)", key: "baseSalary", type: "number" },
-                  { label: "Official Joining Date", key: "joiningDate", type: "date" },
-                ].map(({ label, key, type, required }) => (
-                  <div key={key}>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{label} {required && "*"}</label>
-                    <input type={type} value={form[key]}
-                      onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 focus:bg-white transition-all text-slate-800" />
-                  </div>
-                ))}
-                {!editing && (
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Portal Password *</label>
-                    <input type="password" value={form.password || ""}
-                      onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 focus:bg-white transition-all text-slate-800" />
-                  </div>
-                )}
-                {[
-                  { label: "System Role", key: "role", opts: ROLES },
-                  { label: "Work Department", key: "department", opts: DEPARTMENTS },
-                  { label: "Employment Status", key: "status", opts: STATUSES },
-                ].map(({ label, key, opts }) => (
-                  <div key={key}>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
-                    <div className="relative">
-                        <select value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-                        className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 focus:bg-white transition-all text-slate-800 cursor-pointer">
-                        {opts.map(o => <option key={o} value={o}>{o.replace("_", " ").toUpperCase()}</option>)}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+            <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 bg-white">
+              <div className="min-h-0 flex-1 touch-pan-y space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-3">
+                  {[
+                    { label: "Full Name", key: "name", type: "text", required: true },
+                    { label: "Official Email", key: "email", type: "email", required: true },
+                    { label: "Phone Number", key: "phone", type: "tel" },
+                    { label: "Job Title / Designation", key: "designation", type: "text" },
+                    { label: "Monthly Base Salary (₹)", key: "baseSalary", type: "number" },
+                    { label: "Joining Date", key: "joiningDate", type: "date" },
+                  ].map(({ label, key, type, required }) => (
+                    <div key={key}>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                        {label} {required && "*"}
+                      </label>
+                      <input
+                        type={type}
+                        value={form[key]}
+                        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white text-slate-800"
+                      />
                     </div>
-                  </div>
-                ))}
+                  ))}
+                  {!editing && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">
+                        Portal Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={form.password || ""}
+                        onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white text-slate-800"
+                      />
+                    </div>
+                  )}
+                  {[
+                    { label: "System Role", key: "role", opts: ROLES },
+                    { label: "Work Department", key: "department", opts: DEPARTMENTS },
+                    { label: "Employment Status", key: "status", opts: STATUSES },
+                  ].map(({ label, key, opts }) => (
+                    <div key={key} className={key === "status" ? "sm:col-span-2" : ""}>
+                      <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">{label}</label>
+                      <div className="relative">
+                        <select
+                          value={form[key]}
+                          onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+                          className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white text-slate-800 cursor-pointer"
+                        >
+                          {opts.map((o) => (
+                            <option key={o} value={o}>
+                              {o.replace("_", " ").toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Notes</label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                    rows={2}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white text-slate-800 resize-none"
+                    placeholder="Optional internal notes…"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Additional Internal Notes</label>
-                <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 focus:bg-white transition-all text-slate-800 resize-none" 
-                  placeholder="Employee history, equipment issued, etc..." />
+
+              <div className="flex gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 shrink-0 bg-slate-50 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-white transition-all active:scale-[0.99]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 active:scale-[0.99]"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {editing ? "Save" : "Add staff"}
+                </button>
               </div>
             </form>
-
-            <div className="flex gap-4 p-8 bg-slate-50 border-t border-slate-100">
-              <button type="button" onClick={() => setShowModal(false)}
-                className="flex-1 px-6 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-white hover:border-slate-300 transition-all active:scale-95">
-                Discard Changes
-              </button>
-              <button onClick={handleSave} disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 active:scale-95">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {editing ? "Commit Updates" : "Add to Directory"}
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Staff Preview Sidebar/Modal */}
+      {/* Staff preview — fits viewport; no negative margins (prevents top clip) */}
       {viewStaff && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-            <div className="relative h-32 bg-gradient-to-r from-indigo-500 to-violet-600">
-                <button onClick={() => setViewStaff(null)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full text-white transition-all">
-                    <X className="w-4 h-4" />
-                </button>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center box-border overflow-x-hidden overflow-y-auto overscroll-contain bg-slate-900/60 backdrop-blur-[2px] p-2 sm:p-4"
+          style={{
+            paddingTop: "max(0.5rem, env(safe-area-inset-top, 0px))",
+            paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div className="relative my-auto flex w-full max-w-md min-h-0 max-h-[calc(100svh-1rem)] sm:max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+            <div className="relative h-12 shrink-0 bg-gradient-to-r from-indigo-500 to-violet-600">
+              <button
+                type="button"
+                onClick={() => setViewStaff(null)}
+                className="absolute top-1.5 right-2.5 p-1.5 bg-white/20 hover:bg-white/30 rounded-full text-white transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="px-8 pb-8">
-              <div className="relative -mt-12 mb-6">
-                <div className="w-24 h-24 rounded-3xl bg-white p-1 shadow-xl">
-                    <div className="w-full h-full rounded-2xl bg-slate-100 flex items-center justify-center text-3xl font-black text-indigo-600">
-                        {viewStaff.name?.charAt(0)?.toUpperCase()}
-                    </div>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{viewStaff.name}</h2>
-                <p className="text-sm font-bold text-indigo-600 uppercase tracking-tighter flex items-center gap-1.5 mt-1">
-                    <Briefcase className="w-4 h-4" /> {viewStaff.designation || viewStaff.role}
-                </p>
-                <div className="flex gap-2 mt-4">
-                  <StaffBadge value={viewStaff.role} /><StaffBadge value={viewStaff.status} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 mb-8">
-                {[
-                  { icon: Mail, label: "Email Address", value: viewStaff.email },
-                  { icon: Phone, label: "Contact Phone", value: viewStaff.phone || "Not Provided" },
-                  { icon: Building2, label: "Work Department", value: viewStaff.department || "Unassigned" },
-                  { icon: IndianRupee, label: "Basic Pay Scale", value: viewStaff.baseSalary ? `₹${Number(viewStaff.baseSalary).toLocaleString("en-IN")}` : "0.00" },
-                  { icon: Calendar, label: "Registry Date", value: viewStaff.joiningDate ? new Date(viewStaff.joiningDate).toLocaleDateString("en-IN", { dateStyle: 'long' }) : "Unknown" },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-slate-400">
-                        <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-                      <p className="text-xs font-bold text-slate-700">{value}</p>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain px-4 pb-2 pt-3">
+                <div className="mb-3 flex justify-center sm:justify-start">
+                  <div className="h-14 w-14 shrink-0 rounded-2xl bg-slate-100 p-0.5 shadow-md ring-2 ring-slate-100">
+                    <div className="flex h-full w-full items-center justify-center rounded-[0.625rem] bg-white text-lg font-black text-indigo-600">
+                      {viewStaff.name?.charAt(0)?.toUpperCase()}
                     </div>
                   </div>
-                ))}
+                </div>
+
+                <div className="mb-3 text-center sm:text-left">
+                  <h2 className="text-base font-black tracking-tight text-slate-900">{viewStaff.name}</h2>
+                  <p className="mt-0.5 flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-tight text-indigo-600 sm:justify-start">
+                    <Briefcase className="h-3.5 w-3.5 shrink-0" /> {viewStaff.designation || viewStaff.role}
+                  </p>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2 sm:justify-start">
+                    <StaffBadge value={viewStaff.role} />
+                    <StaffBadge value={viewStaff.status} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { icon: Mail, label: "Email", value: viewStaff.email },
+                    { icon: Phone, label: "Phone", value: viewStaff.phone || "—" },
+                    {
+                      icon: Building2,
+                      label: "Department",
+                      value:
+                        viewStaff.isCashier || viewStaff.department === "POS Cashier"
+                          ? "POS Cashier"
+                          : viewStaff.department || "Unassigned",
+                    },
+                    {
+                      icon: IndianRupee,
+                      label: "Salary",
+                      value: viewStaff.baseSalary
+                        ? `₹${Number(viewStaff.baseSalary).toLocaleString("en-IN")}`
+                        : "0",
+                    },
+                    {
+                      icon: Calendar,
+                      label: "Joined",
+                      value: viewStaff.joiningDate
+                        ? new Date(viewStaff.joiningDate).toLocaleDateString("en-IN", { dateStyle: "medium" })
+                        : "—",
+                    },
+                  ].map(({ icon: Icon, label, value }) => (
+                    <div
+                      key={label}
+                      className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center shadow-sm text-slate-400 shrink-0">
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
+                        <p className="text-xs font-bold text-slate-700 truncate">{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex gap-3">
-                <button onClick={() => { openEdit(viewStaff); setViewStaff(null); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-slate-200">
-                  <Edit2 className="w-4 h-4" /> Edit Profile
+              <div className="flex shrink-0 gap-2 border-t border-slate-100 bg-slate-50 p-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    openEdit(viewStaff);
+                    setViewStaff(null);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.99]"
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> Edit
                 </button>
-                <button onClick={() => setViewStaff(null)}
-                  className="px-6 py-3 border border-slate-200 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95">
-                  Dismiss
+                <button
+                  type="button"
+                  onClick={() => setViewStaff(null)}
+                  className="px-4 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all active:scale-[0.99]"
+                >
+                  Close
                 </button>
               </div>
             </div>

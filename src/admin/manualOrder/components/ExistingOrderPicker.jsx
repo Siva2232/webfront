@@ -11,51 +11,59 @@ export default function ExistingOrderPicker({
   onSelectExistingOrder,
 }) {
   return (
-    <section className="space-y-4">
-      <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">Add to Existing Order</h2>
+    <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/5 sm:p-5">
+      <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-500">Add to existing order</h2>
       {!isAddMoreMode ? (
         <button
+          type="button"
           onClick={onEnterAddMoreMode}
-          className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-indigo-300 bg-indigo-50 text-indigo-600 font-bold text-xs uppercase transition-all hover:border-indigo-500 hover:bg-indigo-100"
+          className="flex w-full min-w-0 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50/80 px-3 py-4 text-xs font-bold uppercase text-zinc-800 transition-all hover:border-zinc-500 hover:bg-white"
         >
-          <PlusCircle size={18} /> Add More Items to Existing Order
+          <PlusCircle size={18} className="shrink-0" />
+          <span className="text-center leading-snug">Add more items to an open order</span>
         </button>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">Select an active order to add items:</p>
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 text-xs leading-snug text-zinc-600">
+              Choose an active order:
+            </p>
             <button
+              type="button"
               onClick={onCancelAddMore}
-              className="px-2 py-1 border border-gray-200 text-[10px] font-bold uppercase hover:border-black transition-colors"
+              className="shrink-0 rounded-lg border border-zinc-200 px-2 py-1.5 text-[10px] font-bold uppercase text-zinc-700 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
             >
               Cancel
             </button>
           </div>
 
           {activeOrders.length === 0 ? (
-            <p className="text-xs text-gray-400 italic p-3 bg-gray-50 border border-gray-100">No active orders found.</p>
+            <p className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs italic text-zinc-500">
+              No active orders right now.
+            </p>
           ) : (
-            <div className="max-h-48 overflow-y-auto space-y-2 border border-gray-100 p-2">
+            <div className="max-h-52 space-y-2 overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-200 bg-zinc-50/50 p-2 sm:max-h-60">
               {activeOrders.map((order) => (
                 <button
+                  type="button"
                   key={order._id}
                   onClick={() => onSelectExistingOrder(order)}
-                  className={`w-full text-left p-3 border-2 transition-all ${
+                  className={`w-full min-w-0 rounded-xl border-2 p-3 text-left transition-all ${
                     selectedExistingOrder?._id === order._id
-                      ? "border-indigo-500 bg-indigo-50"
-                      : "border-gray-100 hover:border-gray-300"
+                      ? "border-zinc-900 bg-white shadow-sm"
+                      : "border-transparent bg-white hover:border-zinc-200"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       {order.table === DELIVERY_TABLE || order.table === "DELIVERY" ? (
-                        <MapPin size={14} className="text-indigo-500" />
+                        <MapPin size={14} className="shrink-0 text-zinc-600" />
                       ) : order.table === TAKEAWAY_TABLE || order.table === "TAKEAWAY" || !order.table ? (
-                        <ShoppingCart size={14} className="text-orange-500" />
+                        <ShoppingCart size={14} className="shrink-0 text-zinc-600" />
                       ) : (
-                        <Package size={14} className="text-emerald-500" />
+                        <Package size={14} className="shrink-0 text-emerald-600" />
                       )}
-                      <span className="font-bold text-xs uppercase">
+                      <span className="truncate font-bold text-xs uppercase text-zinc-900">
                         {order.table === DELIVERY_TABLE || order.table === "DELIVERY"
                           ? "Delivery"
                           : order.table === TAKEAWAY_TABLE || order.table === "TAKEAWAY" || !order.table
@@ -63,15 +71,21 @@ export default function ExistingOrderPicker({
                             : `Table ${order.table}`}
                       </span>
                     </div>
-                    <span className="text-[10px] font-medium text-gray-400">#{(order._id || "").slice(-5)}</span>
+                    <span className="shrink-0 text-[10px] font-medium tabular-nums text-zinc-400">
+                      #{(order._id || "").slice(-5)}
+                    </span>
                   </div>
                   {order.customerName && (
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                      <User size={10} /> {order.customerName}
+                    <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-zinc-600">
+                      <User size={10} className="shrink-0" />
+                      <span className="truncate">{order.customerName}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
-                    <Clock size={10} /> {order.items?.length || 0} items • ₹{order.totalAmount?.toFixed(0) || 0}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1 text-[10px] text-zinc-500">
+                    <Clock size={10} className="shrink-0" />
+                    <span>{order.items?.length || 0} items</span>
+                    <span className="text-zinc-300">·</span>
+                    <span className="tabular-nums">₹{order.totalAmount?.toFixed(0) || 0}</span>
                   </div>
                 </button>
               ))}
@@ -79,10 +93,11 @@ export default function ExistingOrderPicker({
           )}
 
           {selectedExistingOrder && (
-            <div className="p-3 bg-indigo-50 border border-indigo-200 text-xs">
-              <p className="font-bold text-indigo-700">Adding items to:</p>
-              <p className="text-indigo-600">
-                {selectedExistingOrder.customerName || "Order"} #{(selectedExistingOrder._id || "").slice(-5)}
+            <div className="rounded-xl border border-zinc-200 bg-zinc-900 p-3 text-xs text-white">
+              <p className="font-bold text-zinc-300">Adding items to</p>
+              <p className="mt-0.5 break-words font-semibold text-white">
+                {selectedExistingOrder.customerName || "Order"} · #
+                {(selectedExistingOrder._id || "").slice(-5)}
               </p>
             </div>
           )}

@@ -1,15 +1,34 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { getPlans, createPaymentIntent, recordSubscriptionPayment } from "../api/restaurantApi";
 import toast from "react-hot-toast";
-import { CreditCard, CheckCircle2, Loader2, Zap, ShieldCheck, X } from "lucide-react";
+import {
+  CreditCard,
+  CheckCircle2,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+  CalendarDays,
+  ArrowRight,
+  Lock,
+  X,
+} from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { motion } from "framer-motion";
 
-// Initialize Stripe once at module level using the env variable — never null on click
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-// -- Checkout Form Component --
+const PLAN_FEATURES = [
+  ["hr", "HR Management"],
+  ["inventory", "Inventory"],
+  ["reports", "Reports"],
+  ["qrMenu", "QR Menu Suite"],
+  ["onlineOrders", "Online Store"],
+  ["kitchenPanel", "Kitchen Display"],
+  ["waiterPanel", "Waiter Panel"],
+];
+
 function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -24,17 +43,15 @@ function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId })
     setErrorMessage("");
 
     try {
-      // 1. Create Payment Intent
       const { data } = await createPaymentIntent({
         amount: plan.price,
         currency: "inr",
         orderId: `SUB-${restaurantId}-${Date.now()}`,
-        customerDetails: { restaurantId }
+        customerDetails: { restaurantId },
       });
 
       const { clientSecret } = data;
 
-      // 2. Confirm Payment
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -46,17 +63,16 @@ function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId })
         setIsProcessing(false);
       } else {
         if (result.paymentIntent.status === "succeeded") {
-          // 3. Record in DB
           const { data: serverResult } = await recordSubscriptionPayment(restaurantId, {
             planId: plan._id,
             amount: plan.price,
             method: "Stripe",
-            transactionId: result.paymentIntent.id
+            transactionId: result.paymentIntent.id,
           });
-          onSucceed({ 
-            plan, 
-            expiry: serverResult.expiry, 
-            status: serverResult.status 
+          onSucceed({
+            plan,
+            expiry: serverResult.expiry,
+            status: serverResult.status,
           });
         }
       }
@@ -67,64 +83,121 @@ function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: primaryColor }} />
-        
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Secure Upgrade</h2>
-        <p className="text-slate-500 text-sm mb-6 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-500" /> 256-bit Encrypted Transaction
-        </p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/70 p-4 backdrop-blur-md"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ type: "spring", damping: 26, stiffness: 320 }}
+        className="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-zinc-200/90 bg-white shadow-[0_24px_80px_-12px_rgba(0,0,0,0.35)]"
+      >
+        <div
+          className="h-1.5 w-full"
+          style={{
+            background: `linear-gradient(90deg, ${primaryColor || "#18181b"}, color-mix(in srgb, ${primaryColor || "#18181b"} 70%, white))`,
+          }}
+        />
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute right-4 top-5 rounded-xl p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" strokeWidth={2} />
+        </button>
 
-        <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
-           <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Plan Selection</span>
-              <span className="text-xs font-black text-slate-900 uppercase bg-white px-2 py-0.5 rounded border border-slate-200">{plan.name}</span>
-           </div>
-           <div className="flex justify-between items-end">
-              <span className="text-slate-500 text-sm">Amount due today</span>
-              <span className="text-2xl font-black text-slate-900">₹{plan.price}</span>
-           </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="p-4 bg-white border border-slate-200 rounded-2xl focus-within:ring-2 focus-within:ring-pink-500/20 transition-all">
-            <CardElement options={{
-              style: {
-                base: { fontSize: '16px', color: '#1e293b', '::placeholder': { color: '#94a3b8' } },
-                invalid: { color: '#ef4444' }
-              }
-            }} />
+        <div className="p-7 pt-8">
+          <div className="mb-6 flex items-start gap-3">
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ring-1 ring-black/5"
+              style={{ backgroundColor: primaryColor || "#18181b" }}
+            >
+              <Lock className="h-6 w-6" strokeWidth={2} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black tracking-tight text-zinc-900">Secure checkout</h2>
+              <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                256-bit encrypted · Stripe
+              </p>
+            </div>
           </div>
 
-          {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-xs font-bold">
-              {errorMessage}
+          <div className="mb-6 rounded-2xl border border-zinc-100 bg-gradient-to-br from-zinc-50 to-white p-4 ring-1 ring-zinc-100/80">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Plan</span>
+              <span className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-zinc-900">
+                {plan.name}
+              </span>
             </div>
-          )}
+            <div className="flex items-end justify-between border-t border-zinc-100 pt-3">
+              <span className="text-sm text-zinc-500">Due today</span>
+              <span className="text-3xl font-black tabular-nums tracking-tight text-zinc-900">₹{plan.price}</span>
+            </div>
+          </div>
 
-          <div className="flex gap-3">
-             <button
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+                Card details
+              </label>
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 transition focus-within:border-zinc-900/20 focus-within:bg-white focus-within:ring-2 focus-within:ring-zinc-900/10">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: "16px",
+                        color: "#18181b",
+                        "::placeholder": { color: "#a1a1aa" },
+                      },
+                      invalid: { color: "#e11d48" },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+
+            {errorMessage && (
+              <div className="rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs font-semibold text-rose-700">
+                {errorMessage}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
                 type="button"
                 onClick={onCancel}
                 disabled={isProcessing}
-                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:bg-slate-200 transition disabled:opacity-50"
-             >
+                className="flex-1 rounded-2xl border border-zinc-200 bg-white py-3.5 text-sm font-bold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50"
+              >
                 Cancel
-             </button>
-             <button
+              </button>
+              <button
                 type="submit"
                 disabled={!stripe || isProcessing}
-                className="flex-[2] py-3 text-white rounded-2xl font-bold text-sm shadow-lg shadow-pink-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ backgroundColor: primaryColor }}
-             >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                {isProcessing ? "Processing..." : `Pay ₹${plan.price}`}
-             </button>
-          </div>
-        </form>
-      </div>
-    </div>
+                className="flex-[1.35] flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white shadow-lg transition disabled:opacity-50"
+                style={{
+                  backgroundColor: primaryColor || "#18181b",
+                  boxShadow: `0 12px 28px -8px color-mix(in srgb, ${primaryColor || "#18181b"} 55%, transparent)`,
+                }}
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4 opacity-90" />
+                )}
+                {isProcessing ? "Processing…" : `Pay ₹${plan.price}`}
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -133,23 +206,22 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [paymentResult, setPaymentResult] = useState(null); // holds server data for success UI
+  const [paymentResult, setPaymentResult] = useState(null);
 
   useEffect(() => {
-    getPlans().then(({ data }) => setPlans(data)).finally(() => setLoading(false));
+    getPlans()
+      .then(({ data }) => setPlans(data))
+      .finally(() => setLoading(false));
   }, []);
 
   const handlePaymentSuccess = async (serverData) => {
     setSelectedPlan(null);
-    setPaymentResult(serverData); // show success UI immediately with server data
-
-    // Re-fetch branding from backend so the status banner + plan card update live
+    setPaymentResult(serverData);
     await loadBranding(branding.restaurantId);
-
     toast.success("Payment verified! Your account is now active.", {
       duration: 6000,
-      icon: '🚀',
-      style: { borderRadius: '16px', background: '#333', color: '#fff' }
+      icon: "🚀",
+      style: { borderRadius: "16px", background: "#18181b", color: "#fff" },
     });
   };
 
@@ -158,175 +230,291 @@ export default function SubscriptionPage() {
     ? Math.ceil((new Date(branding.subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
+  const primary = branding.primaryColor || "#18181b";
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Stripe Modal Overlay */}
-      {selectedPlan && (
-        <Elements stripe={stripePromise}>
-          <CheckoutForm 
-            plan={selectedPlan} 
-            restaurantId={branding.restaurantId}
-            primaryColor={branding.primaryColor}
-            onSucceed={(serverData) => handlePaymentSuccess(serverData)}
-            onCancel={() => setSelectedPlan(null)}
-          />
-        </Elements>
-      )}
+    <div className="relative min-h-full overflow-hidden">
+      {/* ambient */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(24,24,27,0.06),transparent)]"
+        aria-hidden
+      />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        {selectedPlan && (
+          <Elements stripe={stripePromise}>
+            <CheckoutForm
+              plan={selectedPlan}
+              restaurantId={branding.restaurantId}
+              primaryColor={branding.primaryColor}
+              onSucceed={(serverData) => handlePaymentSuccess(serverData)}
+              onCancel={() => setSelectedPlan(null)}
+            />
+          </Elements>
+        )}
 
-      {/* Success Celebration Overlay */}
-      {paymentResult && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 overflow-hidden">
-           <div className="bg-white rounded-[3rem] p-12 max-w-lg w-full text-center shadow-[0_0_100px_rgba(16,185,129,0.25)] border-4 border-emerald-500/20 relative">
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-500/40">
-                <CheckCircle2 className="w-10 h-10 text-white" />
+        {paymentResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-zinc-950/85 p-4 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 24, stiffness: 280 }}
+              className="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-emerald-200/60 bg-white p-8 text-center shadow-[0_24px_80px_-12px_rgba(16,185,129,0.35)] sm:p-10"
+            >
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/30">
+                <CheckCircle2 className="h-9 w-9 text-white" strokeWidth={2.25} />
               </div>
-
-              <h2 className="text-4xl font-black text-slate-900 mb-3 mt-4">Payment Confirmed!</h2>
-              <p className="text-slate-500 text-base mb-8">
-                Your subscription is now <span className="text-emerald-600 font-black">active</span>. All features from your new plan are unlocked.
+              <h2 className="text-2xl font-black tracking-tight text-zinc-900 sm:text-3xl">You&apos;re all set</h2>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                Your subscription is{" "}
+                <span className="font-bold text-emerald-600">active</span>. New plan features are unlocked.
               </p>
 
-              <div className="bg-slate-50 rounded-3xl p-6 mb-8 border border-slate-100 flex flex-col gap-3 text-left">
-                 <div className="flex justify-between items-center">
-                    <span className="text-slate-400 font-bold uppercase text-xs tracking-wide">Status</span>
-                    <span className="text-emerald-600 font-black uppercase text-xs bg-emerald-100 px-3 py-1 rounded-full">Active</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-slate-400 font-bold uppercase text-xs tracking-wide">Plan</span>
-                    <span className="text-slate-900 font-black text-sm">{paymentResult.plan?.name || "—"}</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-slate-400 font-bold uppercase text-xs tracking-wide">Amount Paid</span>
-                    <span className="text-slate-900 font-bold text-sm">₹{paymentResult.plan?.price || "—"}</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-slate-400 font-bold uppercase text-xs tracking-wide">Next Renewal</span>
-                    <span className="text-slate-900 font-bold text-sm">
-                      {paymentResult.expiry
-                        ? new Date(paymentResult.expiry).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
-                        : "—"}
-                    </span>
-                 </div>
+              <div className="mt-8 space-y-3 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-5 text-left ring-1 ring-zinc-100/80">
+                {[
+                  ["Status", <span key="s" className="font-bold text-emerald-600">Active</span>],
+                  ["Plan", paymentResult.plan?.name || "—"],
+                  ["Paid", `₹${paymentResult.plan?.price ?? "—"}`],
+                  [
+                    "Renews on",
+                    paymentResult.expiry
+                      ? new Date(paymentResult.expiry).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—",
+                  ],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">{k}</span>
+                    <span className="font-semibold text-zinc-900">{v}</span>
+                  </div>
+                ))}
               </div>
 
               <button
+                type="button"
                 onClick={() => setPaymentResult(null)}
-                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition shadow-xl"
+                className="mt-8 w-full rounded-2xl bg-zinc-900 py-4 text-sm font-black uppercase tracking-[0.15em] text-white shadow-xl shadow-zinc-900/20 transition hover:bg-zinc-800"
               >
-                Continue to Dashboard
+                Continue
               </button>
-           </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
 
-      <h1 className="text-2xl font-bold text-slate-900 mb-1">Subscription</h1>
-      <p className="text-slate-500 text-sm mb-6">Manage your plan and features</p>
-
-      {/* Current Plan Banner */}
-      <div className="rounded-2xl p-5 mb-8 border flex flex-wrap gap-4 items-center justify-between"
-        style={{ borderColor: branding.primaryColor + "40", background: branding.primaryColor + "10" }}>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-0.5">Current Status</p>
-          <div className="flex items-center gap-2">
-             <h2 className="text-xl font-bold text-slate-900">{currentPlan?.name || "Trial"}</h2>
-             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                branding.subscriptionStatus === 'active' ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' :
-                branding.subscriptionStatus === 'suspended' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' :
-                'bg-slate-500/10 text-slate-600 border border-slate-500/20'
-             }`}>
-                {branding.subscriptionStatus}
-             </span>
+        {/* Page header */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 flex flex-col gap-6 sm:mb-12 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-xl shadow-zinc-900/25 ring-1 ring-white/10">
+              <Sparkles className="h-7 w-7" strokeWidth={2} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">Billing</p>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">Subscription</h1>
+              <p className="mt-1.5 max-w-lg text-sm text-zinc-500">
+                Compare plans, upgrade securely, and keep your venue running on the right tier.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5 lowercase">
-            {daysLeft !== null ? (
-               daysLeft > 0 ? `${daysLeft} days remaining until renewal` : "your plan has expired"
-            ) : "Trial node active — upgrade to production plan"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Zap className="w-5 h-5 animate-pulse" style={{ color: branding.primaryColor }} />
-          <span className="text-sm font-medium text-slate-700">
-            {branding.subscriptionExpiry
-              ? `End Date: ${new Date(branding.subscriptionExpiry).toLocaleDateString()}`
-              : "No Expiry Set"}
-          </span>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* Available Plans */}
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">Available Plans</h2>
-      {loading ? (
-        <div className="grid grid-cols-3 gap-4">
-           {[1,2,3].map(i => <div key={i} className="h-96 rounded-2xl bg-slate-100 animate-pulse" />)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {plans.map((plan) => {
-            // currentPlan may be a populated object {_id, name} or a bare ObjectId string
-            const currentPlanId = typeof currentPlan === "object" && currentPlan !== null
-              ? currentPlan._id?.toString()
-              : currentPlan?.toString();
-            const isCurrent = currentPlanId === plan._id?.toString();
-            return (
-              <div key={plan._id}
-                className={`rounded-3xl border p-6 flex flex-col transition relative overflow-hidden ${isCurrent ? "border-2 shadow-xl ring-4 ring-pink-500/5" : "border-slate-200 hover:border-slate-300"}`}
-                style={isCurrent ? { borderColor: branding.primaryColor } : {}}
-              >
-                {isCurrent && (
-                  <div className="absolute top-0 right-0 p-3">
-                     <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                  </div>
-                )}
-                
-                <h3 className="text-lg font-bold text-slate-900 mb-0.5">{plan.name}</h3>
-                <p className="text-slate-500 text-xs mb-4">{plan.description || 'Premium business suite'}</p>
-                
-                <div className="mb-6">
-                   <p className="text-4xl font-black text-slate-900">₹{plan.price}</p>
-                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">/{plan.duration} days cycle</p>
-                </div>
-
-                <div className="space-y-3 flex-1 mb-8">
-                  {Object.entries({
-                    hr:           "HR Management",
-                    inventory:    "Inventory",
-                    reports:      "Reports",
-                    qrMenu:       "QR Menu Suite",
-                    onlineOrders: "Online Store",
-                    kitchenPanel: "Kitchen Display",
-                    waiterPanel:  "Waiter Panel",
-                  }).map(([key, label]) => (
-                    <div key={key} className="flex items-center gap-3">
-                      <div className={`p-0.5 rounded-full ${plan.features?.[key] ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-100 text-slate-300"}`}>
-                         <CheckCircle2 className="w-3.5 h-3.5" />
-                      </div>
-                      <span className={`text-xs font-medium ${plan.features?.[key] ? "text-slate-700 font-bold" : "text-slate-400 font-normal line-through opacity-50"}`}>{label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setSelectedPlan(plan)}
-                  disabled={isCurrent}
-                  className="w-full py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition flex items-center justify-center gap-3 disabled:bg-slate-100 disabled:text-slate-400"
-                  style={!isCurrent ? { backgroundColor: branding.primaryColor, color: "#fff", boxShadow: `0 10px 15px -3px ${branding.primaryColor}30` } : {}}
+        {/* Current plan */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="relative mb-10 overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-6 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.15)] ring-1 ring-zinc-100 sm:p-8"
+        >
+          <div
+            className="absolute inset-x-0 top-0 h-1"
+            style={{
+              background: `linear-gradient(90deg, ${primary}, color-mix(in srgb, ${primary} 40%, white))`,
+            }}
+          />
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Current plan</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h2 className="text-2xl font-black tracking-tight text-zinc-900">
+                  {currentPlan?.name || "Trial"}
+                </h2>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${
+                    branding.subscriptionStatus === "active"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : branding.subscriptionStatus === "suspended"
+                        ? "border-amber-200 bg-amber-50 text-amber-800"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-600"
+                  }`}
                 >
-                  {isCurrent ? "Active Selection" : "Proceed to Upgrade"}
-                  {!isCurrent && <Zap className="w-3.5 h-3.5" />}
-                </button>
+                  {branding.subscriptionStatus}
+                </span>
               </div>
-            );
-          })}
+              <p className="mt-2 text-sm text-zinc-500">
+                {daysLeft !== null
+                  ? daysLeft > 0
+                    ? `${daysLeft} days until renewal`
+                    : "Plan expired — choose a plan to continue"
+                  : "Trial active — upgrade when you’re ready for production"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 ring-1 ring-zinc-100/60">
+              <CalendarDays className="h-5 w-5 text-zinc-400" />
+              <div className="text-left">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Renewal / end</p>
+                <p className="text-sm font-bold text-zinc-800">
+                  {branding.subscriptionExpiry
+                    ? new Date(branding.subscriptionExpiry).toLocaleDateString(undefined, {
+                        dateStyle: "medium",
+                      })
+                    : "Not set"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-black tracking-tight text-zinc-900">Available plans</h2>
+          {!loading && plans.length > 0 && (
+            <span className="hidden text-xs font-medium text-zinc-400 sm:inline">{plans.length} options</span>
+          )}
         </div>
-      )}
-      
-      <div className="mt-12 p-8 border border-dashed border-slate-300 rounded-[2.5rem] bg-slate-50/50 flex flex-col items-center text-center">
-         <ShieldCheck className="w-10 h-10 text-slate-400 mb-4" />
-         <h4 className="font-bold text-slate-800">Billing Support</h4>
-         <p className="text-xs text-slate-500 mt-2 max-w-md">
-            All payments are processed securely via Stripe. Your subscription will renew automatically. 
-            If your account was manually suspended, please contact support after payment to reactivate access.
-         </p>
+
+        {loading ? (
+          <div className="grid gap-5 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-[420px] animate-pulse rounded-3xl bg-gradient-to-b from-zinc-100 to-zinc-50/80 ring-1 ring-zinc-100"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {plans.map((plan, index) => {
+              const currentPlanId =
+                typeof currentPlan === "object" && currentPlan !== null
+                  ? currentPlan._id?.toString()
+                  : currentPlan?.toString();
+              const isCurrent = currentPlanId === plan._id?.toString();
+              const isFeatured = plans.length === 3 && index === 1;
+
+              return (
+                <motion.article
+                  key={plan._id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06 }}
+                  className={`relative flex flex-col overflow-hidden rounded-3xl border bg-white transition-[box-shadow,transform] duration-300 ${
+                    isCurrent
+                      ? "border-zinc-900 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.35)] ring-2 ring-zinc-900/10"
+                      : isFeatured
+                        ? "border-zinc-300 shadow-xl shadow-zinc-900/10 ring-1 ring-zinc-200/80 md:-translate-y-1 md:scale-[1.02]"
+                        : "border-zinc-200/90 shadow-lg shadow-zinc-900/5 hover:border-zinc-300 hover:shadow-xl"
+                  }`}
+                  style={isCurrent ? { borderColor: primary } : undefined}
+                >
+                  {isFeatured && !isCurrent && (
+                    <div className="absolute right-4 top-4 rounded-full bg-zinc-900 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">
+                      Popular
+                    </div>
+                  )}
+                  {isCurrent && (
+                    <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-emerald-700 ring-1 ring-emerald-200/80">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Current
+                    </div>
+                  )}
+
+                  <div className="border-b border-zinc-100 bg-gradient-to-br from-zinc-50/90 to-white px-6 pb-5 pt-6">
+                    <h3 className="text-lg font-black tracking-tight text-zinc-900">{plan.name}</h3>
+                    <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-zinc-500">
+                      {plan.description || "Full-stack tools for your restaurant operations."}
+                    </p>
+                    <div className="mt-5 flex items-baseline gap-1">
+                      <span className="text-4xl font-black tabular-nums tracking-tight text-zinc-900">₹{plan.price}</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">/{plan.duration}d</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-1 flex-col px-6 py-5">
+                    <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Includes</p>
+                    <ul className="space-y-2.5">
+                      {PLAN_FEATURES.map(([key, label]) => {
+                        const on = plan.features?.[key];
+                        return (
+                          <li key={key} className="flex items-start gap-2.5">
+                            <span
+                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
+                                on ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-300"
+                              }`}
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+                            </span>
+                            <span
+                              className={`text-xs leading-snug ${on ? "font-semibold text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}
+                            >
+                              {label}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPlan(plan)}
+                      disabled={isCurrent}
+                      className="mt-auto flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[11px] font-black uppercase tracking-[0.18em] transition disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+                      style={
+                        !isCurrent
+                          ? {
+                              backgroundColor: primary,
+                              color: "#fff",
+                              boxShadow: `0 14px 32px -10px color-mix(in srgb, ${primary} 50%, transparent)`,
+                            }
+                          : {}
+                      }
+                    >
+                      {isCurrent ? "Your plan" : (
+                        <>
+                          Upgrade
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mt-10 flex flex-col items-center rounded-3xl border border-dashed border-zinc-200 bg-gradient-to-br from-zinc-50/90 to-white px-5 py-8 text-center ring-1 ring-zinc-100/80 sm:px-8"
+        >
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg">
+            <ShieldCheck className="h-5 w-5" strokeWidth={2} />
+          </div>
+          <h4 className="text-sm font-black tracking-tight text-zinc-900">Secure billing</h4>
+          <p className="mt-2 max-w-lg text-xs leading-relaxed text-zinc-500">
+            Payments run through Stripe. Subscriptions renew on schedule. If access was suspended manually, contact support
+            after upgrading to re-enable your account.
+          </p>
+        </motion.div>
       </div>
     </div>
   );
