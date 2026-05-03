@@ -82,6 +82,22 @@ function persistBranding(restaurantId, data) {
   try { sessionStorage.setItem(`restaurantBranding_${rid}`, serialised); } catch (_) {}
 }
 
+/** Merged feature flags from last persisted branding (instant sidebar; API still refreshes). */
+function getInitialFeaturesFromStorage() {
+  const rid = typeof localStorage !== "undefined" ? localStorage.getItem("restaurantId") : null;
+  if (!rid) return DEFAULT_FEATURES;
+  const cached = loadCachedBranding(rid);
+  if (!cached?.features || typeof cached.features !== "object") return DEFAULT_FEATURES;
+  return { ...DEFAULT_FEATURES, ...cached.features };
+}
+
+/** True when we have saved branding for this tenant — sidebar can trust cached feature flags. */
+function hasCachedBrandingSnapshot() {
+  const rid = typeof localStorage !== "undefined" ? localStorage.getItem("restaurantId") : null;
+  if (!rid) return false;
+  return loadCachedBranding(rid) != null;
+}
+
 /**
  * Apply branding object to CSS custom properties on :root.
  * This powers the entire white-label system.
@@ -119,13 +135,15 @@ export const ThemeProvider = ({ children }) => {
   });
 
   /**
-   * features is kept SEPARATE from branding so it is ONLY ever updated from a
-   * fresh API response — never from the localStorage/sessionStorage cache.
-   * This prevents the "Accounting still showing after Super Admin disabled it" bug.
+   * Feature flags: hydrate from persisted branding so the admin sidebar matches the last known
+   * server state on first paint (no 2–3s “missing links”). loadBranding() always refreshes from API.
    */
-  const [features, setFeatures] = useState(DEFAULT_FEATURES);
-  /** After first branding fetch completes, sidebar uses API flags (avoids flash from DEFAULT_FEATURES). */
-  const [featuresReady, setFeaturesReady] = useState(false);
+  const [features, setFeatures] = useState(getInitialFeaturesFromStorage);
+  /**
+   * True if we have a cached branding snapshot OR the first loadBranding() has finished.
+   * When false and there is no cache, AdminLayout shows gated modules until the fetch completes.
+   */
+  const [featuresReady, setFeaturesReady] = useState(hasCachedBrandingSnapshot);
   const [loading, setLoading] = useState(false);
 
   /** Clears Super Admin preview / stale tenant colours before loading a new restaurant theme */
@@ -144,6 +162,8 @@ export const ThemeProvider = ({ children }) => {
     const immediate = loadCachedBranding(restaurantId);
     if (immediate) {
       setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
+      setFeatures({ ...DEFAULT_FEATURES, ...immediate.features });
+      setFeaturesReady(true);
       applyThemeToDom(immediate);
     }
     try {

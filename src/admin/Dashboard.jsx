@@ -308,12 +308,12 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-4 rounded-[2.2rem] border border-zinc-200 bg-white p-2.5 pr-8 shadow-sm shadow-zinc-900/5"
             >
-               <div className="rounded-[1.6rem] bg-zinc-900 p-3.5 text-white shadow-lg shadow-zinc-900/20">
+               <div className="rounded-[1.6rem] bg-green-900 p-3.5 text-white shadow-lg shadow-zinc-900/20">
                   <IndianRupee size={22} strokeWidth={2.5} />
                </div>
                <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Net revenue</p>
-                  <p className="text-2xl font-black text-zinc-900">₹{totalRevenue.toLocaleString("en-IN")}</p>
+                  <p className="text-2xl font-black text-green-900">₹{totalRevenue.toLocaleString("en-IN")}</p>
                </div>
             </motion.div>
           </div>
@@ -365,29 +365,29 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-bold uppercase tracking-wider">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-rose-300 border border-rose-500"></span>
-              <span className="text-zinc-600">Busy</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-rose-500 bg-rose-300" />
+              <span>Busy</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-400"></span>
-              <span className="text-zinc-600">Reserved</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-amber-400 bg-amber-200" />
+              <span>Reserved</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-600"></span>
-              <span className="text-zinc-600">Bill requested</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-emerald-700 bg-emerald-600" />
+              <span>Bill requested</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-zinc-700"></span>
-              <span className="text-zinc-600">Waiter call</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-indigo-700 bg-indigo-600" />
+              <span>Waiter call</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-zinc-900"></span>
-              <span className="text-zinc-600">Both bill + call</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-purple-700 bg-purple-600" />
+              <span>Bill + call</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-              <span className="text-zinc-600">Free</span>
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="h-3 w-3 rounded-full border border-emerald-600 bg-emerald-500" />
+              <span>Free</span>
             </div>
           </div>
 
@@ -400,28 +400,62 @@ export default function Dashboard() {
               const isWaiterCalled = alert && alert.waiter;
               const hasAlert = isBillRequested || isWaiterCalled;
 
+              const tileShell =
+                isBillRequested
+                  ? "bg-linear-to-br from-emerald-50 to-white border-emerald-200 shadow-sm shadow-emerald-100/50 ring-2 ring-emerald-400/90 ring-offset-1"
+                  : hasAlert
+                    ? "bg-linear-to-br from-indigo-50 to-white border-indigo-200 shadow-sm shadow-indigo-100/50 ring-2 ring-indigo-400/90 ring-offset-1"
+                    : occupied
+                      ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50"
+                      : reserved
+                        ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
+                        : "border-slate-100 bg-white shadow-sm hover:border-slate-300";
+              const idMuted =
+                isBillRequested
+                  ? "text-emerald-600/80"
+                  : hasAlert
+                    ? "text-indigo-600/80"
+                    : occupied
+                      ? "text-rose-600/80"
+                      : reserved
+                        ? "text-amber-600/80"
+                        : "text-slate-400";
+              const iconWrap =
+                isBillRequested && isWaiterCalled
+                  ? "text-purple-600"
+                  : isBillRequested
+                    ? "text-emerald-600"
+                    : isWaiterCalled
+                      ? "text-indigo-600"
+                      : occupied
+                        ? "text-rose-500"
+                        : reserved
+                          ? "text-amber-600"
+                          : "text-emerald-500";
+              const statusLabel =
+                isBillRequested && isWaiterCalled
+                  ? "text-purple-800"
+                  : isBillRequested
+                    ? "text-emerald-800"
+                    : isWaiterCalled
+                      ? "text-indigo-800"
+                      : occupied
+                        ? "text-rose-800"
+                        : reserved
+                          ? "text-amber-800"
+                          : "text-emerald-700";
+
               return (
                 <motion.div
                   key={table.id}
                   onClick={() => navigate(`/admin/order-summary?table=${table.id}`)}
-                  className={`relative flex h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border transition-all
-                    ${isBillRequested && isWaiterCalled
-                      ? "animate-pulse border-zinc-900 bg-zinc-900 text-white shadow-lg shadow-zinc-900/25"
-                      : isBillRequested
-                        ? "animate-pulse border-emerald-600 bg-emerald-600 text-white shadow-lg shadow-emerald-200"
-                        : hasAlert
-                          ? "animate-pulse border-zinc-700 bg-zinc-700 text-white shadow-lg shadow-zinc-900/20"
-                          : occupied
-                            ? "border-rose-200 bg-rose-50 text-rose-700"
-                            : reserved
-                              ? "border-amber-200 bg-amber-50 text-amber-700"
-                              : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-300"}`}
+                  className={`relative flex h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border transition-all text-slate-900 ${tileShell}`}
                 >
-                  <div className="text-[10px] font-black uppercase tracking-tighter opacity-60">
+                  <div className={`text-[10px] font-black uppercase tracking-tighter ${idMuted}`}>
                     T{table.id}
                   </div>
 
-                  <div className="flex items-center justify-center gap-1">
+                  <div className={`flex items-center justify-center gap-1 ${iconWrap}`}>
                     {isBillRequested && isWaiterCalled ? (
                       <>
                         <Receipt size={14} strokeWidth={2.5} />
@@ -440,7 +474,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="text-[8px] font-black uppercase tracking-[0.1em]">
+                  <div className={`text-[8px] font-black uppercase tracking-[0.1em] ${statusLabel}`}>
                     {isBillRequested && isWaiterCalled ? "BILL + CALL" : isBillRequested ? "BILL" : isWaiterCalled ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
                   </div>
                 </motion.div>
@@ -780,7 +814,7 @@ const StockAlertSection = ({ items }) => (
 
 const EmptyStateSection = ({ totalProducts, totalSubitems }) => (
   <div className="flex flex-col lg:flex-row min-h-[500px]">
-    <div className="relative flex w-full flex-col justify-between overflow-hidden bg-zinc-900 p-12 text-white lg:w-1/2">
+    <div className="relative flex w-full flex-col justify-between overflow-hidden bg-green-900 p-12 text-white lg:w-1/2">
       <div className="absolute right-0 top-0 p-8 opacity-10">
          <ShieldCheck size={280} strokeWidth={1} />
       </div>

@@ -154,9 +154,10 @@ export default function AdminLayout() {
     features.waiterCall !== false || features.billRequest !== false;
   const visibleMenuItems = menuItems.filter((item) => {
     const featureKey = featureMap[item.path];
-    if (featureKey && !featuresReady) return false;
-    if (featureKey && features[featureKey] === false) return false;
-    return true;
+    if (!featureKey) return true;
+    // While flags load, keep full nav visible (no empty/staggered sidebar). Hide only once we know a module is off.
+    if (!featuresReady) return true;
+    return features[featureKey] !== false;
   });
 
   /**
@@ -170,7 +171,7 @@ export default function AdminLayout() {
     const filterHrChildren = (children, { includeCore }) =>
       (children || []).filter((c) => {
         if (c.flag) {
-          if (!featuresReady) return false;
+          if (!featuresReady) return true;
           return features[c.flag] !== false;
         }
         return includeCore;
