@@ -115,27 +115,27 @@ export default function CustomerSupport() {
   };
 
   const supportCards = [
-    {
-      title: "Live Chat",
-      desc: "Average wait: 2 mins",
-      icon: MessageSquare,
-      color: "bg-blue-50 text-blue-600",
-      action: "Start Chat"
-    },
-    {
-      title: "Email Support",
-      desc: "Response within 24h",
-      icon: Mail,
-      color: "bg-indigo-50 text-indigo-600",
-      action: "Send Email"
-    },
-    {
-      title: "Help Center",
-      desc: "342 tutorials ready",
-      icon: BookOpen,
-      color: "bg-emerald-50 text-emerald-600",
-      action: "View Docs"
-    }
+    // {
+    //   title: "Live Chat",
+    //   desc: "Average wait: 2 mins",
+    //   icon: MessageSquare,
+    //   color: "bg-blue-50 text-blue-600",
+    //   action: "Start Chat"
+    // },
+    // {
+    //   title: "Email Support",
+    //   desc: "Response within 24h",
+    //   icon: Mail,
+    //   color: "bg-indigo-50 text-indigo-600",
+    //   action: "Send Email"
+    // },
+    // {
+    //   title: "Help Center",
+    //   desc: "342 tutorials ready",
+    //   icon: BookOpen,
+    //   color: "bg-emerald-50 text-emerald-600",
+    //   action: "View Docs"
+    // }
   ];
 
   return (
