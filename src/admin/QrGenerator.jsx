@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import QRCode from "react-qr-code";
 import { jsPDF } from "jspdf";
 import { FileImage, FileText, Link2, QrCode as QrCodeIcon } from "lucide-react";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function QrGenerator() {
   const [table, setTable] = useState("");
@@ -67,29 +68,20 @@ export default function QrGenerator() {
   };
 
   return (
-    <div className="relative min-h-full w-full max-w-full overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 px-4 py-10 font-sans pb-[max(3rem,env(safe-area-inset-bottom,0px)+2rem)] sm:px-6 sm:py-12">
+    <div className="relative min-h-full w-full max-w-full overflow-x-hidden bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans pb-[max(3rem,env(safe-area-inset-bottom,0px)+2rem)]">
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
       />
 
-      <div className="mx-auto max-w-lg">
-        <header className="mb-8 flex flex-col items-center text-center sm:mb-10">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-[0_12px_40px_-18px_rgba(24,24,27,0.35)] ring-1 ring-zinc-900/10">
-            <QrCodeIcon size={28} strokeWidth={2} />
-          </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-            Guest menu
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">
-            Table QR codes
-          </h1>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-600">
-            Enter a table number to build the menu link. Guests scan the code to open your menu for
-            that table.
-          </p>
-        </header>
+      <StickyPageHeader
+        icon={QrCodeIcon}
+        eyebrow="Guest menu"
+        title="Table QR codes"
+        subtitle="Generate a table QR that opens your menu"
+      />
 
+      <div className="mx-auto max-w-lg px-4 py-10 sm:px-6 sm:py-12">
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 sm:p-8">
           <label htmlFor="qr-table" className="block text-xs font-bold uppercase tracking-widest text-zinc-500">
             Table number

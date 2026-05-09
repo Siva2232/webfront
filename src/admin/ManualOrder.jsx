@@ -10,6 +10,7 @@ import SubItemModal from "../components/SubItemModal";
 import ProductSelection from "./manualOrder/components/ProductSelection";
 import ExistingOrderPicker from "./manualOrder/components/ExistingOrderPicker";
 import OrderConfirmModal from "./manualOrder/components/OrderConfirmModal";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function ManualOrder() {
   const { products = [] } = useProducts();
@@ -49,8 +50,7 @@ export default function ManualOrder() {
   const activeOrders = useMemo(() => 
     orders.filter(
       (o) =>
-        o.status !== "Served" &&
-        o.status !== "Cancelled"
+        !["Served", "Cancelled", "Closed"].includes(String(o.status || "").trim())
     ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [orders]
   );
@@ -278,29 +278,31 @@ export default function ManualOrder() {
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
       />
-      {/* Header */}
-      <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200/90 bg-white/95 px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Orders</p>
-          <h1 className="truncate text-xl font-black uppercase tracking-tighter text-zinc-900 sm:text-2xl">
-            {isAddMoreMode ? "Add more items" : "Manual order"}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {isAddMoreMode && (
-            <button
-              type="button"
-              onClick={handleCancelAddMore}
-              className="rounded-xl border border-zinc-300 px-3 py-2 text-xs font-bold uppercase text-zinc-800 transition-colors hover:border-zinc-400 hover:bg-zinc-50"
-            >
-              Cancel
-            </button>
-          )}
-          <div className="hidden rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold uppercase text-zinc-700 sm:block">
-            Admin
-          </div>
-        </div>
-      </header>
+      <StickyPageHeader
+        icon={ClipboardList}
+        eyebrow="Orders"
+        title={isAddMoreMode ? "Add more items" : "Manual order"}
+        subtitle="Create an order or add items to an existing one"
+        rightAddon={
+          <>
+            {isAddMoreMode && (
+              <button
+                type="button"
+                onClick={handleCancelAddMore}
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+            )}
+            <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-700" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-700">
+                Admin
+              </span>
+            </div>
+          </>
+        }
+      />
 
       <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-6 sm:px-6">
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-12 xl:items-start xl:gap-10">

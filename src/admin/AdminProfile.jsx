@@ -44,6 +44,8 @@ export default function AdminProfile() {
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [receiptHeader, setReceiptHeader] = useState(DEFAULT_RECEIPT_HEADER);
+  const [receiptPhoneCountryCode, setReceiptPhoneCountryCode] = useState("+91");
+  const [receiptPhoneDigits, setReceiptPhoneDigits] = useState("");
 
   useEffect(() => {
     fetchProfile();
@@ -54,6 +56,34 @@ export default function AdminProfile() {
     if (!rid) return;
     setReceiptHeader(loadReceiptHeaderForRestaurant(rid));
   }, [profile.restaurantId]);
+
+  useEffect(() => {
+    const raw = String(receiptHeader.phone || "").trim();
+    if (!raw) {
+      setReceiptPhoneDigits("");
+      return;
+    }
+
+    const trimmed = raw.replace(/\s+/g, "");
+
+    // If the phone value is coming from the current UI typing, don't re-parse and overwrite.
+    const composedFromUi = receiptPhoneDigits
+      ? `${receiptPhoneCountryCode}${receiptPhoneDigits}`
+      : "";
+    if (trimmed === composedFromUi) return;
+
+    const match = trimmed.match(/^(\+\d{1,4})?(\d{10})$/);
+    if (match) {
+      if (match[1]) setReceiptPhoneCountryCode(match[1]);
+      setReceiptPhoneDigits(match[2] || "");
+      return;
+    }
+
+    // Fallback: keep last 10 digits if phone was saved in another format.
+    const digitsOnly = trimmed.replace(/\D/g, "");
+    const last10 = digitsOnly.slice(-10);
+    setReceiptPhoneDigits(last10.length === 10 ? last10 : "");
+  }, [receiptHeader.phone, receiptPhoneCountryCode, receiptPhoneDigits]);
 
   const fetchProfile = async () => {
     try {
@@ -91,6 +121,12 @@ export default function AdminProfile() {
       updateUser({ name: data.name, email: data.email });
 
       if (rid) {
+        // Keep restaurant owner email in sync for SuperAdmin views (restaurants list uses ownerEmail).
+        try {
+          await API.put(`/restaurants/${rid}/owner-email`, { ownerEmail: data.email });
+        } catch (_) {
+          // Ignore if the backend forbids this for non-superadmin roles.
+        }
         saveReceiptHeader(rid, receiptHeader);
         toast.success("Profile and receipt header saved.");
       } else {
@@ -330,15 +366,49 @@ export default function AdminProfile() {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
                         Phone
                       </label>
-                      <input
-                        type="text"
-                        value={receiptHeader.phone}
-                        onChange={(e) =>
-                          setReceiptHeader({ ...receiptHeader, phone: e.target.value })
-                        }
-                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
-                        placeholder="+91 …"
-                      />
+                      <div className="flex w-full gap-2">
+                        <select
+                          value={receiptPhoneCountryCode}
+                          onChange={(e) => {
+                            const nextCode = e.target.value;
+                            setReceiptPhoneCountryCode(nextCode);
+                            const nextFull = receiptPhoneDigits
+                              ? `${nextCode}${receiptPhoneDigits}`
+                              : "";
+                            setReceiptHeader({ ...receiptHeader, phone: nextFull });
+                          }}
+                          className="w-28 shrink-0 bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                        >
+                          <option value="+1">+1 (US)</option>
+                          <option value="+44">+44 (UK)</option>
+                          <option value="+61">+61 (AU)</option>
+                          <option value="+91">+91 (IN)</option>
+                          <option value="+971">+971 (AE)</option>
+                        </select>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          pattern="\d{10}"
+                          maxLength={10}
+                          value={receiptPhoneDigits}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            setReceiptPhoneDigits(digitsOnly);
+                            const nextFull = digitsOnly
+                              ? `${receiptPhoneCountryCode}${digitsOnly}`
+                              : "";
+                            setReceiptHeader({ ...receiptHeader, phone: nextFull });
+                          }}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            e.target.setCustomValidity(
+                              v && v.length !== 10 ? "Enter exactly 10 digits" : ""
+                            );
+                          }}
+                          className="min-w-0 flex-1 bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                          placeholder="10-digit number"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
@@ -346,10 +416,21 @@ export default function AdminProfile() {
                       </label>
                       <input
                         type="text"
-                        value={receiptHeader.gstNumber}
+                        value={receiptHeader.gstNumber || ""}
                         onChange={(e) =>
-                          setReceiptHeader({ ...receiptHeader, gstNumber: e.target.value })
+                          setReceiptHeader({
+                            ...receiptHeader,
+                            gstNumber: e.target.value.toUpperCase().slice(0, 15),
+                          })
                         }
+                        maxLength={15}
+                        pattern="^[A-Z0-9]{15}$"
+                        onBlur={(e) => {
+                          const v = (e.target.value || "").trim();
+                          e.target.setCustomValidity(
+                            v && v.length !== 15 ? "GST number must be 15 characters" : ""
+                          );
+                        }}
                         className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
                         placeholder="e.g. 22AAAAA0000A1Z5"
                       />

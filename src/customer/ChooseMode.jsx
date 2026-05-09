@@ -130,7 +130,7 @@ export default function ChooseMode() {
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-400 pt-2">
               <RefreshCw size={12} className="animate-spin" />
-              <span>Checking for updates every 30 seconds</span>
+              <span></span>
             </div>
           </div>
         ) : (

@@ -1,11 +1,12 @@
 import React from "react";
-import { Calendar, ChefHat, MessageSquare, Plus, Printer } from "lucide-react";
+import { Calendar, ChefHat, MessageSquare, Plus, Printer, Package } from "lucide-react";
 import { format } from "date-fns";
 import { DELIVERY_TABLE } from "../../../context/CartContext";
 import { isTakeawayOrder } from "../utils/isTakeawayOrder";
 
 export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp, onPrint }) {
   const isServed = kb.status === "Served";
+  const hasAnyTakeawayItems = !isTakeawayOrder(kb) && (kb.items || []).some((i) => i?.isTakeaway);
 
   return (
     <div className={`relative group ${isServed ? "opacity-70" : ""}`}>
@@ -26,12 +27,18 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
           <h2 className="font-bold text-lg tracking-tight">Kitchen Bill</h2>
 
           {kb.batchNumber > 1 ? (
-            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-zinc-800 px-3 py-0.5 text-[10px] font-bold text-white">
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-800 px-3 py-0.5 text-[10px] font-bold text-white">
               <Plus size={10} /> Batch #{kb.batchNumber}
             </div>
           ) : (
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-0.5 text-[10px] font-bold text-zinc-800">
               Initial Order
+            </div>
+          )}
+
+          {hasAnyTakeawayItems && (
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+              <Package size={12} /> Takeaway items
             </div>
           )}
         </div>
@@ -72,7 +79,14 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-2">
-                    <p className="font-medium leading-tight">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium leading-tight">{item.name}</p>
+                      {item.isTakeaway && !isTakeawayOrder(kb) && (
+                        <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest">
+                          TAKEAWAY
+                        </span>
+                      )}
+                    </div>
                     {item.selectedPortion && <p className="text-xs text-zinc-600">({item.selectedPortion})</p>}
                   </div>
                   <p className="font-bold shrink-0">×{item.qty}</p>

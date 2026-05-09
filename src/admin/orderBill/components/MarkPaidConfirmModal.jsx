@@ -17,13 +17,13 @@ export function MarkPaidConfirmModal({ payload, onCancel, onConfirm, loading }) 
         <h3 className="text-base font-black text-center text-slate-900 mb-1">
           Mark bill as paid?
         </h3>
-        <p className="text-xs text-slate-500 text-center mb-1">
+        <p className="text-xs text-slate-900 text-center mb-1">
           Bill{" "}
-          <span className="font-mono font-bold text-slate-800">
+          <span className="font-mono font-bold text-red-800">
             #{String(payload.billId || "").slice(-8)}
           </span>
           {" · "}
-          <span className="font-bold text-slate-900">
+          <span className="font-bold text-red-900">
             ₹
             {Number(payload.amount || 0).toLocaleString(undefined, {
               maximumFractionDigits: 2,
@@ -31,7 +31,6 @@ export function MarkPaidConfirmModal({ payload, onCancel, onConfirm, loading }) 
           </span>
         </p>
         <p className="text-[10px] text-slate-400 text-center mb-5">
-          Updates bill status only (accounting module off).
         </p>
         <div className="flex gap-2">
           <button

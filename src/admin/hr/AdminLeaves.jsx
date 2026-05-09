@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { getLeaves, updateLeave, deleteLeave } from "../../api/hrApi";
 import toast from "react-hot-toast";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const STATUS_CONFIG = {
   pending:  { label: "Pending",  color: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock },
@@ -94,39 +95,55 @@ export default function AdminLeaves() {
   const pendingCount = leaves.filter(l => l.status === "pending").length;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Leave Requests</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1 uppercase tracking-widest text-[10px]">
-            Human Resources Management System
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <div className="flex bg-white border border-slate-200 p-1 rounded-2xl shadow-sm">
-            {["all", "pending", "approved", "rejected"].map(key => (
-              <button 
-                key={key} 
-                onClick={() => setStatusFilter(key)}
-                className={`relative px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${
-                  statusFilter === key ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600"
-                }`}>
-                {key}
-                {key === "pending" && pendingCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[8px] flex items-center justify-center animate-bounce">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <button onClick={load} className="p-3 bg-white border border-slate-200 text-slate-400 rounded-2xl hover:text-indigo-600 transition-all shadow-sm">
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-          </button>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={CalendarX2}
+        eyebrow="HR"
+        title="Leave requests"
+        subtitle="Review and approve staff leave requests"
+        rightAddon={
+          <>
+            <div className="flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+              {["all", "pending", "approved", "rejected"].map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStatusFilter(key)}
+                  className={`relative rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide transition-all ${
+                    statusFilter === key
+                      ? "bg-zinc-900 text-white shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-700"
+                  }`}
+                >
+                  {key}
+                  {key === "pending" && pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
 
       {/* Filter Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -273,6 +290,7 @@ export default function AdminLeaves() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

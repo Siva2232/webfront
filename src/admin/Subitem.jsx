@@ -9,6 +9,7 @@ import BulkCreateModal from "./subitem/components/BulkCreateModal";
 import ConfirmToggleStatusModal from "./subitem/components/ConfirmToggleStatusModal";
 import DeleteSubItemModal from "./subitem/components/DeleteSubItemModal";
 import EditSubItemModal from "./subitem/components/EditSubItemModal";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function SubItemLibrary() {
   const { subitems, fetchSubitems, updateSubItemStatus } = useContext(ProductContext);
@@ -37,6 +38,8 @@ export default function SubItemLibrary() {
 
   const [tab, setTab] = useState("portion"); // "portion" | "addonGroup"
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
 
   // bulk portion
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -103,11 +106,16 @@ export default function SubItemLibrary() {
       .filter((i) => (term ? i.name.toLowerCase().includes(term) : true));
   }, [items, tab, search, outOfStockOnly]);
 
+  useEffect(() => { setPage(1); }, [tab, search, outOfStockOnly]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagedFiltered = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
   // ── Grouped filtered list ──
   const groupedData = useMemo(() => {
     const groups = {};
     const ungrouped = [];
-    filtered.forEach((item) => {
+    pagedFiltered.forEach((item) => {
       if (item.category) {
         if (!groups[item.category]) groups[item.category] = [];
         groups[item.category].push(item);
@@ -116,7 +124,7 @@ export default function SubItemLibrary() {
       }
     });
     return { groups, ungrouped };
-  }, [filtered]);
+  }, [pagedFiltered]);
 
   // ── Open modal ──
   const openCreate = () => {
@@ -304,51 +312,44 @@ export default function SubItemLibrary() {
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(24,24,27,0.05),transparent)]"
         aria-hidden
       />
-      <div className="mx-auto max-w-[1100px] space-y-8 px-4 pt-8 sm:px-6 lg:space-y-10 lg:px-8 lg:pt-10">
-        <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
-              <Layers size={26} strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Library</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">Sub-items</h1>
-              <p className="mt-1 max-w-lg text-sm leading-relaxed text-zinc-500">
-                Reusable portions and add-on groups. Attach them from any product — no retyping.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-center xl:w-auto xl:max-w-none">
-            <div className="relative flex-1">
+      <StickyPageHeader
+        icon={Layers}
+        eyebrow="Library"
+        title="Sub-items"
+        subtitle="Reusable portions and add-on groups"
+        rightAddon={
+          <>
+            <div className="relative min-w-[220px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" strokeWidth={2} />
               <input
                 type="text"
                 placeholder="Search library…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10"
+                className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-9 pr-3 text-sm font-semibold text-zinc-800 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
               />
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={openBulkCreate}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-wide text-zinc-800 shadow-sm transition hover:border-zinc-400 hover:bg-zinc-50 sm:flex-none"
-              >
-                <Plus size={16} strokeWidth={2.5} /> Bulk
-              </button>
-              <button
-                type="button"
-                onClick={openCreate}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-[10px] font-bold uppercase tracking-wide text-white shadow-md transition hover:bg-zinc-800 sm:flex-none"
-              >
-                <Plus size={18} strokeWidth={2.5} />
-                New
-              </button>
-            </div>
-          </div>
-        </header>
+            <button
+              type="button"
+              onClick={openBulkCreate}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Plus size={14} />
+              Bulk
+            </button>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+            >
+              <Plus size={14} />
+              New
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-[1100px] space-y-8 px-4 pt-8 sm:px-6 lg:space-y-10 lg:px-8 lg:pt-10">
 
         <div className="flex flex-wrap gap-2">
           {[
@@ -451,6 +452,28 @@ export default function SubItemLibrary() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {filtered.length > PER_PAGE && (
+          <div className="flex items-center justify-between pt-6">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              Page {safePage} / {totalPages}
+            </div>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

@@ -65,11 +65,12 @@ function adminChildPathActive(pathname, childPath) {
 }
 
 const menuItems = [
-  { name: "Analytics", icon: BarChart2, path: "reports" },
   { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
-
-  { name: "KOT", icon: Ticket, path: "kitchen-bill" },
+  { name: "Orders Status", icon: ShoppingCart, path: "orders" },
+  { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
   { name: "Bills", icon: Receipt, path: "bill" },
+  { name: "Split Bills", icon: Scissors, path: "manual-bill" },
+  { name: "KOT", icon: Ticket, path: "kitchen-bill" },
   {
     name: "Manage Menu",
     icon: Menu,
@@ -79,11 +80,6 @@ const menuItems = [
       { name: "Sub Items", icon: Layers, path: "sub-items" },
     ],
   },
-  { name: "Manage Tokens", icon: Ticket, path: "tokens" },
-
-  { name: "Orders Status", icon: ShoppingCart, path: "orders" },
-  { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
-  { name: "Split Bills", icon: Scissors, path: "manual-bill" },
   {
     name: "Tables & QR",
     icon: Table,
@@ -95,8 +91,16 @@ const menuItems = [
     ],
   },
 
-  { name: "Add Banners", icon: ImagePlus, path: "banner" },
-  { name: "Add Offers", icon: Sparkles, path: "offers" },
+  { name: "Manage Tokens", icon: Ticket, path: "tokens" },
+  {
+    name: "Promotions",
+    icon: Sparkles,
+    path: "promotions",
+    children: [
+      { name: "Add Banners", icon: ImagePlus, path: "banner" },
+      { name: "Add Offers", icon: Sparkles, path: "offers" },
+    ],
+  },
   {
     name: "HR Management",
     icon: Building2,
@@ -121,6 +125,7 @@ const menuItems = [
       { name: "Reports", icon: PieChart, path: "accounting/reports" },
     ],
   },
+  { name: "Analytics", icon: BarChart2, path: "reports" },
 ];
 
 export default function AdminLayout() {

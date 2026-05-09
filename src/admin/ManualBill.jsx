@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import {
-  ChevronLeft,
   Receipt,
   Search,
   X,
@@ -16,6 +15,7 @@ import { printSplitReceipt } from "./manualBill/printSplitReceipt";
 import BillDetailsCard from "./manualBill/components/BillDetailsCard";
 import SelectCashierModal from "./manualBill/components/SelectCashierModal";
 import ConfirmRemoveItemModal from "./manualBill/components/ConfirmRemoveItemModal";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function ManualBill() {
   const { bills, fetchBills, isLoading } = useOrders();
@@ -105,36 +105,30 @@ export default function ManualBill() {
   const removedCount = foundBill ? (foundBill.items?.length || 0) - customItems.length : 0;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 p-4 font-sans text-zinc-900 sm:p-10">
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
       />
-      <div className="mx-auto max-w-3xl space-y-10">
-
-        {/* Header */}
-        <div className="flex items-center gap-4">
+      <StickyPageHeader
+        icon={Receipt}
+        eyebrow="Billing"
+        title="Split bill"
+        subtitle="Customise & print partial bills"
+        onBack={() => navigate("/admin/dashboard")}
+        rightAddon={
           <button
-            onClick={() => navigate("/admin/dashboard")}
-            className="-ml-3 rounded-2xl p-3 text-zinc-700 transition-colors hover:bg-zinc-100"
+            type="button"
+            onClick={fetchBills}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
           >
-            <ChevronLeft size={28} />
+            {isLoading ? "Syncing" : "Refresh"}
           </button>
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-sm shadow-zinc-900/20">
-              <Receipt size={26} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Billing</p>
-              <h1 className="text-3xl font-black uppercase tracking-tighter text-zinc-900 md:text-4xl">
-                Split bill
-              </h1>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">
-                Customise &amp; print partial bills
-              </p>
-            </div>
-          </div>
-        </div>
+        }
+      />
+
+      <div className="mx-auto max-w-3xl space-y-10 px-4 pb-10 pt-10 sm:px-10">
 
         {/* Search Bar */}
         <div className="flex items-center rounded-[2rem] border border-zinc-200 bg-white p-2 shadow-sm shadow-zinc-900/5">

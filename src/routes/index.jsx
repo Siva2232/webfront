@@ -199,6 +199,7 @@ export default function AppRoutes() {
           <Route path="tables" element={<Tables />} />
           <Route path="qr-generator" element={<QrGenerator />} />
           <Route path="offers" element={<OfferPanel />} />
+          <Route path="offers/add" element={<OfferPanel autoOpen />} />
           <Route path="banner" element={<BannerPanel />} />
           <Route path="reports" element={<Analytics />} />
           <Route path="subscription" element={<SubscriptionPage />} />

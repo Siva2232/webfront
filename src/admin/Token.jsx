@@ -20,6 +20,7 @@ import {
 import { format } from "date-fns";
 import StatusBadge from "../components/StatusBadge";
 import { toast } from "react-hot-toast";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
@@ -44,13 +45,15 @@ export default function Token() {
   });
   const [isResetting, setIsResetting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
   const socketRef = useRef(null);
 
   // ─── Fetch tokens from dedicated API ─────────────────────────────────────
   const fetchTokens = useCallback(async () => {
     setIsFetching(true);
     try {
-      const { data } = await API.get("/orders/tokens");
+      const { data } = await API.get(`/orders/tokens?page=${page}&limit=${PER_PAGE}`);
       const fetchedTokens = data.tokens || [];
       setTokens(fetchedTokens);
       try {
@@ -63,7 +66,7 @@ export default function Token() {
     } finally {
       setIsFetching(false);
     }
-  }, []);
+  }, [page]);
 
   // ─── Close individual token ────────────────────────────────────────────────
   const closeToken = useCallback(async (tokenId) => {
@@ -178,6 +181,8 @@ export default function Token() {
     );
   }, [sortedTokens, searchQuery]);
 
+  useEffect(() => { setPage(1); }, [searchQuery]);
+
   const statusCounts = useMemo(() => {
     const counts = { Pending: 0, Preparing: 0, Ready: 0 };
     tokens.forEach(t => {
@@ -194,52 +199,62 @@ export default function Token() {
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
       />
-      {/* Header */}
-      <header className="top-0 z-50 border-b border-zinc-200 bg-white/90 px-6 py-4 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="rounded-full p-2 text-zinc-600 transition-colors hover:bg-zinc-100"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-sm shadow-zinc-900/20">
-                <Ticket size={20} />
+      <StickyPageHeader
+        icon={Ticket}
+        eyebrow="Takeaway"
+        title="Token management"
+        subtitle="Real-time takeaway tracking"
+        onBack={() => navigate(-1)}
+        rightAddon={
+          <>
+            <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+                <Ticket size={16} className="text-zinc-700" />
               </div>
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-tight text-zinc-900">Token management</h1>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  Real-time takeaway tracking
-                </p>
+              <div className="flex flex-col pr-1">
+                <span className="text-sm font-black tabular-nums leading-none text-zinc-900">
+                  {activeCount.toLocaleString()}
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-tight text-zinc-500">
+                  Active
+                </span>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
             <button
-              onClick={() => fetchTokens(false)}
-              className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100"
+              type="button"
+              onClick={fetchTokens}
+              disabled={isFetching}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
               title="Refresh"
             >
-              <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+              <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+              {isFetching ? "Syncing" : "Refresh"}
             </button>
+
             <button
+              type="button"
               onClick={handleReset}
               disabled={isResetting}
-              className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-black text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
             >
-              {isResetting ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+              {isResetting ? (
+                <Loader2 className="animate-spin" size={14} />
+              ) : (
+                <RotateCcw size={14} />
+              )}
               Reset tokens
             </button>
-            <div className="hidden items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 md:flex">
+
+            <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner md:flex">
               <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-700" />
-              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-700">Live</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-700">
+                Live
+              </span>
             </div>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="mx-auto max-w-5xl p-6">
         {/* Stats Grid */}
@@ -291,6 +306,27 @@ export default function Token() {
             {filteredTokens.map((token) => (
               <TokenCard key={token._id} token={token} onClose={closeToken} />
             ))}
+          </div>
+        )}
+
+        {filteredTokens.length >= PER_PAGE && (
+          <div className="mt-10 flex items-center justify-between">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              Page {page}
+            </div>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+            >
+              Next
+            </button>
           </div>
         )}
       </main>

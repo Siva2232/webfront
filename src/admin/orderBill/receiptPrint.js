@@ -20,7 +20,14 @@ export const printReceipt = (order, cashierName = "N/A") => {
   const { subtotal, tax, grandTotal: total } = computeBillStats(order);
   const safeCashier = escapeReceiptHtml(cashierName);
   const headerHtml = getReceiptHeaderBlock();
-  const itemsText = formatManifestItems(order.items);
+
+  const isTakeawayOrder = order.table === TAKEAWAY_TABLE || !order.table || order.table === "TAKEAWAY";
+  const hasTakeawayItemsInDineIn = !isTakeawayOrder && (order.items || []).some((i) => i?.isTakeaway);
+  const receiptItems = (order.items || []).map((i) => {
+    if (!hasTakeawayItemsInDineIn || !i?.isTakeaway) return i;
+    return { ...i, name: `T/A ${i.name}` };
+  });
+  const itemsText = formatManifestItems(receiptItems);
 
   const html = `<html><head><style>${RECEIPT_PRINT_CSS}</style></head><body>
 <div class="header">${headerHtml}</div>
@@ -33,11 +40,11 @@ export const printReceipt = (order, cashierName = "N/A") => {
 ${pad("Order Ref", "#" + (order._id || "").slice(-8))}
 ${pad(
     "Table",
-    order.table === TAKEAWAY_TABLE || !order.table
+    isTakeawayOrder
       ? "TAKEAWAY"
       : "TBL-" + order.table
   )}${
-    (order.table === TAKEAWAY_TABLE || !order.table) && order.tokenNumber
+    isTakeawayOrder && order.tokenNumber
       ? `\n${pad("Token No", "#" + order.tokenNumber)}`
       : ""
   }
@@ -45,6 +52,11 @@ ${pad(
     "Placed At",
     format(new Date(order.createdAt || order.billedAt), "dd/MM/yyyy • hh:mm a")
   )}
+${
+    hasTakeawayItemsInDineIn
+      ? `\n<div class="text-center bold">TAKEAWAY ITEMS INCLUDED</div>`
+      : ""
+  }
 
 <div class="line"></div>
 <div class="bold">Itemized Manifest</div>
@@ -78,7 +90,6 @@ ${
 <div class="text-center bold">${
     order.paymentStatus === "paid" ? "Payment Confirmed" : "Mark Paid"
   }</div>
-<div class="text-center">Official Receipt</div>
 <div class="text-center">THANK YOU</div>
 
 <script>window.print();window.onafterprint=()=>window.close();</script>

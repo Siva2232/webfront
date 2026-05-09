@@ -17,6 +17,9 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   // track orders that were just marked served so we can keep their card
   // mounted long enough to show the completion modal before removing
   const [servedPendingIds, setServedPendingIds] = useState(new Set());
+  const [activePage, setActivePage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const PER_PAGE = 15;
 
   // Use a ref to track if we've already done the initial fetch to avoid loops
   const initialFetchDone = React.useRef(false);
@@ -92,6 +95,12 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   }, [orders, servedPendingIds]);
 
   const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = statsData;
+  const activePages = Math.max(1, Math.ceil(activeOrders.length / PER_PAGE));
+  const servedPages = Math.max(1, Math.ceil(servedOrders.length / PER_PAGE));
+  const safeActivePage = Math.min(Math.max(1, activePage), activePages);
+  const safeHistoryPage = Math.min(Math.max(1, historyPage), servedPages);
+  const pagedActiveOrders = activeOrders.slice((safeActivePage - 1) * PER_PAGE, safeActivePage * PER_PAGE);
+  const pagedServedOrders = servedOrders.slice((safeHistoryPage - 1) * PER_PAGE, safeHistoryPage * PER_PAGE);
 
   const stats = useMemo(() => [
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
@@ -155,9 +164,31 @@ export default function OrdersDashboard({ overrideOrders = null }) {
             </div>
           ) : (
             <div className="grid gap-8">
-              {activeOrders.map((order) => (
+              {pagedActiveOrders.map((order) => (
                 <PremiumOrderCard key={order._id} order={order} updateOrderStatus={updateOrderStatus} />
               ))}
+            </div>
+          )}
+
+          {activeOrders.length > PER_PAGE && (
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setActivePage((p) => Math.max(1, p - 1))}
+                disabled={safeActivePage <= 1}
+                className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Page {safeActivePage} / {activePages}
+              </div>
+              <button
+                onClick={() => setActivePage((p) => Math.min(activePages, p + 1))}
+                disabled={safeActivePage >= activePages}
+                className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
             </div>
           )}
         </section>
@@ -172,10 +203,32 @@ export default function OrdersDashboard({ overrideOrders = null }) {
             </div>
             
             <div className="grid gap-6 opacity-60 hover:opacity-100 transition-opacity duration-150 grayscale-[0.5] hover:grayscale-0">
-              {servedOrders.slice(0, 5).map((order) => (
+              {pagedServedOrders.map((order) => (
                 <PremiumOrderCard key={order._id || order.id} order={order} updateOrderStatus={updateOrderStatus} isCompleted />
               ))}
             </div>
+
+            {servedOrders.length > PER_PAGE && (
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                  disabled={safeHistoryPage <= 1}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Page {safeHistoryPage} / {servedPages}
+                </div>
+                <button
+                  onClick={() => setHistoryPage((p) => Math.min(servedPages, p + 1))}
+                  disabled={safeHistoryPage >= servedPages}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </section>
         )}
       </div>

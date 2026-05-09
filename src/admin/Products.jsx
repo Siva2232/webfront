@@ -20,11 +20,14 @@ import DeleteProductModal from "./products/components/DeleteProductModal";
 import StockChangeModal from "./products/components/StockChangeModal";
 import AddProductModal from "./products/components/AddProductModal";
 import { compressImage } from "./products/utils/compressImage";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function AdminProducts() {
   const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory, subitems = [] } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -287,6 +290,11 @@ export default function AdminProducts() {
     return list;
   }, [products, searchTerm, filter]);
 
+  useEffect(() => { setPage(1); }, [searchTerm, filter]);
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagedProducts = filteredProducts.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
   const stats = [
     { label: "Total items", value: products.length, icon: Package, color: "zinc" },
     { label: "On menu", value: products.filter((p) => p.isAvailable).length, icon: CheckCircle2, color: "emerald" },
@@ -299,36 +307,24 @@ export default function AdminProducts() {
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_60%_at_50%_-10%,rgba(24,24,27,0.05),transparent)]"
         aria-hidden
       />
-      <div className="mx-auto max-w-[1400px] space-y-10 px-4 pt-8 sm:px-6 lg:space-y-12 lg:px-8 lg:pt-10">
-        <header className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
-              <Package size={26} strokeWidth={2} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Catalog</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-zinc-900 sm:text-4xl">Products</h1>
-              <p className="mt-1 max-w-lg text-sm text-zinc-500">
-                Manage menu items, availability, and portions — aligned with your live POS catalog.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 md:max-w-xl md:flex-row md:items-center xl:w-auto xl:max-w-none">
+      <StickyPageHeader
+        icon={Package}
+        eyebrow="Catalog"
+        title="Products"
+        subtitle="Manage menu items, availability, and portions"
+        rightAddon={
+          <>
             {filter === "out-of-stock" && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-center text-[10px] font-bold uppercase tracking-wider text-rose-700">
+              <div className="hidden rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-rose-700 shadow-inner sm:block">
                 Sold-out filter active
               </div>
             )}
-            <div className="relative flex-1 md:min-w-[240px]">
-              <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
-                strokeWidth={2}
-              />
+            <div className="relative min-w-[220px] flex-1 md:min-w-[260px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" strokeWidth={2} />
               <input
                 type="text"
                 placeholder="Search products…"
-                className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-900/10"
+                className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-9 pr-3 text-sm font-semibold text-zinc-800 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -336,13 +332,16 @@ export default function AdminProducts() {
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-md transition hover:bg-zinc-800 active:scale-[0.99]"
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
             >
-              <Plus size={18} strokeWidth={2.5} />
+              <Plus size={14} />
               Add product
             </button>
-          </div>
-        </header>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-[1400px] space-y-10 px-4 pt-8 sm:px-6 lg:space-y-12 lg:px-8 lg:pt-10">
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {stats.map((stat, i) => (
@@ -374,7 +373,7 @@ export default function AdminProducts() {
             <EmptyState />
           ) : (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-8">
-              {filteredProducts.map((p) => (
+              {pagedProducts.map((p) => (
                 <ProductCard 
                   key={p._id} 
                   product={p} 
@@ -426,6 +425,28 @@ export default function AdminProducts() {
             </div>
           )}
         </main>
+
+        {filteredProducts.length > PER_PAGE && (
+          <div className="flex items-center justify-between pt-6">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              Page {safePage} / {totalPages}
+            </div>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         <DeleteProductModal
           open={deleteModal.show}

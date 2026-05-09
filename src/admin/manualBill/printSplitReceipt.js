@@ -49,7 +49,6 @@ ${pad("Tax (GST 5%)", "Rs." + tax.toFixed(2))}
 <div class="bold text-center">Rs.${total.toFixed(2)}</div>
 <div class="line"></div>
 
-<div class="text-center">Official Receipt</div>
 <div class="text-center">THANK YOU</div>
 
 <script>window.print();window.onafterprint=()=>window.close();</script>

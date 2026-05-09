@@ -47,12 +47,68 @@ export default function StaffFormModal({ staff, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const setPhone = (v) => set("phone", String(v || "").replace(/\D/g, "").slice(0, 10));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = { ...form, baseSalary: Number(form.baseSalary) };
+      const name = String(form.name || "").trim();
+      const designation = String(form.designation || "").trim();
+      const phoneDigits = String(form.phone || "").replace(/\D/g, "");
+      const joiningDate = String(form.joiningDate || "").trim();
+
+      if (!name || !String(form.email || "").trim()) {
+        toast.error("Full name and email are required");
+        setSaving(false);
+        return;
+      }
+      if (name.length > 50) {
+        toast.error("Full name must be 50 characters or less");
+        setSaving(false);
+        return;
+      }
+      if (designation && designation.length > 100) {
+        toast.error("Job title must be 100 characters or less");
+        setSaving(false);
+        return;
+      }
+      if (phoneDigits && phoneDigits.length !== 10) {
+        toast.error("Mobile number must be exactly 10 digits");
+        setSaving(false);
+        return;
+      }
+      if (!joiningDate) {
+        toast.error("Joining date is required");
+        setSaving(false);
+        return;
+      }
+      const joinTs = Date.parse(joiningDate);
+      if (Number.isNaN(joinTs)) {
+        toast.error("Invalid joining date");
+        setSaving(false);
+        return;
+      }
+      // Allow today, but not a future date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const joinDate = new Date(joinTs);
+      joinDate.setHours(0, 0, 0, 0);
+      if (joinDate > today) {
+        toast.error("Joining date cannot be in the future");
+        setSaving(false);
+        return;
+      }
+
+      const baseSalaryNum = Number(form.baseSalary);
+      const payload = {
+        ...form,
+        name,
+        designation,
+        phone: phoneDigits,
+        baseSalary: Number.isFinite(baseSalaryNum) ? baseSalaryNum : 0,
+        joiningDate,
+      };
       if (isEdit && !payload.password) delete payload.password;
       if (isEdit) {
         await updateStaff(staff._id, payload);
@@ -82,10 +138,26 @@ export default function StaffFormModal({ staff, onClose, onSaved }) {
           {/* Section: Personal */}
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Personal Info</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Full Name *" value={form.name} onChange={(e) => set('name', e.target.value)} required placeholder="John Doe" />
+            <Input
+              label="Full Name *"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value.slice(0, 50))}
+              required
+              maxLength={50}
+              placeholder="John Doe"
+            />
             <Input label="Email *" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required placeholder="john@company.com" />
             <Input label={isEdit ? 'New Password (leave blank to keep)' : 'Password *'} type="password" value={form.password} onChange={(e) => set('password', e.target.value)} required={!isEdit} placeholder="••••••••" />
-            <Input label="Phone" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+91 98765 43210" />
+            <Input
+              label="Mobile Number"
+              type="tel"
+              inputMode="numeric"
+              pattern="\\d{10}"
+              maxLength={10}
+              value={form.phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="10-digit mobile"
+            />
             <Select label="Gender" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
               <option value="">Select</option>
               <option value="male">Male</option>
@@ -104,8 +176,20 @@ export default function StaffFormModal({ staff, onClose, onSaved }) {
               <option value="admin">Admin</option>
             </Select>
             <Input label="Department" value={form.department} onChange={(e) => set('department', e.target.value)} placeholder="e.g. Kitchen, Service" />
-            <Input label="Designation" value={form.designation} onChange={(e) => set('designation', e.target.value)} placeholder="e.g. Head Chef, Waiter" />
-            <Input label="Joining Date" type="date" value={form.joiningDate} onChange={(e) => set('joiningDate', e.target.value)} />
+            <Input
+              label="Job Title / Designation"
+              value={form.designation}
+              onChange={(e) => set('designation', e.target.value.slice(0, 100))}
+              maxLength={100}
+              placeholder="e.g. Head Chef, Waiter"
+            />
+            <Input
+              label="Joining Date *"
+              type="date"
+              required
+              value={form.joiningDate}
+              onChange={(e) => set('joiningDate', e.target.value)}
+            />
             <Input label="Base Salary (₹)" type="number" min="0" value={form.baseSalary} onChange={(e) => set('baseSalary', e.target.value)} placeholder="25000" />
             <Select label="Status" value={form.status} onChange={(e) => set('status', e.target.value)}>
               <option value="active">Active</option>

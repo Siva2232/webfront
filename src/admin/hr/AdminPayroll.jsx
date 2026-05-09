@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import PayrollStatusBadge from "./payroll/components/PayrollStatusBadge";
 import GeneratePayrollModal from "./payroll/components/GeneratePayrollModal";
 import EditPayrollModal from "./payroll/components/EditPayrollModal";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -138,33 +139,59 @@ export default function AdminPayroll() {
   const years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i);
 
   return (
-    <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-6 bg-slate-50/50 min-h-screen">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Payroll Hub</h1>
-          <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-            Manage and generate staff compensation for {MONTHS[month - 1]} {year}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={load} className="p-2.5 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 transition-all shadow-sm active:scale-95">
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          {staffWithoutPayroll.length > 0 && (
-            <button onClick={handleBulkGenerate} disabled={bulkGenerating}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-black text-white rounded-2xl text-sm font-bold disabled:opacity-50 transition-all shadow-lg active:scale-95">
-              {bulkGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-400" />}
-              Auto-Generate ({staffWithoutPayroll.length})
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={Banknote}
+        eyebrow="HR"
+        title="Payroll"
+        subtitle={`Manage and generate staff compensation for ${MONTHS[month - 1]} ${year}`}
+        rightAddon={
+          <>
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
             </button>
-          )}
-          <button onClick={() => { setGenForm({ staffId: "", bonus: 0, overtime: 0 }); setGenerateModal(true); }}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95">
-            <Plus className="w-5 h-5" /> Manual Entry
-          </button>
-        </div>
-      </div>
+            {staffWithoutPayroll.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkGenerate}
+                disabled={bulkGenerating}
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50"
+              >
+                {bulkGenerating ? (
+                  <Loader2 className="animate-spin" size={14} />
+                ) : (
+                  <Zap size={14} className="text-amber-500" />
+                )}
+                Auto ({staffWithoutPayroll.length})
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setGenForm({ staffId: "", bonus: 0, overtime: 0 });
+                setGenerateModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Plus size={14} />
+              Manual entry
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-8 md:px-8">
 
       {/* Analytics & Controls Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -340,6 +367,7 @@ export default function AdminPayroll() {
         onClose={() => setEditModal(null)}
         onSave={handleSaveEdit}
       />
+      </div>
     </div>
   );
 }

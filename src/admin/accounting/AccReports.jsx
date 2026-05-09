@@ -32,6 +32,7 @@ import {
 import accApi from "../../api/accApi";
 import toast from "react-hot-toast";
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -77,33 +78,55 @@ export default function AccReports() {
   const expenseData = report && report.expenseByLedger ? Object.entries(report.expenseByLedger).map(([name, value]) => ({ name, value })) : [];
 
   return (
-    <div className="p-4 bg-slate-50 min-h-screen">
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Advanced Analytics</h1>
-          <p className="text-slate-500 font-medium text-sm">Detailed financial performance insights</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-            <input 
-              type="date" 
-              className="px-3 py-1.5 border-none focus:ring-0 text-xs font-bold text-slate-600 outline-none"
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))}
-            />
-            <div className="flex items-center text-slate-300">|</div>
-            <input 
-              type="date" 
-              className="px-4 py-2 border-none focus:ring-0 text-sm font-bold text-slate-600 outline-none"
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))}
-            />
-          </div>
-          <button onClick={fetchReport} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition shadow-sm"><RefreshCw size={18}/></button>
-          <button className="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800 transition text-sm"><Download size={18}/> Export Data</button>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={PieChartIcon}
+        eyebrow="Accounting"
+        title="Reports"
+        subtitle="Detailed financial performance insights"
+        rightAddon={
+          <>
+            <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+              <input
+                type="date"
+                className="px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+                value={dateRange.start}
+                onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+              />
+              <div className="flex items-center text-zinc-200">|</div>
+              <input
+                type="date"
+                className="px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+                value={dateRange.end}
+                onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={fetchReport}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Download size={14} />
+              Export
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
@@ -285,6 +308,7 @@ export default function AccReports() {
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );

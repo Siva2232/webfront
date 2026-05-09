@@ -8,6 +8,7 @@ import {
 import { getAllStaff, getAttendance, markAttendance, getAttendanceLocation, setAttendanceLocation } from "../../api/hrApi";
 import toast from "react-hot-toast";
 import { STATUS_MAP } from "./attendance/utils/statusMap";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AdminAttendance() {
   const [staff, setStaff] = useState([]);
@@ -212,35 +213,46 @@ export default function AdminAttendance() {
   const halfDayCount = Object.values(attendanceMap).filter(a => a.status === "half-day").length;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Staff Attendance</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2 uppercase tracking-widest text-[10px]">
-            <Users className="w-3 h-3" /> Management Dashboard
-          </p>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("attendance")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-              activeTab === "attendance" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <CalendarCheck2 className="w-4 h-4" /> Attendance
-          </button>
-          <button
-            onClick={() => setActiveTab("location")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-              activeTab === "location" ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <MapPin className="w-4 h-4" /> Location Setup
-          </button>
-        </div>
-      </div>
+      <StickyPageHeader
+        icon={CalendarCheck2}
+        eyebrow="HR"
+        title="Attendance"
+        subtitle="Attendance & location setup"
+        rightAddon={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab("attendance")}
+              className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                activeTab === "attendance"
+                  ? "bg-zinc-900 text-white"
+                  : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              Attendance
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("location")}
+              className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                activeTab === "location"
+                  ? "bg-zinc-900 text-white"
+                  : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              Location
+            </button>
+          </div>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
 
       {/* ==================== ATTENDANCE TAB ==================== */}
       {activeTab === "attendance" && (
@@ -540,6 +552,7 @@ export default function AdminAttendance() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -36,6 +36,7 @@ import accApi from "../../api/accApi";
 import toast from "react-hot-toast";
 import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import ModernKPICard from "./dashboard/components/ModernKPICard";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -91,34 +92,43 @@ export default function AccDashboard() {
   const summary = data?.summary || {};
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-           <div className="flex items-center gap-2 mb-0.5">
-              <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[9px] font-black uppercase rounded tracking-wider">Executive Overview</span>
-           </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            Financial Dashboard <LayoutDashboard className="text-slate-400" size={24}/>
-          </h1>
-          <p className="text-slate-500 font-medium text-sm mt-0.5 italic opacity-80">Real-time performance monitoring and ledger insights</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden md:flex flex-col text-right mr-1 border-r border-slate-200 pr-3">
-             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Reporting Period</span>
-             <span className="text-xs font-bold text-slate-600">{format(new Date(dateRange.start), 'MMM dd')} - {format(new Date(dateRange.end), 'MMM dd, yyyy')}</span>
-          </div>
-          <button 
-            onClick={fetchDashboard}
-            className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition shadow-lg shadow-slate-200/50 hover:scale-105 active:scale-95"
-          >
-            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-          </button>
-          <button className="px-5 py-3 bg-slate-900 text-white rounded-xl font-black flex items-center gap-2 shadow-xl shadow-slate-900/30 hover:bg-slate-800 transition hover:scale-[1.02] active:scale-95">
-             <Download size={18}/> <span className="uppercase tracking-widest text-xs">Full Report</span>
-          </button>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={LayoutDashboard}
+        eyebrow="Accounting"
+        title="Dashboard"
+        subtitle={`Reporting period: ${format(new Date(dateRange.start), "MMM dd")} - ${format(
+          new Date(dateRange.end),
+          "MMM dd, yyyy",
+        )}`}
+        rightAddon={
+          <>
+            <button
+              type="button"
+              onClick={fetchDashboard}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Download size={14} />
+              Full report
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
 
       {/* TOP KPI GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -369,6 +379,7 @@ export default function AccDashboard() {
            </div>
         </div>
 
+      </div>
       </div>
     </div>
   );

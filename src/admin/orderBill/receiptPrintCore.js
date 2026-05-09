@@ -9,16 +9,55 @@ body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;
 .line{border-bottom:1px dashed #000;margin:2mm 0}
 .text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}`;
 
+const RECEIPT_TEXT_WIDTH = 32;
+
+function wrapReceiptText(input, width = RECEIPT_TEXT_WIDTH) {
+  const raw = String(input ?? "").replace(/\s+/g, " ").trim();
+  if (!raw) return [];
+  if (raw.length <= width) return [raw];
+
+  const words = raw.split(" ");
+  const lines = [];
+  let current = "";
+
+  for (const w of words) {
+    // If a single word is longer than width, hard-break it.
+    if (w.length > width) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      for (let i = 0; i < w.length; i += width) {
+        lines.push(w.slice(i, i + width));
+      }
+      continue;
+    }
+
+    const next = current ? `${current} ${w}` : w;
+    if (next.length <= width) {
+      current = next;
+    } else {
+      if (current) lines.push(current);
+      current = w;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 /** Multi-line header from Admin Profile / tenant cache */
 export function getReceiptHeaderBlock() {
   const hdr = getReceiptHeader();
-  const headerLines = [
-    escapeReceiptHtml(hdr.restaurantName),
-    escapeReceiptHtml(hdr.address),
-    escapeReceiptHtml(hdr.phone),
-    hdr.gstNumber ? `GST: ${escapeReceiptHtml(hdr.gstNumber)}` : "",
-  ].filter((line) => line.trim() !== "");
-  return headerLines.join("\n");
+  const headerLines = [];
+
+  wrapReceiptText(hdr.restaurantName).forEach((l) => headerLines.push(escapeReceiptHtml(l)));
+  wrapReceiptText(hdr.address).forEach((l) => headerLines.push(escapeReceiptHtml(l)));
+  wrapReceiptText(hdr.phone).forEach((l) => headerLines.push(escapeReceiptHtml(l)));
+  if (hdr.gstNumber) {
+    wrapReceiptText(`GST: ${hdr.gstNumber}`).forEach((l) => headerLines.push(escapeReceiptHtml(l)));
+  }
+
+  return headerLines.filter((line) => line.trim() !== "").join("\n");
 }
 
 /** Kitchen ticket: restaurant name only (no address / phone / GST). */

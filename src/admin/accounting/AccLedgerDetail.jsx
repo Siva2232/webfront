@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, FileText, Wallet, RefreshCw } from "lucide-react";
 import accApi from "../../api/accApi";
 import toast from "react-hot-toast";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AccLedgerDetail() {
   const { ledgerId } = useParams();
@@ -35,28 +36,32 @@ export default function AccLedgerDetail() {
   }, 0);
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
-        <div className="space-y-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition"
-          >
-            <ArrowLeft size={18} /> Back to Ledgers
-          </button>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{ledger?.name || "Ledger Details"}</h1>
-            <p className="text-sm text-slate-500">Full history for this ledger account.</p>
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
 
-        <button
-          onClick={fetchHistory}
-          className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl shadow-sm hover:bg-slate-50 transition"
-        >
-          <RefreshCw size={18} /> Refresh
-        </button>
-      </div>
+      <StickyPageHeader
+        icon={Wallet}
+        eyebrow="Accounting"
+        title={ledger?.name || "Ledger details"}
+        subtitle="Full history for this ledger account"
+        onBack={() => navigate(-1)}
+        rightAddon={
+          <button
+            type="button"
+            onClick={fetchHistory}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            {loading ? "Syncing" : "Refresh"}
+          </button>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_2fr] mb-8">
         <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100">
@@ -201,6 +206,7 @@ export default function AccLedgerDetail() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

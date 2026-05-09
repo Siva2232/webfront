@@ -21,6 +21,7 @@ import { NavLink } from "react-router-dom";
 import accApi from "../../api/accApi";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AccLedgers() {
   const [ledgers, setLedgers] = useState([]);
@@ -86,53 +87,62 @@ export default function AccLedgers() {
   };
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-             <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] font-black uppercase rounded tracking-wider shadow-lg shadow-indigo-200">Management</span>
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Chart of Accounts</h1>
-          <p className="text-slate-500 font-medium text-sm italic opacity-80">Structure your financial double-entry system</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative group min-w-[250px]">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16}/>
-             <input 
-                type="text" 
-                placeholder="Search accounts..." 
-                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 shadow-lg shadow-slate-200/50 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-sm"
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={BookOpen}
+        eyebrow="Accounting"
+        title="Ledgers"
+        subtitle="Chart of accounts"
+        rightAddon={
+          <>
+            <div className="relative min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search ledgers..."
+                className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-9 pr-3 text-sm font-semibold text-zinc-800 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-             />
-          </div>
-          <select 
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 shadow-lg shadow-slate-200/50 outline-none hover:bg-slate-50 transition-colors appearance-none text-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="asset">Assets</option>
-            <option value="income">Income</option>
-            <option value="expense">Expenses</option>
-            <option value="liability">Liabilities</option>
-          </select>
-          <button 
-            onClick={fetchLedgers}
-            className="p-3 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition shadow-lg shadow-slate-200/50 active:scale-95"
-          >
-            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-          </button>
-          <button 
-            onClick={() => setShowAdd(true)}
-            className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black flex items-center gap-2 shadow-xl shadow-slate-900/30 hover:bg-slate-800 transition hover:scale-105 active:scale-95 text-xs"
-          >
-            <Plus size={20} strokeWidth={3} /> CREATE NEW
-          </button>
-        </div>
-      </div>
+              />
+            </div>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm outline-none hover:bg-zinc-50"
+            >
+              <option value="all">All</option>
+              <option value="asset">Assets</option>
+              <option value="income">Income</option>
+              <option value="expense">Expenses</option>
+              <option value="liability">Liabilities</option>
+            </select>
+            <button
+              type="button"
+              onClick={fetchLedgers}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Plus size={14} />
+              New ledger
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
 
       {/* SUMMARY STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">

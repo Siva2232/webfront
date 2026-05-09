@@ -35,6 +35,7 @@ export const BillCard = React.memo(function BillCard({
   const orderTimestamp = ts ? new Date(ts) : new Date();
   const isTA = order.table === TAKEAWAY_TABLE || !order.table || order.table === "TAKEAWAY";
   const isDelivery = order.table === DELIVERY_TABLE || order.table === "DELIVERY";
+  const hasAnyTakeawayItems = !isTA && !isDelivery && (order.items || []).some((i) => i?.isTakeaway);
   const billId = order._id || order.id;
   const orderId = order.orderRef || billId;
 
@@ -80,7 +81,14 @@ export const BillCard = React.memo(function BillCard({
                   </span>
                 </div>
               ) : (
-                <span className="font-semibold text-base">Table {order.table}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-base">Table {order.table}</span>
+                  {hasAnyTakeawayItems && (
+                    <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-black uppercase tracking-widest">
+                      TAKEAWAY
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 

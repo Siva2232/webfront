@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Trash2, Plus, Upload, X,LayoutGrid  } from "lucide-react";
 import API from "../api/axios";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function PromoPanel() {
   const [promos, setPromos] = useState([]);
@@ -101,26 +102,30 @@ export default function PromoPanel() {
   if (isLoading) return <div className="p-10 text-center font-bold">Loading Deals...</div>;
 
   return (
-    <div className="min-h-screen bg-white p-6 md:p-12 font-sans text-black">
-      <div className="max-w-6xl mx-auto">
-        {/* Header - unchanged */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center shadow-lg">
-              <LayoutGrid size={32} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-black uppercase italic tracking-tighter leading-none">Deal Lab</h1>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.4em] mt-2 italic">Creative Studio</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={LayoutGrid}
+        eyebrow="Promotions"
+        title="Offers"
+        subtitle="Create and manage your offer cards"
+        rightAddon={
           <button
+            type="button"
             onClick={() => openModal()}
-            className="px-8 py-4 bg-black text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-xl flex items-center gap-3"
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
           >
-            <Plus size={18} strokeWidth={3} /> Add Card
+            <Plus size={14} />
+            New offer
           </button>
-        </header>
+        }
+      />
+
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:px-8">
 
         {/* Promo Grid - unchanged */}
         {promos.length === 0 ? (

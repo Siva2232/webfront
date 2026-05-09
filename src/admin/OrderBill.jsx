@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -16,6 +16,7 @@ import { printReceipt } from "./orderBill/receiptPrint";
 import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
 import { useTheme } from "../context/ThemeContext";
 import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
+import { useUI } from "../context/UIContext";
 
 /** POS cashier picker: only when 2+ HR staff have POS cashier enabled. 0 = admin-only → print as logged-in user; 1 = print as that cashier */
 function defaultCashierLabelFromSession() {
@@ -33,6 +34,7 @@ function defaultCashierLabelFromSession() {
 export default function OrderBill() {
   const { bills, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
     useOrders();
+  const { notifications, markNotificationAsRead } = useUI();
   const { cashiers, reload: reloadCashiers } = useCashiers();
   const { features } = useTheme();
   const navigate = useNavigate();
@@ -53,6 +55,8 @@ export default function OrderBill() {
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [dateFilter, setDateFilter] = useState(""); // "" = all
   const [displayLimit] = useState(100);
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
 
   // No background sync timer - relies on WebSocket for real-time and initial fetch only
   useEffect(() => {
@@ -72,6 +76,11 @@ export default function OrderBill() {
     dateFilter,
     displayLimit,
   });
+
+  const totalPages = Math.max(1, Math.ceil(uniqueBills.length / PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagedBills = uniqueBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  useEffect(() => { setPage(1); }, [dateFilter]);
 
   /* refresh */
   const handleRefresh = useCallback(() => {
@@ -174,6 +183,7 @@ export default function OrderBill() {
     if (!closeBillModal) return;
     const order = closeBillModal.order;
     const billId = order._id || order.id;
+    const tableId = order.table;
     setCloseBillModal(null);
     
     // Optimistic Update: Add to closed IDs immediately
@@ -183,6 +193,20 @@ export default function OrderBill() {
     
     try {
       await closeBill(billId);
+      // Clear any pending "Bill" / "Call" alerts for this table
+      // (Tables.jsx / Dashboard "Kitchen Floor" derive these badges from UIContext notifications).
+      if (tableId != null) {
+        const pending = (notifications || []).filter(
+          (n) =>
+            n &&
+            n.status === "Pending" &&
+            String(n.table) === String(tableId) &&
+            (n.type === "WaiterCall" || n.type === "BillRequested" || n.type === "BillRequest")
+        );
+        if (pending.length) {
+          await Promise.all(pending.map((n) => markNotificationAsRead(n._id)));
+        }
+      }
       // On success, no need to do anything, the ID is already in closedBillIds
     } catch (err) {
       // Revert optimistic close on failure
@@ -194,7 +218,7 @@ export default function OrderBill() {
       const msg = err?.response?.data?.message || err?.message || "Failed to close bill";
       toast.error(msg);
     }
-  }, [closeBillModal, closeBill]);
+  }, [closeBillModal, closeBill, notifications, markNotificationAsRead]);
 
   const closePrintModal = useCallback(() => {
     setPrintModalOrder(null);
@@ -323,7 +347,7 @@ export default function OrderBill() {
 
       {/* Bills Grid */}
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
-        {uniqueBills.map((order, index) => {
+        {pagedBills.map((order, index) => {
           const billId = order._id || order.id || index;
           const orderRefId = order.orderRef || order._id || order.id;
           
@@ -341,6 +365,28 @@ export default function OrderBill() {
           );
         })}
       </main>
+
+      {uniqueBills.length > PER_PAGE && (
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 pb-10 md:px-8">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage <= 1}
+            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+            Page {safePage} / {totalPages}
+          </div>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage >= totalPages}
+            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       <AnimatePresence>

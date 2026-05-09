@@ -10,6 +10,7 @@ import {
 } from "../../api/hrApi";
 import toast from "react-hot-toast";
 import StaffBadge from "./staff/components/StaffBadge";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const ROLES = ["admin", "manager", "staff"];
 const DEPARTMENTS = [
@@ -78,11 +79,53 @@ export default function AdminStaff() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) { toast.error("Name and email are required"); return; }
+    const name = String(form.name || "").trim();
+    const email = String(form.email || "").trim();
+    const phoneDigits = String(form.phone || "").replace(/\D/g, "");
+    const designation = String(form.designation || "").trim();
+    const joiningDate = String(form.joiningDate || "").trim();
+
+    if (!name || !email) {
+      toast.error("Name and email are required");
+      return;
+    }
+    if (name.length > 50) {
+      toast.error("Full name must be 50 characters or less");
+      return;
+    }
+    if (designation.length > 100) {
+      toast.error("Job title must be 100 characters or less");
+      return;
+    }
+    if (phoneDigits && phoneDigits.length !== 10) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
+    if (!joiningDate) {
+      toast.error("Joining date is required");
+      return;
+    }
+    const joinTs = Date.parse(joiningDate);
+    if (Number.isNaN(joinTs)) {
+      toast.error("Invalid joining date");
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const joinDate = new Date(joinTs);
+    joinDate.setHours(0, 0, 0, 0);
+    if (joinDate > today) {
+      toast.error("Joining date cannot be in the future");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         ...form,
+        name,
+        email,
+        designation,
+        phone: phoneDigits,
         isCashier: form.department === "POS Cashier",
       };
       if (editing) {
@@ -117,20 +160,30 @@ export default function AdminStaff() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Staff Directory</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2">
-            <Users className="w-4 h-4" /> Total active records: <span className="text-indigo-600">{staff.length}</span>
-          </p>
-        </div>
-        <button onClick={openCreate}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-100 active:scale-95">
-          <Plus className="w-4 h-4" /> Add New Member
-        </button>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={Users}
+        eyebrow="HR"
+        title="Staff directory"
+        subtitle={`Total records: ${staff.length.toLocaleString()}`}
+        rightAddon={
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+          >
+            <Plus size={14} />
+            Add staff
+          </button>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
 
       {/* Filter Toolbar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-wrap items-center gap-2">
@@ -306,7 +359,33 @@ export default function AdminStaff() {
                       <input
                         type={type}
                         value={form[key]}
-                        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (key === "name") {
+                            setForm((p) => ({ ...p, name: v.slice(0, 50) }));
+                            return;
+                          }
+                          if (key === "designation") {
+                            setForm((p) => ({ ...p, designation: v.slice(0, 100) }));
+                            return;
+                          }
+                          if (key === "phone") {
+                            const digitsOnly = v.replace(/\D/g, "").slice(0, 10);
+                            setForm((p) => ({ ...p, phone: digitsOnly }));
+                            return;
+                          }
+                          setForm((p) => ({ ...p, [key]: v }));
+                        }}
+                        {...(key === "name" ? { maxLength: 50 } : {})}
+                        {...(key === "designation" ? { maxLength: 100 } : {})}
+                        {...(key === "phone"
+                          ? {
+                              inputMode: "numeric",
+                              pattern: "\\d{10}",
+                              maxLength: 10,
+                              placeholder: "10-digit mobile",
+                            }
+                          : {})}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white text-slate-800"
                       />
                     </div>
@@ -488,6 +567,7 @@ export default function AdminStaff() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

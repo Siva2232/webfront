@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { getShifts, createShift, updateShift, deleteShift, getAllStaff } from "../../api/hrApi";
 import toast from "react-hot-toast";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 const SHIFT_THEMES = {
   morning: { 
@@ -111,23 +112,45 @@ export default function AdminShifts() {
   };
 
   return (
-    <div className="p-8 bg-slate-50/30 min-h-screen space-y-8">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Shift Operations</h1>
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Resource Allocation & Scheduling</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={load} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-indigo-600 shadow-sm transition-all">
-            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-          </button>
-          <button onClick={() => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true); }}
-            className="flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-xl shadow-slate-200">
-            <Plus size={18} /> Add Shift
-          </button>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={Clock4}
+        eyebrow="HR"
+        title="Shifts"
+        subtitle="Resource allocation & scheduling"
+        rightAddon={
+          <>
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setForm(EMPTY_FORM);
+                setShowModal(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              <Plus size={14} />
+              Add shift
+            </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
@@ -287,6 +310,7 @@ export default function AdminShifts() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

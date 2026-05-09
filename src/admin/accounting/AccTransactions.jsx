@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getTxTypeStyles } from "./transactions/utils/getTxTypeStyles";
 import TransactionCard from "./transactions/components/TransactionCard";
 import TransactionsEmptyState from "./transactions/components/TransactionsEmptyState";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AccTransactions() {
   const [transactions, setTransactions] = useState([]);
@@ -74,50 +75,50 @@ export default function AccTransactions() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      <div className="max-w-[1600px] mx-auto px-4 py-6 lg:px-8 lg:py-10">
-        
-        {/* TOP LEVEL NAVIGATION & STATS */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-100">
-                <LayoutGrid size={20} className="text-white" />
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900 selection:bg-zinc-900/10 selection:text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={ArrowLeftRight}
+        eyebrow="Accounting"
+        title="Transactions"
+        subtitle="Journal ledger & audit trail"
+        rightAddon={
+          <>
+            <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
+                <Hash size={16} className="text-zinc-700" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em]">Financial Intelligence</span>
-                <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                  Journal <span className="text-slate-400 font-light">Ledger</span>
-                </h1>
+              <div className="flex flex-col pr-1">
+                <span className="text-sm font-black tabular-nums leading-none text-zinc-900">
+                  {transactions.length.toLocaleString()}
+                </span>
+                <span className="text-[9px] font-bold uppercase tracking-tight text-zinc-500">
+                  Records
+                </span>
               </div>
             </div>
-            <p className="text-slate-500 font-medium text-xs lg:text-sm max-w-md">
-              A comprehensive system for tracking double-entry transactions with real-time audit capabilities.
-            </p>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="hidden sm:flex items-center gap-3 bg-white border border-slate-100 p-1.5 rounded-2xl shadow-sm">
-                <div className="px-4 py-1.5 border-r border-slate-100 text-center">
-                    <p className="text-[8px] uppercase font-black text-slate-400 tracking-wider mb-0.5">Total Records</p>
-                    <p className="text-base font-black text-slate-900">{transactions.length.toLocaleString()}</p>
-                </div>
-                <div className="px-4 py-1.5 text-center">
-                    <p className="text-[8px] uppercase font-black text-slate-400 tracking-wider mb-0.5">30D Velocity</p>
-                    <div className="flex items-center gap-1 justify-center">
-                        <TrendingUp size={12} className="text-emerald-500" />
-                        <p className="text-base font-black text-slate-900">High</p>
-                    </div>
-                </div>
-            </div>
-
-            <button 
+            <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all duration-300 border-2 ${showFilters ? 'bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-200' : 'bg-white text-slate-600 border-slate-100 hover:border-slate-300 hover:shadow-lg'}`}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+                showFilters
+                  ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/15"
+                  : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
             >
-              <Filter size={16} className={showFilters ? "rotate-180 transition-transform duration-500" : ""} />
-              Analysis Filters
+              <Filter size={14} />
+              Filters
             </button>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-10">
             
             <button 
               onClick={fetchTransactions}

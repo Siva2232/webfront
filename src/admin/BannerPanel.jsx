@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Trash2, Plus, Layout, Upload, X } from "lucide-react";
 import API from "../api/axios";
+import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function BannerPanel() {
   const [slides, setSlides] = useState([]);
@@ -101,25 +102,30 @@ export default function BannerPanel() {
   if (isLoading) return <div className="p-10 text-center font-bold">Loading Banners...</div>;
 
   return (
-    <div className="min-h-screen bg-white p-6 md:p-12 font-sans text-black">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 pb-8 border-b border-gray-100 gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-12 h-12 bg-black flex items-center justify-center">
-              <Layout size={24} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter leading-none">Banner Lab</h1>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.3em] mt-1">Management Console</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => openModal()} 
-            className="bg-black text-white px-8 py-4 font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:bg-gray-800 transition-all shadow-lg rounded-xl"
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={Layout}
+        eyebrow="Promotions"
+        title="Banners"
+        subtitle="Create and manage your home banners"
+        rightAddon={
+          <button
+            type="button"
+            onClick={() => openModal()}
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
           >
-            <Plus size={18} /> New Slide
+            <Plus size={14} />
+            New banner
           </button>
-        </header>
+        }
+      />
+
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 md:px-8">
 
         {slides.length === 0 ? (
           <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-3xl">

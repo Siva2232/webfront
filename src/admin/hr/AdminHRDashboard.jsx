@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getAllStaff, getAttendance, getLeaves, getPayrolls } from "../../api/hrApi";
 import toast from "react-hot-toast";
+import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AdminHRDashboard() {
   const [stats, setStats] = useState({ staff: 0, presentToday: 0, absentToday: 0, pendingLeaves: 0, paidPayroll: 0, pendingPayroll: 0 });
@@ -88,21 +89,41 @@ export default function AdminHRDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/30 p-4 md:p-8 space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">HR Management</h1>
-          <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
-            <CalendarCheck2 className="w-4 h-4" />
-            {new Date().toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          </p>
-        </div>
-        <div className="flex gap-3">
-            <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all">Export Report</button>
-            <Link to="/admin/hr/staff" className="px-4 py-2 bg-indigo-600 rounded-lg text-sm font-semibold text-white shadow-md shadow-indigo-200 hover:bg-indigo-700 transition-all">Add Staff</Link>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
+        aria-hidden
+      />
+
+      <StickyPageHeader
+        icon={Users}
+        eyebrow="HR"
+        title="HR management"
+        subtitle={new Date().toLocaleDateString("en-IN", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+        rightAddon={
+          <>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+            >
+              Export report
+            </button>
+            <Link
+              to="/admin/hr/staff"
+              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+            >
+              Add staff
+            </Link>
+          </>
+        }
+      />
+
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
@@ -226,6 +247,7 @@ export default function AdminHRDashboard() {
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );

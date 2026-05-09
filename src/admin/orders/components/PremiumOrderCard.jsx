@@ -208,9 +208,11 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
             <div className="flex flex-col gap-2">
               {["New", "Preparing", "Ready", "Served"].map((s) => {
                 const statusOrder = { New: 0, Preparing: 1, Ready: 2, Served: 3 };
-                const currentStatusLevel = statusOrder[status] ?? -1;
+                // Backend sometimes sends "Pending" for fresh orders; treat it same as "New"
+                const currentStatusLabel = statusKey === "pending" ? "New" : status;
+                const currentStatusLevel = statusOrder[currentStatusLabel] ?? -1;
                 const buttonStatusLevel = statusOrder[s] ?? -1;
-                const isCurrentStatus = s === status;
+                const isCurrentStatus = s === currentStatusLabel;
                 const canclick = buttonStatusLevel > currentStatusLevel;
 
                 return (

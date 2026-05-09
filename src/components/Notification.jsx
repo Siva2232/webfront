@@ -154,6 +154,8 @@ export default function Notification({ targetPath = "/admin/orders" }) {
   const { orders } = useOrders();
 
   const [open, setOpen] = useState(false);
+  const [newOrderIds, setNewOrderIds] = useState(() => new Set());
+  const [ordersPage, setOrdersPage] = useState(1);
   const [dismissedIds, setDismissedIds] = useState(() => {
     try {
       const _rid = getCurrentRestaurantId();
@@ -381,17 +383,36 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+  const ORDERS_PER_PAGE = 10;
+  const totalOrderPages = Math.max(1, Math.ceil(pendingOrders.length / ORDERS_PER_PAGE));
+  const safeOrdersPage = Math.min(Math.max(1, ordersPage), totalOrderPages);
+  const pagedOrders = pendingOrders.slice(
+    (safeOrdersPage - 1) * ORDERS_PER_PAGE,
+    safeOrdersPage * ORDERS_PER_PAGE
+  );
+
   const unreadCount = pendingOrders.length + addMoreNotifications.length;
+
+  // Keep pagination in range when list changes; reset to page 1 when dropdown opens
+  useEffect(() => {
+    if (open) setOrdersPage(1);
+  }, [open]);
+  useEffect(() => {
+    if (ordersPage !== safeOrdersPage) setOrdersPage(safeOrdersPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOrders.length, totalOrderPages]);
 
   useEffect(() => {
     let hasNew = false;
     const newOrders = [];
+    const newIds = [];
 
     pendingOrders.forEach((order) => {
       const oid = order._id || order.id;
       if (!seenOrderIds.current.has(oid)) {
         hasNew = true;
         newOrders.push(order);
+        newIds.push(oid);
         seenOrderIds.current.add(oid);
       }
     });
@@ -401,6 +422,11 @@ export default function Notification({ targetPath = "/admin/orders" }) {
       playSound('order');
 
       setIsNewOrder(true);
+      setNewOrderIds((prev) => {
+        const next = new Set(prev);
+        newIds.forEach((id) => next.add(id));
+        return next;
+      });
 
       clearTimeout(pulseTimeout.current);
       pulseTimeout.current = setTimeout(() => {
@@ -415,14 +441,34 @@ export default function Notification({ targetPath = "/admin/orders" }) {
     return () => clearTimeout(pulseTimeout.current);
   }, [pendingOrders]);
 
-  const markAsRead = (id) =>
+  const markAsRead = (id) => {
     setDismissedIds((prev) => [...prev, id]);
+    setNewOrderIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
-  const clearAll = () =>
+  const clearAll = () => {
+    const ids = pendingOrders.map((o) => o._id || o.id);
     setDismissedIds((prev) => [
       ...prev,
-      ...pendingOrders.map((o) => o._id || o.id),
+      ...ids,
     ]);
+    setNewOrderIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+
+  // Auto-expire NEW badges after 5 minutes (keeps UI clean without admin action)
+  useEffect(() => {
+    if (newOrderIds.size === 0) return;
+    const t = setTimeout(() => setNewOrderIds(new Set()), 5 * 60 * 1000);
+    return () => clearTimeout(t);
+  }, [newOrderIds]);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -556,10 +602,11 @@ export default function Notification({ targetPath = "/admin/orders" }) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pendingOrders.map((order) => (
+                  {pagedOrders.map((order) => (
                     <OrderItem
                       key={order._id || order.id}
                       order={order}
+                      isNew={newOrderIds.has(order._id || order.id)}
                       onMarkRead={() => markAsRead(order._id || order.id)}
                       onView={() => {
                         navigate(targetPath);
@@ -570,6 +617,29 @@ export default function Notification({ targetPath = "/admin/orders" }) {
                 </div>
               )}
             </div>
+
+            {/* Pagination (Orders) */}
+            {pendingOrders.length > ORDERS_PER_PAGE && (
+              <div className="px-4 pb-4 pt-1 border-t border-zinc-100 flex items-center justify-between">
+                <button
+                  onClick={() => setOrdersPage((p) => Math.max(1, p - 1))}
+                  disabled={safeOrdersPage <= 1}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <div className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                  Page {safeOrdersPage} / {totalOrderPages}
+                </div>
+                <button
+                  onClick={() => setOrdersPage((p) => Math.min(totalOrderPages, p + 1))}
+                  disabled={safeOrdersPage >= totalOrderPages}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -579,7 +649,7 @@ export default function Notification({ targetPath = "/admin/orders" }) {
 
 /* ---------------- ORDER ITEM ---------------- */
 
-const OrderItem = ({ order, onMarkRead, onView }) => {
+const OrderItem = ({ order, isNew, onMarkRead, onView }) => {
   const total = order.items.reduce(
     (s, i) => s + i.price * i.qty,
     0
@@ -598,7 +668,14 @@ const OrderItem = ({ order, onMarkRead, onView }) => {
             <Ticket size={18} className="text-zinc-400" />
           </div>
           <div>
-            <p className="font-black">Table {order.table}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-black">Table {order.table}</p>
+              {isNew && (
+                <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[9px] font-black uppercase tracking-widest">
+                  NEW
+                </span>
+              )}
+            </div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase">
               {order.items.length} Items • ₹{total}
             </p>
