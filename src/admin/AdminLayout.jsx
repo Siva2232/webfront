@@ -92,15 +92,7 @@ const menuItems = [
   },
 
   { name: "Manage Tokens", icon: Ticket, path: "tokens" },
-  {
-    name: "Promotions",
-    icon: Sparkles,
-    path: "promotions",
-    children: [
-      { name: "Add Banners", icon: ImagePlus, path: "banner" },
-      { name: "Add Offers", icon: Sparkles, path: "offers" },
-    ],
-  },
+
   {
     name: "HR Management",
     icon: Building2,
@@ -125,7 +117,16 @@ const menuItems = [
       { name: "Reports", icon: PieChart, path: "accounting/reports" },
     ],
   },
-  { name: "Analytics", icon: BarChart2, path: "reports" },
+  { name: "Analytics", icon: BarChart2, path: "analytics" },
+  {
+    name: "Promotions",
+    icon: Sparkles,
+    path: "promotions",
+    children: [
+      { name: "Add Banners", icon: ImagePlus, path: "banner" },
+      { name: "Add Offers", icon: Sparkles, path: "offers" },
+    ],
+  },
 ];
 
 export default function AdminLayout() {
@@ -143,6 +144,7 @@ export default function AdminLayout() {
   const featureMap = {
     hr: "hr",
     reports: "reports",
+    analytics: "reports",
     "kitchen-bill": "kitchenPanel",
     tables: "qrMenu",
     orders: "onlineOrders",
@@ -193,11 +195,12 @@ export default function AdminLayout() {
     if (featuresReady && features.hr === false && hrTemplate) {
       const orphanChildren = filterHrChildren(hrTemplate.children, { includeCore: false });
       if (orphanChildren.length > 0) {
-        const insertAfter = "offers";
-        const idx = out.findIndex((i) => i.path === insertAfter);
         const orphanGroup = { ...hrTemplate, children: orphanChildren };
-        if (idx === -1) out.push(orphanGroup);
-        else out.splice(idx + 1, 0, orphanGroup);
+        // `offers` is a child route, not a top-level nav path — inserting after it never matched,
+        // so the orphan HR block was pushed to the very end (after Promotions). Keep Promotions last.
+        const promotionsIdx = out.findIndex((i) => i.path === "promotions");
+        if (promotionsIdx !== -1) out.splice(promotionsIdx, 0, orphanGroup);
+        else out.push(orphanGroup);
       }
     }
 
@@ -1363,10 +1366,19 @@ export default function AdminLayout() {
                 className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
-                  <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || "Admin"}`}
-                    alt="avatar"
-                  />
+                  {branding.logo ? (
+                    <img
+                      src={branding.logo}
+                      alt={branding.name ? `${branding.name} logo` : "logo"}
+                      className="h-full w-full object-contain bg-white"
+                    />
+                  ) : (
+                    <img
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || "Admin"}`}
+                      alt="avatar"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-bold text-slate-800 leading-none">

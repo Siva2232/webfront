@@ -1,5 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import API from "../api/axios";
+import {
+  DEFAULT_RECEIPT_HEADER,
+  saveReceiptHeader,
+} from "../admin/orderBill/receiptHeaderSettings";
 
 const ThemeContext = createContext(null);
 
@@ -176,6 +180,13 @@ export const ThemeProvider = ({ children }) => {
       setBranding(merged);
       applyThemeToDom(merged);
       persistBranding(restaurantId, merged);
+
+      if (merged.receiptHeader && typeof merged.receiptHeader === "object") {
+        saveReceiptHeader(restaurantId, {
+          ...DEFAULT_RECEIPT_HEADER,
+          ...merged.receiptHeader,
+        });
+      }
 
       // features state is always set from the fresh API response — never from cache.
       setFeatures({ ...DEFAULT_FEATURES, ...merged.features });

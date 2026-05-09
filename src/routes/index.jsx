@@ -202,6 +202,7 @@ export default function AppRoutes() {
           <Route path="offers/add" element={<OfferPanel autoOpen />} />
           <Route path="banner" element={<BannerPanel />} />
           <Route path="reports" element={<Analytics />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="subscription" element={<SubscriptionPage />} />
           <Route path="profile" element={<AdminProfile />} />
 

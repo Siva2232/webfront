@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -38,6 +38,11 @@ export const BillCard = React.memo(function BillCard({
   const hasAnyTakeawayItems = !isTA && !isDelivery && (order.items || []).some((i) => i?.isTakeaway);
   const billId = order._id || order.id;
   const orderId = order.orderRef || billId;
+  const items = order.items || [];
+  const [itemsExpanded, setItemsExpanded] = useState(false);
+  const previewCount = 3;
+  const hiddenCount = Math.max(0, items.length - previewCount);
+  const visibleItems = itemsExpanded ? items : items.slice(0, previewCount);
 
   return (
     <div className="relative group w-full">
@@ -100,9 +105,9 @@ export const BillCard = React.memo(function BillCard({
           </div>
         </div>
 
-        {/* Items - Compact */}
+        {/* Items - Compact; expand to see full list */}
         <div className="p-4 flex-1 space-y-2.5 text-sm">
-          {order.items?.slice(0, 3).map((item, idx) => {
+          {visibleItems.map((item, idx) => {
             const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
             const basePrice = item.price - addonsTotal;
             return (
@@ -121,10 +126,17 @@ export const BillCard = React.memo(function BillCard({
             );
           })}
 
-          {order.items?.length > 3 && (
-            <p className="text-center text-xs text-slate-400 pt-1">
-              +{order.items.length - 3} more items
-            </p>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setItemsExpanded((e) => !e)}
+              aria-expanded={itemsExpanded}
+              className="mt-1 w-full rounded-xl py-2 text-center text-xs font-semibold text-slate-600 underline decoration-slate-300 underline-offset-2 transition-colors hover:bg-slate-50 hover:text-slate-900 hover:decoration-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+            >
+              {itemsExpanded
+                ? "Show less"
+                : `+${hiddenCount} more item${hiddenCount === 1 ? "" : "s"}`}
+            </button>
           )}
         </div>
 

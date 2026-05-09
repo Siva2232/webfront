@@ -94,6 +94,20 @@ export default function AdminProfile() {
         role: data.role || "Administrator",
         restaurantId: data.restaurantId || "",
       });
+      const rid = (data.restaurantId || getCurrentRestaurantId() || "").toString().toUpperCase().trim();
+      if (rid) {
+        try {
+          const { data: brand } = await API.get(`/restaurants/${rid}/branding`);
+          const rh = brand?.receiptHeader;
+          if (rh && typeof rh === "object") {
+            const merged = { ...DEFAULT_RECEIPT_HEADER, ...rh };
+            setReceiptHeader(merged);
+            saveReceiptHeader(rid, merged);
+          }
+        } catch (_) {
+          // Branding is optional; local receipt cache still applies
+        }
+      }
     } catch (error) {
       toast.error("Failed to load profile");
     } finally {
@@ -126,6 +140,17 @@ export default function AdminProfile() {
           await API.put(`/restaurants/${rid}/owner-email`, { ownerEmail: data.email });
         } catch (_) {
           // Ignore if the backend forbids this for non-superadmin roles.
+        }
+        try {
+          await API.put(`/restaurants/${rid}/receipt-header`, {
+            restaurantName: receiptHeader.restaurantName ?? "",
+            address: receiptHeader.address ?? "",
+            phone: receiptHeader.phone ?? "",
+            gstNumber: receiptHeader.gstNumber ?? "",
+          });
+        } catch (err) {
+          toast.error(err.response?.data?.message || "Receipt header could not be saved to server");
+          return;
         }
         saveReceiptHeader(rid, receiptHeader);
         toast.success("Profile and receipt header saved.");

@@ -186,7 +186,7 @@ export default function QrGenerator() {
                     JPG
                   </button>
                 </div>
-                <button
+                {/* <button
                   type="button"
                   onClick={downloadPDF}
                   disabled={!link}
@@ -194,7 +194,7 @@ export default function QrGenerator() {
                 >
                   <FileText size={18} />
                   Download PDF
-                </button>
+                </button> */}
               </div>
             </div>
           </aside>
