@@ -183,16 +183,16 @@ export default function Navbar({ title }) {
     <>
       {/* Desktop Navbar */}
       <nav className="hidden md:block sticky top-0 z-[100] backdrop-blur-xl bg-white/70 border-b border-slate-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-8 py-3">
+        <div className="max-w-7xl mx-auto px-8 py-4">
           <div className="flex items-center justify-between">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3 group cursor-pointer"
+              className="flex items-center gap-4 group cursor-pointer"
               onClick={() => navigate(getLinkWithTable("/menu"))}
             >
               <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform overflow-hidden shrink-0 ${
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform overflow-hidden shrink-0 ${
                   logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
                 }`}
               >
@@ -203,31 +203,31 @@ export default function Navbar({ title }) {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <ChefHat className="w-6 h-6 text-white" strokeWidth={2.5} />
+                  <ChefHat className="w-7 h-7 text-white" strokeWidth={2.5} />
                 )}
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none truncate">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none truncate">
                   {restaurantName}
                 </h1>
-                <p className="text-[10px] font-bold text-slate-400 tracking-[0.2em] mt-1">PREMIUM DINING</p>
+                <p className="text-[11px] font-bold text-slate-400 tracking-[0.2em] mt-1.5">PREMIUM DINING</p>
               </div>
             </motion.div>
 
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-6">
               {/* Request Bill Button - Desktop */}
               {currentTable && mode !== "takeaway" && features.billRequest !== false && (
                 <button
                   onClick={handleRequestBill}
                   disabled={isRequestingBill || !canRequestBill}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
+                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl transition-all border-2 ${
                     isRequestingBill || !canRequestBill
                       ? "bg-slate-50 border-slate-100 text-slate-300 opacity-60 cursor-not-allowed"
                       : "bg-white border-slate-200 text-slate-700 hover:border-emerald-400 hover:text-emerald-500 shadow-sm"
                   }`}
                 >
-                  <Receipt size={20} className={isRequestingBill ? "animate-pulse" : ""} />
-                  <span className="text-sm font-bold uppercase tracking-wider text-center min-w-[80px]">
+                  <Receipt size={21} className={isRequestingBill ? "animate-pulse" : ""} />
+                  <span className="text-[15px] font-bold uppercase tracking-wider text-center min-w-[84px]">
                     {isRequestingBill ? "Requesting..." : "Get Bill"}
                   </span>
                 </button>
@@ -238,14 +238,14 @@ export default function Navbar({ title }) {
                 <button
                   onClick={handleCallWaiter}
                   disabled={isCallingWaiter || waiterCooldown > 0}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all border-2 ${
+                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl transition-all border-2 ${
                     isCallingWaiter || waiterCooldown > 0
                       ? "bg-amber-50 border-amber-200 text-amber-500 opacity-80 cursor-not-allowed"
                       : "bg-white border-slate-200 text-slate-700 hover:border-amber-400 hover:text-amber-500"
                   }`}
                 >
-                  <HandHelping size={20} className={isCallingWaiter ? "animate-bounce" : ""} />
-                  <span className="text-sm font-bold uppercase tracking-wider text-center min-w-[80px]">
+                  <HandHelping size={21} className={isCallingWaiter ? "animate-bounce" : ""} />
+                  <span className="text-[15px] font-bold uppercase tracking-wider text-center min-w-[84px]">
                     {isCallingWaiter ? "Calling..." : waiterCooldown > 0 ? `${Math.floor(waiterCooldown / 60)}:${(waiterCooldown % 60).toString().padStart(2, '0')}` : "Call Waiter"}
                   </span>
                 </button>
@@ -254,16 +254,16 @@ export default function Navbar({ title }) {
               {/* Notification Bell */}
               <button
                 onClick={handleBellClick}
-                className="relative p-2.5 rounded-full hover:bg-slate-100/80 transition-colors focus:outline-none"
+                className="relative p-3 rounded-full hover:bg-slate-100/80 transition-colors focus:outline-none"
               >
-                <Bell size={22} className="text-slate-700" strokeWidth={2} />
+                <Bell size={24} className="text-slate-700" strokeWidth={2} />
                 {hasUnreadOffer && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
                 )}
               </button>
 
               {/* Navigation Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100/50 p-1.5 rounded-[1.5rem] border border-slate-200/50">
+              <div className="flex items-center gap-1 bg-slate-100/50 p-2 rounded-[1.5rem] border border-slate-200/50">
                 {links.map((link) => {
                   const active = isActive(link.path);
                   const Icon = link.icon;
@@ -271,12 +271,12 @@ export default function Navbar({ title }) {
                     <button
                       key={link.path}
                       onClick={() => navigate(getLinkWithTable(link.path))}
-                      className={`relative px-6 py-2.5 rounded-[1.2rem] flex items-center gap-2 transition-all duration-300 ${
+                      className={`relative px-7 py-3 rounded-[1.2rem] flex items-center gap-2.5 transition-all duration-300 ${
                         active ? "text-white" : "text-slate-500 hover:text-slate-900"
                       }`}
                     >
-                      <Icon size={18} strokeWidth={active ? 2.5 : 2} className="relative z-10" />
-                      <span className="text-sm font-black uppercase tracking-widest relative z-10">
+                      <Icon size={19} strokeWidth={active ? 2.5 : 2} className="relative z-10" />
+                      <span className="text-[15px] font-black uppercase tracking-widest relative z-10">
                         {link.label}
                       </span>
                       {active && (
@@ -296,30 +296,30 @@ export default function Navbar({ title }) {
       </nav>
 
       {/* Mobile Top Bar — tight actions so restaurant name keeps space; name wraps 2 lines instead of truncating */}
-      <div className="md:hidden sticky top-0 z-[100] flex items-center justify-between gap-1 border-b border-slate-100 bg-white/80 px-2 py-2 backdrop-blur-lg sm:px-3 sm:py-2.5">
+      <div className="md:hidden sticky top-0 z-[100] flex items-center justify-between gap-2 border-b border-slate-100 bg-white/80 px-3 py-2.5 backdrop-blur-lg sm:px-4 sm:py-3">
         <div
-          className="flex min-w-0 flex-1 items-center gap-1.5 py-0 pr-1 sm:gap-2 sm:pr-2"
+          className="flex min-w-0 flex-1 items-center gap-2 py-0 pr-1 sm:gap-2.5 sm:pr-2"
           onClick={() => navigate(getLinkWithTable("/menu"))}
         >
           <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-md sm:h-9 sm:w-9 ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md sm:h-10 sm:w-10 ${
               logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
             }`}
           >
             {logoUrl ? (
               <img src={logoUrl} alt={restaurantName} className="h-full w-full object-cover" />
             ) : (
-              <ChefHat className="h-4 w-4 text-white sm:h-5 sm:w-5" />
+              <ChefHat className="h-5 w-5 text-white sm:h-6 sm:w-6" />
             )}
           </div>
-          <h1 className="min-w-0 flex-1 text-sm font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words [overflow-wrap:anywhere] sm:text-base">
+          <h1 className="min-w-0 flex-1 text-[15px] font-black uppercase leading-snug tracking-tight text-slate-900 line-clamp-2 break-words [overflow-wrap:anywhere] sm:text-base">
             {restaurantName}
           </h1>
         </div>
 
-        <div className="flex shrink-0 flex-nowrap items-end justify-end gap-x-0 sm:gap-x-0.5">
+        <div className="flex shrink-0 flex-nowrap items-end justify-end gap-x-1 sm:gap-x-1.5">
           {currentTable && mode !== "takeaway" && features.billRequest !== false && (
-            <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
+            <div className="flex w-[3.35rem] shrink-0 flex-col items-center gap-0.5 sm:w-[3.6rem]">
               <button
                 type="button"
                 onClick={handleRequestBill}
@@ -332,23 +332,23 @@ export default function Navbar({ title }) {
                       ? "Place an order first — then you can request your bill"
                       : "Request your bill when ready to pay"
                 }
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors sm:h-9 sm:w-9 ${
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
                   isRequestingBill || !canRequestBill
                     ? "bg-slate-100 text-slate-300 opacity-50"
                     : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
                 }`}
               >
-                <Receipt size={18} strokeWidth={2.5} />
+                <Receipt size={19} strokeWidth={2.5} />
                 {canRequestBill && (
                   <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
                 )}
               </button>
-              <span className="text-center text-[9px] font-bold leading-none tracking-tight text-slate-700 sm:text-[10px]">Bill</span>
+              <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700 sm:text-[11px]">Bill</span>
             </div>
           )}
 
           {currentTable && mode !== "takeaway" && features.waiterCall !== false && (
-            <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
+            <div className="flex w-[3.35rem] shrink-0 flex-col items-center gap-0.5 sm:w-[3.6rem]">
               <button
                 type="button"
                 onClick={handleCallWaiter}
@@ -361,38 +361,38 @@ export default function Navbar({ title }) {
                       ? "Calling waiter…"
                       : "Call waiter for help at your table"
                 }
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors sm:h-9 sm:w-9 ${
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
                   isCallingWaiter || waiterCooldown > 0
                     ? "animate-pulse bg-amber-100 text-amber-600 opacity-80"
                     : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
                 }`}
               >
                 {waiterCooldown > 0 ? (
-                  <span className="text-[9px] font-black leading-none">{Math.ceil(waiterCooldown / 60)}m</span>
+                  <span className="text-[10px] font-black leading-none">{Math.ceil(waiterCooldown / 60)}m</span>
                 ) : (
-                  <Phone size={18} />
+                  <Phone size={19} />
                 )}
               </button>
-              <span className="max-w-[3rem] text-center text-[9px] font-bold leading-[1.05] tracking-tight text-slate-700 sm:max-w-[3.25rem] sm:text-[10px]">
+              <span className="max-w-[3.35rem] text-center text-[10px] font-bold leading-[1.05] tracking-tight text-slate-700 sm:max-w-[3.6rem] sm:text-[11px]">
                 Call waiter
               </span>
             </div>
           )}
 
-          <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
+          <div className="flex w-[3.35rem] shrink-0 flex-col items-center gap-0.5 sm:w-[3.6rem]">
             <button
               type="button"
               onClick={handleBellClick}
-              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 active:bg-slate-100 sm:h-9 sm:w-9"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 active:bg-slate-100 sm:h-10 sm:w-10"
               aria-label="Offers and promotions"
               title="Offers — tap to view deals and promotions"
             >
-              <Bell size={20} className="text-slate-700" strokeWidth={2} />
+              <Bell size={21} className="text-slate-700" strokeWidth={2} />
               {hasUnreadOffer && (
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-white bg-red-500" />
               )}
             </button>
-            <span className="text-center text-[9px] font-bold leading-none tracking-tight text-slate-700 sm:text-[10px]">Offers</span>
+            <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700 sm:text-[11px]">Offers</span>
           </div>
         </div>
       </div>
@@ -463,7 +463,7 @@ export default function Navbar({ title }) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-100 bg-white pb-safe">
-        <div className="flex h-[4.25rem] items-stretch justify-around px-1 sm:h-20 sm:px-4">
+        <div className="flex h-[4.65rem] items-stretch justify-around px-2 sm:h-[5rem] sm:px-4">
           {links.map((link) => {
             const active = isActive(link.path);
             const Icon = link.icon;
@@ -475,17 +475,17 @@ export default function Navbar({ title }) {
                 onClick={() => navigate(getLinkWithTable(link.path))}
                 aria-current={active ? "page" : undefined}
                 aria-label={link.label}
-                className="relative flex min-w-0 flex-1 flex-col items-center justify-center py-2 touch-manipulation"
+                className="relative flex min-w-0 flex-1 flex-col items-center justify-center py-2.5 touch-manipulation"
               >
                 <div
-                  className={`relative z-10 flex flex-col items-center justify-center gap-0.5 transition-colors duration-200 ${
+                  className={`relative z-10 flex flex-col items-center justify-center gap-1 transition-colors duration-200 ${
                     active ? "text-slate-900" : "text-slate-400"
                   }`}
                 >
-                  <Icon size={22} strokeWidth={active ? 2.5 : 2} className="shrink-0" />
+                  <Icon size={24} strokeWidth={active ? 2.5 : 2} className="shrink-0" />
                   {/* Only active tab shows label — avoids stacked invisible text eating height on narrow phones */}
                   <span
-                    className={`max-w-full truncate text-[9px] font-black uppercase tracking-wide sm:text-[10px] sm:tracking-widest ${
+                    className={`max-w-full truncate text-[10px] font-black uppercase tracking-wide sm:text-[11px] sm:tracking-widest ${
                       active ? "block leading-none" : "sr-only"
                     }`}
                   >
