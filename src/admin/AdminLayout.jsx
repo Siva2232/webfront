@@ -149,6 +149,7 @@ export default function AdminLayout() {
     tables: "qrMenu",
     orders: "onlineOrders",
     accounting: "accounting",
+    reservations: "reservations",
   };
 
   const serviceNotifications = notifications.filter((notif) => {
@@ -175,6 +176,14 @@ export default function AdminLayout() {
   const navMenuItems = useMemo(() => {
     const hrTemplate = menuItems.find((i) => i.path === "hr");
 
+    const filterFeatureChildren = (children) =>
+      (children || []).filter((c) => {
+        const featureKey = featureMap[c.path];
+        if (!featureKey) return true;
+        if (!featuresReady) return true;
+        return features[featureKey] !== false;
+      });
+
     const filterHrChildren = (children, { includeCore }) =>
       (children || []).filter((c) => {
         if (c.flag) {
@@ -185,11 +194,16 @@ export default function AdminLayout() {
       });
 
     const out = visibleMenuItems.map((item) => {
-      if (item.path !== "hr") return item;
-      return {
-        ...item,
-        children: filterHrChildren(item.children, { includeCore: true }),
-      };
+      if (item.path === "hr") {
+        return {
+          ...item,
+          children: filterHrChildren(item.children, { includeCore: true }),
+        };
+      }
+      if (item.children && item.children.length) {
+        return { ...item, children: filterFeatureChildren(item.children) };
+      }
+      return item;
     });
 
     if (featuresReady && features.hr === false && hrTemplate) {

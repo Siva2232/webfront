@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
+import { useTheme } from "../context/ThemeContext";
 import { Utensils, ShoppingBag, CalendarX, RefreshCw } from "lucide-react";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import API from "../api/axios";
@@ -13,6 +14,8 @@ export default function ChooseMode() {
   const table = searchParams.get("table")?.trim().replace(/^0+/, "") || "";
   const mode = searchParams.get("mode");
   const { setTable } = useCart();
+  const { features } = useTheme();
+  const reservationsEnabled = features.reservations !== false;
 
   const [isTableReserved, setIsTableReserved] = useState(false);
   const [reservationInfo, setReservationInfo] = useState(null);
@@ -48,17 +51,22 @@ export default function ChooseMode() {
 
   useEffect(() => {
     if (!table) return;
-    // Initial check
+    if (!reservationsEnabled) {
+      setCheckingReservation(false);
+      setReservationChecked(true);
+      setIsTableReserved(false);
+      setReservationInfo(null);
+      return;
+    }
     setCheckingReservation(true);
     checkReservation().finally(() => {
       setCheckingReservation(false);
       setReservationChecked(true);
     });
-    // Poll every 30 seconds so the gate lifts automatically when admin marks Confirm Seat
     pollRef.current = setInterval(checkReservation, 30000);
     return () => clearInterval(pollRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table]);
+  }, [table, reservationsEnabled]);
 
   // Navigation / mode-skip logic — only runs AFTER reservation check completes AND table is not reserved
   useEffect(() => {

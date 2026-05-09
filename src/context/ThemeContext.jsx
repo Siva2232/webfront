@@ -31,6 +31,7 @@ const DEFAULT_THEME = {
     hrStaff:      true,
     hrAttendance: true,
     hrLeaves:     true,
+    reservations: true,
   },
 };
 

@@ -71,6 +71,7 @@ const FEATURE_KEYS = [
   { key: "waiterCall",   label: "Waiter Call Service" },
   { key: "billRequest",  label: "Digital Bill Request" },
   { key: "accounting",   label: "Accounting & ledger" },
+  { key: "reservations", label: "Reservations" },
   { key: "hrStaff",      label: "HR — Staff" },
   { key: "hrAttendance", label: "HR — Attendance" },
   { key: "hrLeaves",     label: "HR — Leaves" },
@@ -81,7 +82,7 @@ const BLANK_FORM = {
   primaryColor: "#f72585", secondaryColor: "#0f172a", accentColor: "#7209b7",
   sidebarBgColor: "#ffffff", sidebarTextColor: "#1e293b",
   theme: "light", fontFamily: "Inter",
-  features: { hr: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true },
+  features: { hr: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
   subscriptionPlan: "", // Selected plan ID
   subscriptionStatus: "trial",
   logoBase64: "",
@@ -129,6 +130,7 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
         setForm({
           ...BLANK_FORM,
           ...initial,
+          features: { ...BLANK_FORM.features, ...(initial.features || {}) },
           subscriptionPlan: initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
           logoBase64: "",
           // Ensure colors from DB are prioritized over BLANK_FORM defaults if they exist
@@ -205,7 +207,6 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           theme: form.theme, fontFamily: form.fontFamily,
           logoBase64: form.logoBase64 || undefined,
         });
-        await updateFeatures(initial.restaurantId, form.features);
         await updateRestaurant(initial.restaurantId, {
           name: form.name,
           ownerEmail: form.ownerEmail, ownerPhone: form.ownerPhone,
@@ -215,6 +216,9 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
         if (form.subscriptionPlan && form.subscriptionStatus === "active") {
           await assignPlan(initial.restaurantId, { planId: form.subscriptionPlan });
         }
+        // Must run after assignPlan: plan assignment turns on plan-included modules;
+        // Module Access toggles are the final source of truth for this save.
+        await updateFeatures(initial.restaurantId, form.features);
         toast.success("Restaurant updated");
       } else {
         // Prepare data for creation: ensure sidebar colors are included

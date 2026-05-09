@@ -185,7 +185,14 @@ export default function AppRoutes() {
             <Route path="reports" element={<AccReports />} />
           </Route>
           <Route path="manual-bill" element={<ManualBill />} />
-          <Route path="reservations" element={<Reservations />} />
+          <Route
+            path="reservations"
+            element={
+              <FeatureGuard feature="reservations">
+                <Reservations />
+              </FeatureGuard>
+            }
+          />
           <Route path="products" element={<Products />} />
           <Route path="products/add" element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditForm />} />

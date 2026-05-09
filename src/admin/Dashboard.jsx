@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
+import { useTheme } from "../context/ThemeContext";
 import API from "../api/axios";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +44,11 @@ export default function Dashboard() {
   const { products = [], subitems = [] } = useProducts();
   const { orders = [], fetchOrders } = useOrders();
   const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
-  
+  const { features } = useTheme();
+  const reservationsEnabled = features.reservations !== false;
+  const billRequestEnabled = features.billRequest !== false;
+  const waiterCallEnabled = features.waiterCall !== false;
+
   const _rid = getCurrentRestaurantId();
 
   const [tables, setTables] = useState(() => {
@@ -160,8 +165,12 @@ export default function Dashboard() {
     setActiveOrdersMap(liveMap);
   }, [orders]);
 
-  // Logic for Auto-Occupying Tables based on Reservations
+  // Logic for Auto-Occupying Tables based on Reservations (feature-flagged)
   useEffect(() => {
+    if (!reservationsEnabled) {
+      setReservedTables({});
+      return;
+    }
     const reserveMap = {};
     const now = new Date();
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
@@ -178,7 +187,7 @@ export default function Dashboard() {
       }
     });
     setReservedTables(reserveMap);
-  }, [reservations]);
+  }, [reservations, reservationsEnabled]);
 
   // Sync with live notifications
   useEffect(() => {
@@ -369,22 +378,30 @@ export default function Dashboard() {
               <span className="h-3 w-3 rounded-full border border-rose-500 bg-rose-300" />
               <span>Busy</span>
             </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <span className="h-3 w-3 rounded-full border border-amber-400 bg-amber-200" />
-              <span>Reserved</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <span className="h-3 w-3 rounded-full border border-emerald-700 bg-emerald-600" />
-              <span>Bill requested</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <span className="h-3 w-3 rounded-full border border-indigo-700 bg-indigo-600" />
-              <span>Waiter call</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-700">
-              <span className="h-3 w-3 rounded-full border border-purple-700 bg-purple-600" />
-              <span>Bill + call</span>
-            </div>
+            {reservationsEnabled && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span className="h-3 w-3 rounded-full border border-amber-400 bg-amber-200" />
+                <span>Reserved</span>
+              </div>
+            )}
+            {billRequestEnabled && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span className="h-3 w-3 rounded-full border border-emerald-700 bg-emerald-600" />
+                <span>Bill requested</span>
+              </div>
+            )}
+            {waiterCallEnabled && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span className="h-3 w-3 rounded-full border border-indigo-700 bg-indigo-600" />
+                <span>Waiter call</span>
+              </div>
+            )}
+            {billRequestEnabled && waiterCallEnabled && (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span className="h-3 w-3 rounded-full border border-purple-700 bg-purple-600" />
+                <span>Bill + call</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-slate-700">
               <span className="h-3 w-3 rounded-full border border-emerald-600 bg-emerald-500" />
               <span>Free</span>
@@ -394,10 +411,10 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {tables.map((table) => {
               const occupied = isOccupied(table.id);
-              const reserved = isReserved(table.id);
+              const reserved = reservationsEnabled && isReserved(table.id);
               const alert = tableAlerts[`table-${table.id}`];
-              const isBillRequested = alert && alert.bill;
-              const isWaiterCalled = alert && alert.waiter;
+              const isBillRequested = billRequestEnabled && alert && alert.bill;
+              const isWaiterCalled = waiterCallEnabled && alert && alert.waiter;
               const hasAlert = isBillRequested || isWaiterCalled;
 
               const tileShell =

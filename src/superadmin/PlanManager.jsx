@@ -14,11 +14,12 @@ const FEATURE_KEYS = [
   { key: "waiterCall",   label: "Waiter Call" },
   { key: "billRequest",  label: "Bill Request" },
   { key: "accounting",   label: "Accounting" },
+  { key: "reservations", label: "Reservations" },
 ];
 
 const BLANK = {
   name: "", price: "", duration: 30, description: "",
-  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true },
+  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
   maxTables: 20, maxProducts: 100, maxStaff: 10,
 };
 
@@ -40,7 +41,11 @@ export default function PlanManager() {
   const setFeat = (k, v) => setForm((f) => ({ ...f, features: { ...f.features, [k]: v } }));
 
   const startEdit = (plan) => {
-    setForm({ ...BLANK, ...plan });
+    setForm({
+      ...BLANK,
+      ...plan,
+      features: { ...BLANK.features, ...(plan.features || {}) },
+    });
     setEditId(plan._id);
     setShowForm(true);
   };

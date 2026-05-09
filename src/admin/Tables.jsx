@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
+import { useTheme } from "../context/ThemeContext";
 import API from "../api/axios";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,6 +32,10 @@ export default function Tables() {
 
   const { orders } = useOrders();
   const { reservations, notifications, markNotificationAsRead } = useUI();
+  const { features } = useTheme();
+  const reservationsEnabled = features.reservations !== false;
+  const billRequestEnabled = features.billRequest !== false;
+  const waiterCallEnabled = features.waiterCall !== false;
   const [activeOrders, setActiveOrders] = useState({});
   const [reservedTables, setReservedTables] = useState({});
   const [tableAlerts, setTableAlerts] = useState({});
@@ -86,8 +91,12 @@ export default function Tables() {
     setActiveOrders(liveMap);
   }, [orders]);
 
-  // Logic for Auto-Occupying Tables based on Reservations
+  // Logic for Auto-Occupying Tables based on Reservations (feature-flagged)
   useEffect(() => {
+    if (!reservationsEnabled) {
+      setReservedTables({});
+      return;
+    }
     const reserveMap = {};
     const now = new Date();
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
@@ -106,7 +115,7 @@ export default function Tables() {
       }
     });
     setReservedTables(reserveMap);
-  }, [reservations]);
+  }, [reservations, reservationsEnabled]);
 
   const releaseTable = (e, tableId) => {
     e.stopPropagation();
@@ -256,10 +265,18 @@ export default function Tables() {
       {/* Status legend */}
       <div className="max-w-7xl mx-auto mb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs font-black">
         <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-rose-300 border border-rose-500"></span>Busy</span>
-        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-400"></span>Reserved</span>
-        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700"></span>Bill Requested</span>
-        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-indigo-600 border border-indigo-700"></span>Waiter Called</span>
-        <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-purple-600 border border-purple-700"></span>Bill + Call</span>
+        {reservationsEnabled && (
+          <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-amber-200 border border-amber-400"></span>Reserved</span>
+        )}
+        {billRequestEnabled && (
+          <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-emerald-600 border border-emerald-700"></span>Bill Requested</span>
+        )}
+        {waiterCallEnabled && (
+          <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-indigo-600 border border-indigo-700"></span>Waiter Called</span>
+        )}
+        {billRequestEnabled && waiterCallEnabled && (
+          <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-purple-600 border border-purple-700"></span>Bill + Call</span>
+        )}
         <span className="flex items-center gap-2 text-slate-700"><span className="w-3 h-3 rounded-full bg-emerald-500 border border-emerald-600"></span>Free</span>
       </div>
 
@@ -272,11 +289,11 @@ export default function Tables() {
           <AnimatePresence mode="popLayout">
             {tables.map((table) => {
               const occupied = isOccupied(table.id);
-              const reserved = isReserved(table.id);
+              const reserved = reservationsEnabled && isReserved(table.id);
               const resInfo = reserved ? reservedTables[`table-${table.id}`] : null;
               const alert = tableAlerts[`table-${table.id}`];
-              const isBillRequested = alert && alert.bill;
-              const isWaiterCalled = alert && alert.waiter;
+              const isBillRequested = billRequestEnabled && alert && alert.bill;
+              const isWaiterCalled = waiterCallEnabled && alert && alert.waiter;
               const hasAlert = isBillRequested || isWaiterCalled;
 
               return (
@@ -379,8 +396,20 @@ export default function Tables() {
                   {/* Reserved Info */}
                   {hasAlert ? (
                     <div className="mt-auto pt-2 border-t border-indigo-100 flex flex-col items-center">
-                      <p className={`text-[10px] font-black uppercase ${alert.bill ? "text-emerald-500" : "text-indigo-600"}`}>
-                        {alert.bill ? "Bill Requested" : "Waiter Called"}
+                      <p
+                        className={`text-[10px] font-black uppercase ${
+                          isBillRequested && isWaiterCalled
+                            ? "text-purple-600"
+                            : isBillRequested
+                              ? "text-emerald-500"
+                              : "text-indigo-600"
+                        }`}
+                      >
+                        {isBillRequested && isWaiterCalled
+                          ? "Bill + Call"
+                          : isBillRequested
+                            ? "Bill Requested"
+                            : "Waiter Called"}
                       </p>
                     </div>
                   ) : reserved && !occupied && (

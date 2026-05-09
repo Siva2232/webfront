@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import API from "../api/axios";
+import { useTheme } from "./ThemeContext";
 import { io as socketIOClient } from "socket.io-client";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
 
@@ -41,6 +42,13 @@ const defaultOffers = [
 ];
 
 export const UIProvider = ({ children }) => {
+  const { features } = useTheme();
+  const reservationsEnabled = features.reservations !== false;
+  const reservationsEnabledRef = useRef(reservationsEnabled);
+  useEffect(() => {
+    reservationsEnabledRef.current = reservationsEnabled;
+  }, [reservationsEnabled]);
+
   const _rid = getCurrentRestaurantId();
   const _mountedRid = useRef(_rid);
   // Live helper that always reads the CURRENT restaurantId
@@ -67,6 +75,10 @@ export const UIProvider = ({ children }) => {
   const [supportTicketCount, setSupportTicketCount] = useState(0);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [reservations, setReservations] = useState([]);
+
+  useEffect(() => {
+    if (!reservationsEnabled) setReservations([]);
+  }, [reservationsEnabled]);
 
   const fetchNotifications = useCallback(async () => {
     setNotificationsLoading(true);
@@ -189,9 +201,19 @@ export const UIProvider = ({ children }) => {
     // Only fetch admin-only data (notifications/reservations) when authenticated
     const isAdmin = !!localStorage.getItem("token");
     const tasks = [fetchBanners(), fetchOffers()];
-    if (isAdmin) tasks.push(fetchNotifications(), fetchReservations(), fetchSupportTicketCount());
+    if (isAdmin) {
+      tasks.push(fetchNotifications(), fetchSupportTicketCount());
+      if (reservationsEnabled) tasks.push(fetchReservations());
+    }
     Promise.allSettled(tasks);
-  }, [fetchBanners, fetchOffers, fetchNotifications, fetchReservations, fetchSupportTicketCount]);
+  }, [
+    fetchBanners,
+    fetchOffers,
+    fetchNotifications,
+    fetchReservations,
+    fetchSupportTicketCount,
+    reservationsEnabled,
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -262,11 +284,11 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("newReservation", () => {
-      if (localStorage.getItem("token")) fetchReservations();
+      if (localStorage.getItem("token") && reservationsEnabledRef.current) fetchReservations();
     });
 
     socket.on("reservationUpdated", () => {
-      if (localStorage.getItem("token")) fetchReservations();
+      if (localStorage.getItem("token") && reservationsEnabledRef.current) fetchReservations();
     });
 
     // HR real-time sync
@@ -307,7 +329,7 @@ export const UIProvider = ({ children }) => {
     const pollInterval = setInterval(() => {
       if (localStorage.getItem("token")) {
         fetchNotifications();
-        fetchReservations();
+        if (reservationsEnabledRef.current) fetchReservations();
         fetchSupportTicketCount();
       }
     }, 15000); // Poll every 15 seconds
@@ -322,7 +344,7 @@ export const UIProvider = ({ children }) => {
       clearInterval(pollInterval);
       socket.disconnect();
     };
-  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications, fetchSupportTicketCount]);
+  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications, fetchReservations, fetchSupportTicketCount]);
 
   const value = {
     banners,
