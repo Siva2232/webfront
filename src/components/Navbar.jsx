@@ -296,80 +296,100 @@ export default function Navbar({ title }) {
       </nav>
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden sticky top-0 z-[100] backdrop-blur-lg bg-white/80 border-b border-slate-100 flex items-center justify-between px-5 py-4">
-        <div className="flex items-center gap-3 min-w-0" onClick={() => navigate(getLinkWithTable("/menu"))}>
+      <div className="md:hidden sticky top-0 z-[100] flex items-start justify-between gap-2 border-b border-slate-100 bg-white/80 px-3 py-2 backdrop-blur-lg sm:items-center sm:px-5 sm:py-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 py-0.5 pr-2 sm:gap-3 sm:py-0" onClick={() => navigate(getLinkWithTable("/menu"))}>
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md overflow-hidden shrink-0 ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md sm:h-10 sm:w-10 ${
               logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
             }`}
           >
             {logoUrl ? (
               <img src={logoUrl} alt={restaurantName} className="h-full w-full object-cover" />
             ) : (
-              <ChefHat className="w-5 h-5 text-white" />
+              <ChefHat className="h-5 w-5 text-white" />
             )}
           </div>
-          <h1 className="text-lg font-black text-slate-900 tracking-tighter uppercase truncate">
+          <h1 className="min-w-0 truncate text-base font-black uppercase tracking-tighter text-slate-900 sm:text-lg">
             {restaurantName}
           </h1>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Bill Request - Mobile */}
+        <div className="flex shrink-0 flex-wrap justify-end gap-x-3 gap-y-2 sm:gap-x-4">
           {currentTable && mode !== "takeaway" && features.billRequest !== false && (
-            <div className="relative mr-1">
+            <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
               <button
+                type="button"
                 onClick={handleRequestBill}
                 disabled={isRequestingBill || !canRequestBill}
-                className={`p-2 rounded-full transition-all flex flex-col items-center justify-center min-w-[32px] ${
-                  isRequestingBill || !canRequestBill ? "bg-slate-100 text-slate-300 opacity-50" : "text-slate-700 bg-slate-50 border border-slate-100"
+                aria-label="Request bill"
+                title={
+                  isRequestingBill
+                    ? "Sending bill request…"
+                    : !canRequestBill
+                      ? "Place an order first — then you can request your bill"
+                      : "Request your bill when ready to pay"
+                }
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
+                  isRequestingBill || !canRequestBill
+                    ? "bg-slate-100 text-slate-300 opacity-50"
+                    : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
                 }`}
               >
-                <Receipt size={20} strokeWidth={2.5} />
+                <Receipt size={18} strokeWidth={2.5} />
+                {canRequestBill && (
+                  <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                )}
               </button>
-              {canRequestBill && (
-                <span className="absolute -top-2 right-0 translate-x-1 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full bg-emerald-500 text-white shadow-lg">
-                  Bill
-                </span>
-              )}
+              <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700">Bill</span>
             </div>
           )}
 
-          {/* Call Waiter Button - Mobile */}
           {currentTable && mode !== "takeaway" && features.waiterCall !== false && (
-            <div className="relative">
+            <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
               <button
+                type="button"
                 onClick={handleCallWaiter}
                 disabled={isCallingWaiter || waiterCooldown > 0}
-                className={`p-2 rounded-full transition-all flex flex-col items-center justify-center min-w-[32px] ${
-                  isCallingWaiter || waiterCooldown > 0 ? "bg-amber-100 text-amber-600 animate-pulse opacity-80" : "text-slate-700 bg-slate-50 border border-slate-100"
+                aria-label="Call waiter"
+                title={
+                  waiterCooldown > 0
+                    ? `Wait before calling again (${Math.ceil(waiterCooldown / 60)} min left)`
+                    : isCallingWaiter
+                      ? "Calling waiter…"
+                      : "Call waiter for help at your table"
+                }
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
+                  isCallingWaiter || waiterCooldown > 0
+                    ? "animate-pulse bg-amber-100 text-amber-600 opacity-80"
+                    : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
                 }`}
               >
-                 {waiterCooldown > 0 ? (
-                  <span className="text-[10px] font-black">{Math.ceil(waiterCooldown / 60)}m</span>
+                {waiterCooldown > 0 ? (
+                  <span className="text-[9px] font-black leading-none">{Math.ceil(waiterCooldown / 60)}m</span>
                 ) : (
-                  <Phone size={20} />
+                  <Phone size={18} />
                 )}
               </button>
-              <span className="absolute -top-2 left-0 -translate-x-1 px-2 py-1 text-[10px] font-black uppercase tracking-wider rounded-full bg-amber-500 text-white shadow-lg">
-                Waiter
+              <span className="text-center text-[10px] font-bold leading-tight tracking-tight text-slate-700">
+                Call waiter
               </span>
             </div>
           )}
 
-          {/* Notification Bell - Mobile */}
-          <button
-            onClick={handleBellClick}
-            className="relative p-2 focus:outline-none"
-          >
-            <Bell size={22} className="text-slate-700" />
-            {hasUnreadOffer && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
-            )}
-          </button>
-
-          <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
+            <button
+              type="button"
+              onClick={handleBellClick}
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 active:bg-slate-100 sm:h-10 sm:w-10"
+              aria-label="Offers and promotions"
+              title="Offers — tap to view deals and promotions"
+            >
+              <Bell size={20} className="text-slate-700" strokeWidth={2} />
+              {hasUnreadOffer && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-white bg-red-500" />
+              )}
+            </button>
+            <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700">Offers</span>
           </div>
         </div>
       </div>
@@ -439,8 +459,8 @@ export default function Navbar({ title }) {
       </AnimatePresence>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 bg-white border-t border-slate-100 pb-safe">
-        <div className="flex items-center justify-around h-20 px-4">
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-50 border-t border-slate-100 bg-white pb-safe">
+        <div className="flex h-[4.25rem] items-stretch justify-around px-1 sm:h-20 sm:px-4">
           {links.map((link) => {
             const active = isActive(link.path);
             const Icon = link.icon;
@@ -448,18 +468,22 @@ export default function Navbar({ title }) {
             return (
               <button
                 key={link.path}
+                type="button"
                 onClick={() => navigate(getLinkWithTable(link.path))}
-                className="relative flex flex-col items-center justify-center w-full h-full"
+                aria-current={active ? "page" : undefined}
+                aria-label={link.label}
+                className="relative flex min-w-0 flex-1 flex-col items-center justify-center py-2 touch-manipulation"
               >
                 <div
-                  className={`relative z-10 flex flex-col items-center transition-all duration-300 ${
-                    active ? "text-slate-900 scale-110" : "text-slate-400"
+                  className={`relative z-10 flex flex-col items-center justify-center gap-0.5 transition-colors duration-200 ${
+                    active ? "text-slate-900" : "text-slate-400"
                   }`}
                 >
-                  <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+                  <Icon size={22} strokeWidth={active ? 2.5 : 2} className="shrink-0" />
+                  {/* Only active tab shows label — avoids stacked invisible text eating height on narrow phones */}
                   <span
-                    className={`text-[10px] font-black uppercase tracking-widest mt-1 transition-opacity ${
-                      active ? "opacity-100" : "opacity-0"
+                    className={`max-w-full truncate text-[9px] font-black uppercase tracking-wide sm:text-[10px] sm:tracking-widest ${
+                      active ? "block leading-none" : "sr-only"
                     }`}
                   >
                     {link.label}
@@ -469,7 +493,7 @@ export default function Navbar({ title }) {
                 {active && (
                   <motion.div
                     layoutId="mobileActiveBG"
-                    className="absolute inset-x-2 inset-y-2 bg-slate-50 rounded-2xl -z-0"
+                    className="absolute inset-x-1 inset-y-1.5 -z-0 rounded-xl bg-slate-50 sm:inset-x-2 sm:inset-y-2 sm:rounded-2xl"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
                   />
                 )}
@@ -477,7 +501,7 @@ export default function Navbar({ title }) {
                 {active && (
                   <motion.div
                     layoutId="topBar"
-                    className="absolute top-0 w-12 h-1 bg-slate-900 rounded-b-full"
+                    className="absolute top-0 h-0.5 w-10 rounded-b-full bg-slate-900 sm:h-1 sm:w-12"
                   />
                 )}
               </button>

@@ -276,7 +276,7 @@ export default function OrderSummary() {
             <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <span className="mb-1 inline-block rounded-md bg-white/10 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-widest text-slate-300 sm:mb-2 sm:text-[8px]">
-                  Transaction Hash
+                  ORDER REF
                 </span>
                 <p className="break-all font-mono text-sm font-bold uppercase tracking-tighter sm:text-base">
                   {(order._id || order.id || "").slice(-10)}

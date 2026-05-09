@@ -356,31 +356,34 @@ export default function Menu() {
               </div>
 
               {/* Filters & Category Bar */}
-              <div className="border-t border-slate-50 py-3 bg-white/50">
-                <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
-                  <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200 shrink-0">
+              <div className="border-t border-slate-50 bg-white/50 py-3">
+                <div className="mx-auto flex min-w-0 max-w-7xl items-center gap-2 px-4 sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch] sm:flex-none sm:overflow-visible">
+                    <div className="flex w-max max-w-none rounded-full border border-slate-200 bg-slate-100 p-1 sm:w-auto">
                     {['all', 'veg', 'non-veg'].map((type) => (
                       <button
                         key={type}
                         onClick={() => setFoodTypeFilter(type)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${
+                        className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[9px] font-black uppercase tracking-tighter transition-all sm:px-3 ${
                           foodTypeFilter === type ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
                         }`}
                       >
-                        {type === 'veg' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                        {type === 'non-veg' && <div className="w-1.5 h-1.5 rounded-full bg-red-500" />}
+                        {type === 'veg' && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />}
+                        {type === 'non-veg' && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />}
                         {type === 'all' ? 'All' : type}
                       </button>
                     ))}
                   </div>
+                  </div>
 
                   <div className="relative shrink-0">
                     <button
+                      type="button"
                       onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full shadow-sm hover:border-slate-900 transition-all active:scale-95"
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 shadow-sm transition-all hover:border-slate-900 active:scale-95 sm:gap-2 sm:px-4"
                     >
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Quick Menu</span>
-                      <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`} />
+                      <span>Quick Menu</span>
+                      <ChevronDown size={14} className={`shrink-0 text-slate-400 transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     <AnimatePresence>
@@ -394,7 +397,7 @@ export default function Menu() {
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-20 overflow-hidden"
+                            className="absolute right-0 z-20 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-100 bg-white py-2 shadow-2xl max-sm:left-1/2 max-sm:right-auto max-sm:-translate-x-1/2 sm:left-auto sm:w-48 sm:translate-x-0"
                           >
                             <div className="max-h-[300px] overflow-y-auto no-scrollbar">
                               <div className="px-5 py-2 border-b border-slate-100 bg-slate-50/50">
