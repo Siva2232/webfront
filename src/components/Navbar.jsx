@@ -295,28 +295,31 @@ export default function Navbar({ title }) {
         </div>
       </nav>
 
-      {/* Mobile Top Bar */}
-      <div className="md:hidden sticky top-0 z-[100] flex items-start justify-between gap-2 border-b border-slate-100 bg-white/80 px-3 py-2 backdrop-blur-lg sm:items-center sm:px-5 sm:py-4">
-        <div className="flex min-w-0 flex-1 items-center gap-2 py-0.5 pr-2 sm:gap-3 sm:py-0" onClick={() => navigate(getLinkWithTable("/menu"))}>
+      {/* Mobile Top Bar — tight actions so restaurant name keeps space; name wraps 2 lines instead of truncating */}
+      <div className="md:hidden sticky top-0 z-[100] flex items-center justify-between gap-1 border-b border-slate-100 bg-white/80 px-2 py-2 backdrop-blur-lg sm:px-3 sm:py-2.5">
+        <div
+          className="flex min-w-0 flex-1 items-center gap-1.5 py-0 pr-1 sm:gap-2 sm:pr-2"
+          onClick={() => navigate(getLinkWithTable("/menu"))}
+        >
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-md sm:h-10 sm:w-10 ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-md sm:h-9 sm:w-9 ${
               logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
             }`}
           >
             {logoUrl ? (
               <img src={logoUrl} alt={restaurantName} className="h-full w-full object-cover" />
             ) : (
-              <ChefHat className="h-5 w-5 text-white" />
+              <ChefHat className="h-4 w-4 text-white sm:h-5 sm:w-5" />
             )}
           </div>
-          <h1 className="min-w-0 truncate text-base font-black uppercase tracking-tighter text-slate-900 sm:text-lg">
+          <h1 className="min-w-0 flex-1 text-sm font-black uppercase leading-tight tracking-tight text-slate-900 line-clamp-2 break-words [overflow-wrap:anywhere] sm:text-base">
             {restaurantName}
           </h1>
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-end gap-x-3 gap-y-2 sm:gap-x-4">
+        <div className="flex shrink-0 flex-nowrap items-end justify-end gap-x-0 sm:gap-x-0.5">
           {currentTable && mode !== "takeaway" && features.billRequest !== false && (
-            <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
+            <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
               <button
                 type="button"
                 onClick={handleRequestBill}
@@ -329,7 +332,7 @@ export default function Navbar({ title }) {
                       ? "Place an order first — then you can request your bill"
                       : "Request your bill when ready to pay"
                 }
-                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
+                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors sm:h-9 sm:w-9 ${
                   isRequestingBill || !canRequestBill
                     ? "bg-slate-100 text-slate-300 opacity-50"
                     : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
@@ -340,12 +343,12 @@ export default function Navbar({ title }) {
                   <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
                 )}
               </button>
-              <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700">Bill</span>
+              <span className="text-center text-[9px] font-bold leading-none tracking-tight text-slate-700 sm:text-[10px]">Bill</span>
             </div>
           )}
 
           {currentTable && mode !== "takeaway" && features.waiterCall !== false && (
-            <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
+            <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
               <button
                 type="button"
                 onClick={handleCallWaiter}
@@ -358,7 +361,7 @@ export default function Navbar({ title }) {
                       ? "Calling waiter…"
                       : "Call waiter for help at your table"
                 }
-                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
+                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors sm:h-9 sm:w-9 ${
                   isCallingWaiter || waiterCooldown > 0
                     ? "animate-pulse bg-amber-100 text-amber-600 opacity-80"
                     : "border border-slate-100 bg-slate-50 text-slate-700 active:bg-slate-100"
@@ -370,17 +373,17 @@ export default function Navbar({ title }) {
                   <Phone size={18} />
                 )}
               </button>
-              <span className="text-center text-[10px] font-bold leading-tight tracking-tight text-slate-700">
+              <span className="max-w-[3rem] text-center text-[9px] font-bold leading-[1.05] tracking-tight text-slate-700 sm:max-w-[3.25rem] sm:text-[10px]">
                 Call waiter
               </span>
             </div>
           )}
 
-          <div className="flex w-[4.5rem] shrink-0 flex-col items-center gap-0.5">
+          <div className="flex w-[3rem] shrink-0 flex-col items-center gap-px sm:w-[3.25rem]">
             <button
               type="button"
               onClick={handleBellClick}
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 active:bg-slate-100 sm:h-10 sm:w-10"
+              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 active:bg-slate-100 sm:h-9 sm:w-9"
               aria-label="Offers and promotions"
               title="Offers — tap to view deals and promotions"
             >
@@ -389,7 +392,7 @@ export default function Navbar({ title }) {
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-white bg-red-500" />
               )}
             </button>
-            <span className="text-center text-[10px] font-bold leading-none tracking-tight text-slate-700">Offers</span>
+            <span className="text-center text-[9px] font-bold leading-none tracking-tight text-slate-700 sm:text-[10px]">Offers</span>
           </div>
         </div>
       </div>
