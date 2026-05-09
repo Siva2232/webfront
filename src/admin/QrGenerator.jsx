@@ -81,80 +81,124 @@ export default function QrGenerator() {
         subtitle="Generate a table QR that opens your menu"
       />
 
-      <div className="mx-auto max-w-lg px-4 py-10 sm:px-6 sm:py-12">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 sm:p-8">
-          <label htmlFor="qr-table" className="block text-xs font-bold uppercase tracking-widest text-zinc-500">
-            Table number
-          </label>
-          <input
-            id="qr-table"
-            type="text"
-            inputMode="numeric"
-            placeholder="e.g. 12"
-            value={table}
-            onChange={(e) => setTable(e.target.value.replace(/[^0-9]/g, ""))}
-            className="mt-2 w-full min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-lg font-semibold tabular-nums text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-zinc-900/10"
-          />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          {/* Left: inputs */}
+          <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 sm:p-8">
+            <label
+              htmlFor="qr-table"
+              className="block text-xs font-bold uppercase tracking-widest text-zinc-500"
+            >
+              Table number
+            </label>
+            <input
+              id="qr-table"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. 12"
+              value={table}
+              onChange={(e) => setTable(e.target.value.replace(/[^0-9]/g, ""))}
+              className="mt-2 w-full min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-lg font-semibold tabular-nums text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white focus:ring-2 focus:ring-zinc-900/10"
+            />
 
-          {link ? (
-            <div className="mt-8 space-y-6">
-              <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 p-4">
-                <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  <Link2 size={12} className="shrink-0" />
-                  Generated link
+            {link ? (
+              <div className="mt-6 space-y-4">
+                <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 p-4">
+                  <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    <Link2 size={12} className="shrink-0" />
+                    Generated link
+                  </div>
+                  <p className="break-all font-mono text-xs leading-relaxed text-zinc-700">
+                    {link}
+                  </p>
                 </div>
-                <p className="break-all font-mono text-xs leading-relaxed text-zinc-700">{link}</p>
+
+                <p className="text-[11px] leading-relaxed text-zinc-400">
+                  Tip: keep table numbers short for easier scanning.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-6 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 px-4 py-6 text-center text-sm text-zinc-500">
+                Type a table number to preview the QR code and download options.
+              </p>
+            )}
+          </section>
+
+          {/* Right: preview + downloads */}
+          <aside className="lg:sticky lg:top-24">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-lg shadow-zinc-900/5 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">
+                    Preview
+                  </p>
+                  <h2 className="mt-1 text-lg font-black tracking-tight text-zinc-900">
+                    QR code
+                  </h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {table ? (
+                      <>
+                        Table{" "}
+                        <span className="font-bold tabular-nums text-zinc-800">
+                          {table}
+                        </span>
+                      </>
+                    ) : (
+                      "Enter a table number"
+                    )}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex flex-col items-center">
+              <div className="mt-6 flex flex-col items-center">
                 <div
                   id="qr-wrapper"
                   className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-inner shadow-zinc-900/5"
                 >
-                  <QRCode id="qr-code" value={link} size={200} className="max-w-full h-auto" />
+                  {link ? (
+                    <QRCode id="qr-code" value={link} size={220} className="h-auto max-w-full" />
+                  ) : (
+                    <div className="flex h-[220px] w-[220px] items-center justify-center rounded-xl bg-zinc-50 text-sm font-semibold text-zinc-400">
+                      No QR
+                    </div>
+                  )}
                 </div>
-                <p className="mt-3 text-center text-xs font-medium text-zinc-500">
-                  Table <span className="font-bold tabular-nums text-zinc-800">{table}</span>
-                </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="mt-6 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => downloadImage("png")}
+                    disabled={!link}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition-colors hover:bg-zinc-800 disabled:opacity-50 active:scale-[0.98]"
+                  >
+                    <FileImage size={18} />
+                    PNG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadImage("jpg")}
+                    disabled={!link}
+                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-zinc-200 bg-white px-4 py-3 text-sm font-bold text-zinc-800 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-50 active:scale-[0.98]"
+                  >
+                    <FileImage size={18} />
+                    JPG
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => downloadImage("png")}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition-colors hover:bg-zinc-800 active:scale-[0.98]"
+                  onClick={downloadPDF}
+                  disabled={!link}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-zinc-900 bg-transparent px-4 py-3 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-900 hover:text-white disabled:opacity-50 active:scale-[0.98]"
                 >
-                  <FileImage size={18} />
-                  PNG
-                </button>
-                <button
-                  type="button"
-                  onClick={() => downloadImage("jpg")}
-                  className="flex items-center justify-center gap-2 rounded-xl border-2 border-zinc-200 bg-white px-4 py-3 text-sm font-bold text-zinc-800 transition-colors hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.98]"
-                >
-                  <FileImage size={18} />
-                  JPG
+                  <FileText size={18} />
+                  Download PDF
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={downloadPDF}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-zinc-900 bg-transparent px-4 py-3 text-sm font-bold text-zinc-900 transition-colors hover:bg-zinc-900 hover:text-white active:scale-[0.98]"
-              >
-                <FileText size={18} />
-                Download PDF
-              </button>
             </div>
-          ) : (
-            <p className="mt-6 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/50 px-4 py-6 text-center text-sm text-zinc-500">
-              Type a table number to preview the QR code and download options.
-            </p>
-          )}
+          </aside>
         </div>
-
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-400">
-          PNG and JPG are raster exports from the preview. PDF packs the code for simple printing.
-        </p>
       </div>
     </div>
   );

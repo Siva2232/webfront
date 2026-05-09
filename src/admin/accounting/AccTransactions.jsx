@@ -104,6 +104,16 @@ export default function AccTransactions() {
 
             <button
               type="button"
+              onClick={fetchTransactions}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Syncing" : "Refresh"}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
                 showFilters
@@ -119,15 +129,6 @@ export default function AccTransactions() {
       />
 
       <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-10">
-            
-            <button 
-              onClick={fetchTransactions}
-              className="p-3 bg-white border-2 border-slate-100 rounded-2xl text-slate-600 hover:bg-slate-50 hover:border-slate-200 transition-all shadow-sm active:scale-95"
-            >
-              <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
-            </button>
-          </div>
-        </div>
 
         {/* ADVANCED FILTERING PANEL */}
         <AnimatePresence>
