@@ -1,11 +1,11 @@
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useOrders } from "../context/OrderContext";
 import { generateId } from "../utils/generateId";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { 
-  ShoppingBag, Trash2, Plus, Minus, ChevronLeft, 
+  ShoppingBag, Trash2, Plus, Minus,
   CheckCircle2, ReceiptText, ArrowRight, MessageSquare, 
   UtensilsCrossed, AlertCircle, Package, CreditCard, Wallet, X, Loader2
 } from "lucide-react";
@@ -131,6 +131,7 @@ export default function Cart({ hideTable = false }) {
     totalAmount, updateQuantity, removeFromCart, updateCartItem,
   } = useCart();
 
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
   const tableParam = searchParams.get("table");
@@ -164,6 +165,14 @@ export default function Cart({ hideTable = false }) {
   
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [showStripeModal, setShowStripeModal] = useState(false);
+
+  /** Pay Later is the default every time the user opens checkout (/cart or /takeaway-cart). Online stays only until they leave and come back. */
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === "/cart" || path === "/takeaway-cart") {
+      setPaymentMethod("cod");
+    }
+  }, [location.pathname]);
 
   const containerRef = useRef(null);
   const x = useMotionValue(0);
@@ -263,7 +272,7 @@ export default function Cart({ hideTable = false }) {
       existingOrderId: mergeId, 
       table: effectiveTable,
       orderItems: cartSnapshot, 
-      status: "Pending", 
+      status: "New", 
       customerName: customerName.trim() || undefined,
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
@@ -324,24 +333,31 @@ export default function Cart({ hideTable = false }) {
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
       
-      <nav className="sticky top-0 z-[60] bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link to={isTakeaway ? "/menu?mode=takeaway" : "/menu"} className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors">
-            <ChevronLeft size={24} className="text-slate-900" />
-          </Link>
-          <div className="text-center">
-            <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500">Checkout</h1>
-            <p className="text-sm font-black text-slate-900 uppercase leading-none mt-1">Review Items</p>
+      <nav className="top-0 z-[60] bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-4">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 justify-start">
+            <span className="inline-flex h-9 w-9 shrink-0" aria-hidden />
           </div>
-          <div className="flex justify-end">
-            {cart.length > 0 && (
-              <button 
-                onClick={() => setShowClearCartModal(true)} 
-                className="flex items-center justify-center h-9 w-9 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-100 active:scale-95 transition-all"
+          <div className="min-w-0 shrink text-center">
+            <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500">
+              Checkout
+            </h1>
+            <p className="mt-1 text-sm font-black uppercase leading-tight text-slate-900">
+              Review Items
+            </p>
+          </div>
+          <div className="flex min-w-0 flex-1 justify-end">
+            {cart.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowClearCartModal(true)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-500 transition-all hover:bg-rose-100 active:scale-95"
                 aria-label="Clear Cart"
               >
                 <Trash2 size={18} strokeWidth={2.2} />
               </button>
+            ) : (
+              <span className="inline-flex h-9 w-9 shrink-0" aria-hidden />
             )}
           </div>
         </div>
@@ -467,14 +483,14 @@ export default function Cart({ hideTable = false }) {
                                           <span className="text-[10px] font-black uppercase italic tracking-widest">{item.selectedPortion}</span>
                                           <div className="flex items-center gap-1.5 ml-1 border-l border-blue-200 pl-1.5">
                                             <button 
-                                              onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)}
+                                              onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey, !!item.isTakeaway)}
                                               className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
                                             >
                                               <Minus size={10} strokeWidth={4} />
                                             </button>
                                             <span className="text-[10px] font-black">{item.qty}</span>
                                             <button 
-                                              onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)}
+                                              onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey, !!item.isTakeaway)}
                                               className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
                                             >
                                               <Plus size={10} strokeWidth={4} />
@@ -553,14 +569,14 @@ export default function Cart({ hideTable = false }) {
                                 <div className="flex items-center justify-between mt-auto pt-4">
                                   <div className="flex items-center bg-slate-900 text-white rounded-2xl p-1 shadow-lg shadow-slate-200">
                                     <button 
-                                      onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey)} 
+                                      onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey, !!item.isTakeaway)} 
                                       className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
                                     >
                                       <Minus size={14} strokeWidth={3} />
                                     </button>
                                     <span className="w-8 text-center text-sm font-black italic">{item.qty}</span>
                                     <button 
-                                      onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey)} 
+                                      onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey, !!item.isTakeaway)} 
                                       className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
                                     >
                                       <Plus size={14} strokeWidth={3} />
@@ -569,7 +585,7 @@ export default function Cart({ hideTable = false }) {
                                   
                                   <div className="flex items-center gap-3">
                                     <button 
-                                      onClick={() => removeFromCart(item._id || item.id, item.cartKey)}
+                                      onClick={() => removeFromCart(item._id || item.id, item.cartKey, !!item.isTakeaway)}
                                       className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                                     >
                                       <Trash2 size={18} />

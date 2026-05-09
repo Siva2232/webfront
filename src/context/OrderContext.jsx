@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
@@ -483,7 +483,7 @@ export const OrderProvider = ({ children }) => {
           table: effectiveTable,
           items: orderItems,
           totalAmount: orderData.totalAmount || total,
-          status: orderData.status || 'Pending',
+          status: orderData.status || 'New',
           billDetails: orderData.billDetails,
           notes: orderData.notes,
           customerName: orderData.customerName,

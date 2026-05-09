@@ -19,15 +19,15 @@ export default function ProductCard({
 }) {
   const cardContent = useMemo(
     () => (
-      <div className="flex flex-1 flex-col justify-between space-y-6 p-6 sm:p-7">
-        <div className="space-y-4">
+      <div className="flex flex-1 flex-col justify-between space-y-4 p-4 sm:p-5">
+        <div className="space-y-3">
           <div className="space-y-1">
-            <h3 className="truncate text-lg font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-zinc-700">
+            <h3 className="truncate text-base font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-zinc-700">
               {product.name}
             </h3>
             <div className="flex items-center gap-1 font-black text-zinc-900">
               <IndianRupee size={15} strokeWidth={2.5} className="text-zinc-500" />
-              <span className="text-2xl tabular-nums tracking-tight">{product.price.toLocaleString()}</span>
+              <span className="text-xl tabular-nums tracking-tight">{product.price.toLocaleString()}</span>
             </div>
           </div>
 
@@ -87,9 +87,9 @@ export default function ProductCard({
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {(libraryPortions.length > 0 || libraryAddonGroups.length > 0) && (
-            <div className="flex gap-2 border-t border-slate-50 pt-4">
+            <div className="flex gap-2 border-t border-slate-50 pt-3">
               {libraryPortions.length > 0 && (
                 <div className="flex-1 relative">
                   <select
@@ -97,7 +97,7 @@ export default function ProductCard({
                     onChange={(e) => {
                       if (e.target.value) onQuickAdd(product._id, "portion", e.target.value);
                     }}
-                    className="w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-3 pr-6 text-[9px] font-bold uppercase tracking-wider text-zinc-800 outline-none transition hover:border-zinc-300 hover:bg-zinc-100"
+                    className="w-full cursor-pointer appearance-none rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-3 pr-6 text-[9px] font-bold uppercase tracking-wider text-zinc-800 outline-none transition hover:border-zinc-300 hover:bg-zinc-100"
                   >
                     <option value="" disabled>
                       + Portion
@@ -153,7 +153,7 @@ export default function ProductCard({
                     onChange={(e) => {
                       if (e.target.value) onQuickAdd(product._id, "group", e.target.value);
                     }}
-                    className="w-full appearance-none bg-emerald-50/50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider py-2.5 pl-3 pr-6 rounded-xl border border-emerald-100 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
+                    className="w-full appearance-none bg-emerald-50/50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider py-2 pl-3 pr-6 rounded-xl border border-emerald-100 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
                   >
                     <option value="" disabled>
                       + Group
@@ -177,7 +177,7 @@ export default function ProductCard({
 
           <button
             onClick={() => onToggle(product._id)}
-            className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 flex items-center justify-center gap-2
+            className={`w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 flex items-center justify-center gap-2
             ${
               product.isAvailable
                 ? "bg-white border-slate-100 text-slate-400 hover:border-rose-200 hover:text-rose-600 hover:bg-rose-50"
@@ -195,17 +195,17 @@ export default function ProductCard({
             )}
           </button>
 
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
+          <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-50">
             <button
               onClick={() => onEdit(product._id)}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-4 text-white shadow-md transition hover:bg-zinc-800"
+              className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-white shadow-md transition hover:bg-zinc-800"
             >
               <Edit3 size={14} />
               <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
             </button>
             <button
               onClick={() => onDelete()}
-              className="flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white rounded-2xl transition-all duration-300"
+              className="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white rounded-2xl transition-all duration-300"
             >
               <Trash2 size={14} />
               <span className="text-[10px] font-black uppercase tracking-widest">Trash</span>
@@ -226,7 +226,7 @@ export default function ProductCard({
             : "border-rose-200/90 opacity-90 shadow-none ring-1 ring-rose-100/50"
         }`}
       >
-        <div className="relative aspect-[11/13] overflow-hidden bg-slate-100 shrink-0">
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 shrink-0">
           <img
             src={product.image || "https://images.unsplash.com/photo-1546213271-73fca27ad291"}
             alt={product.name}
@@ -234,9 +234,9 @@ export default function ProductCard({
             className={`w-full h-full object-cover ${!product.isAvailable && "grayscale blur-[2px] contrast-75"}`}
           />
 
-          <div className="absolute left-4 top-4 sm:left-5 sm:top-5">
+          <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
             <div
-              className={`rounded-xl border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide shadow-sm backdrop-blur-md ${
+              className={`rounded-xl border px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide shadow-sm backdrop-blur-md ${
                 product.isAvailable
                   ? "border-white/30 bg-white/90 text-emerald-700"
                   : "border-rose-300 bg-rose-600 text-white"

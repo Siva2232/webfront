@@ -26,6 +26,19 @@ export default function Navbar({ title }) {
   const { branding, features } = useTheme();
   const { orders } = useOrders();
 
+  /** Admin / Superadmin branding — synced via ThemeContext (`GET .../branding`). */
+  const restaurantName = useMemo(() => {
+    const n = branding?.name != null ? String(branding.name).trim() : "";
+    if (n) return n;
+    const t = typeof title === "string" ? title.trim() : "";
+    return t || "Restaurant";
+  }, [branding?.name, title]);
+
+  const logoUrl = useMemo(() => {
+    const u = branding?.logo;
+    return typeof u === "string" && u.trim().length > 0 ? u.trim() : null;
+  }, [branding?.logo]);
+
   const currentTable = searchParams.get("table")?.trim();
   const mode = searchParams.get("mode");
 
@@ -169,7 +182,7 @@ export default function Navbar({ title }) {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden md:block sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-100 shadow-sm">
+      <nav className="hidden md:block sticky top-0 z-[100] backdrop-blur-xl bg-white/70 border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-8 py-3">
           <div className="flex items-center justify-between">
             <motion.div
@@ -178,12 +191,24 @@ export default function Navbar({ title }) {
               className="flex items-center gap-3 group cursor-pointer"
               onClick={() => navigate(getLinkWithTable("/menu"))}
             >
-              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-                <ChefHat className="w-6 h-6 text-white" strokeWidth={2.5} />
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform overflow-hidden shrink-0 ${
+                  logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
+                }`}
+              >
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={restaurantName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ChefHat className="w-6 h-6 text-white" strokeWidth={2.5} />
+                )}
               </div>
-              <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none">
-                  {title || "MY CAFE"}
+              <div className="min-w-0">
+                <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase leading-none truncate">
+                  {restaurantName}
                 </h1>
                 <p className="text-[10px] font-bold text-slate-400 tracking-[0.2em] mt-1">PREMIUM DINING</p>
               </div>
@@ -271,13 +296,21 @@ export default function Navbar({ title }) {
       </nav>
 
       {/* Mobile Top Bar */}
-      <div className="md:hidden sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-slate-100 flex items-center justify-between px-5 py-4">
-        <div className="flex items-center gap-3" onClick={() => navigate(getLinkWithTable("/menu"))}>
-          <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-md">
-            <ChefHat className="w-5 h-5 text-white" />
+      <div className="md:hidden sticky top-0 z-[100] backdrop-blur-lg bg-white/80 border-b border-slate-100 flex items-center justify-between px-5 py-4">
+        <div className="flex items-center gap-3 min-w-0" onClick={() => navigate(getLinkWithTable("/menu"))}>
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md overflow-hidden shrink-0 ${
+              logoUrl ? "bg-white ring-1 ring-slate-200" : "bg-slate-900"
+            }`}
+          >
+            {logoUrl ? (
+              <img src={logoUrl} alt={restaurantName} className="h-full w-full object-cover" />
+            ) : (
+              <ChefHat className="w-5 h-5 text-white" />
+            )}
           </div>
-          <h1 className="text-lg font-black text-slate-900 tracking-tighter uppercase">
-            {title || "MY CAFE"}
+          <h1 className="text-lg font-black text-slate-900 tracking-tighter uppercase truncate">
+            {restaurantName}
           </h1>
         </div>
 

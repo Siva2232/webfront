@@ -1,7 +1,6 @@
 import { useOrders } from "../context/OrderContext";
 import { TAKEAWAY_TABLE } from "../context/CartContext";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import StatusBadge from "../components/StatusBadge";
 import OrderProgress from "../components/OrderProgress";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
@@ -12,7 +11,6 @@ import { AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { 
-  ChevronLeft, 
   RotateCcw, 
   Timer, 
   Receipt, 
@@ -36,6 +34,9 @@ export default function OrderSummary() {
   const [isRequestingBill, setIsRequestingBill] = useState(false);
   const [showTokenPopup, setShowTokenPopup] = useState(true);
   const cheerSoundRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"));
+
+  /** Takeaway queue orders only (`TAKEAWAY` sentinel). Never treat missing table as takeaway — keeps dine-in separate. */
+  const isTakeawayTableOrder = (o) => o?.table === TAKEAWAY_TABLE;
 
   // Get current table & mode from URL
   const currentTable = searchParams.get("table")?.trim()?.replace(/^0+/, "") || null;
@@ -113,20 +114,19 @@ export default function OrderSummary() {
     return `/menu${qs ? `?${qs}` : ""}`;
   })();
 
-  // Determine orders to show.  For a table we filter by that table;
-  // for takeaway mode we look for either the sentinel value or a missing
-  // table (older orders created before the bug fix may have had ``).
-  const isTakeawayOrder = (o) => o.table === TAKEAWAY_TABLE || !o.table;
-
-  const tableOrders = mode === "takeaway"
-    ? orders.filter(o => isTakeawayOrder(o) && o.status !== "Closed")
-    : currentTable
-      ? orders.filter(o => 
-          o.status !== "Closed" &&
-          (o.table === currentTable ||
-            (currentTable === TAKEAWAY_TABLE && !o.table))
-        )
-      : [];
+  // Takeaway view: only orders with table === TAKEAWAY_TABLE.
+  // Dine-in view: only orders for that exact table (never mix in takeaway rows).
+  const tableOrders =
+    mode === "takeaway"
+      ? orders.filter((o) => o.status !== "Closed" && isTakeawayTableOrder(o))
+      : currentTable
+        ? orders.filter(
+            (o) =>
+              o.status !== "Closed" &&
+              String(o.table) === String(currentTable) &&
+              o.table !== TAKEAWAY_TABLE
+          )
+        : [];
 
   // Get the most recent order for this table (including Served; only Closed is hidden)
   const order = tableOrders.length > 0 
@@ -162,6 +162,13 @@ export default function OrderSummary() {
       }());
     }
   }, [order?.status]);
+
+  // New takeaway order → show token popup again
+  useEffect(() => {
+    if (order && isTakeawayTableOrder(order) && order.tokenNumber != null && order.tokenNumber !== "") {
+      setShowTokenPopup(true);
+    }
+  }, [order?._id]);
 
   if (!order) {
     return (
@@ -236,91 +243,114 @@ export default function OrderSummary() {
       onClick={() => cheerSoundRef.current.load()} // Unlocks audio on first user tap
     >
       {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <button 
-            onClick={() => navigate(backLink)} 
-            className="p-2 -ml-2 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <ChevronLeft size={22} className="text-slate-900" />
-          </button>
-          <div className="text-center">
-            <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 mb-0.5 flex items-center justify-center gap-1">
-              <Sparkles size={10} /> Live Tracking
-            </h1>
-            <p className="text-sm font-bold text-slate-900">Order Summary</p>
+      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 px-4 py-2.5 backdrop-blur-xl sm:px-6 sm:py-3">
+        <div className="mx-auto flex max-w-md items-center gap-2">
+          <div className="flex min-w-0 flex-1 justify-start">
+            <span className="inline-flex h-9 w-9 shrink-0" aria-hidden />
           </div>
-          <button className="p-2 -mr-2 text-slate-400 hover:text-indigo-600 transition-colors">
-            {/* <BellRing size={20} /> */}
-          </button>
+          <div className="min-w-0 shrink text-center">
+            <h1 className="mb-0.5 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">
+              <Sparkles size={10} className="shrink-0" aria-hidden />
+              Live Tracking
+            </h1>
+            <p className="text-xs font-bold leading-tight text-slate-900 sm:text-sm">Order Summary</p>
+          </div>
+          <div className="flex min-w-0 flex-1 justify-end">
+            <span className="inline-flex h-9 w-9 shrink-0" aria-hidden />
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-6 pb-6">
+      <main className="mx-auto w-full max-w-md px-3 pb-6 pt-3 sm:px-4 sm:pb-8 sm:pt-4">
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
-          className="bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden"
+          className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] sm:rounded-2xl"
         >
           {/* ID & Table Header */}
-          <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-10 opacity-10 rotate-12 scale-150">
-              <Receipt size={100} strokeWidth={1} />
+          <div className="relative overflow-hidden bg-slate-900 p-3 text-white sm:p-5">
+            <div className="absolute right-0 top-0 rotate-12 scale-125 p-4 opacity-[0.08] sm:p-8">
+              <Receipt size={72} strokeWidth={1} className="max-w-none sm:h-[100px] sm:w-[100px]" />
             </div>
             
-            <div className="relative z-10 flex justify-between items-end">
-              <div>
-                <span className="inline-block px-2 py-1 bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest mb-3 text-slate-300">
+            <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+              <div className="min-w-0">
+                <span className="mb-1 inline-block rounded-md bg-white/10 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-widest text-slate-300 sm:mb-2 sm:text-[8px]">
                   Transaction Hash
                 </span>
-                <p className="text-lg font-mono font-bold tracking-tighter uppercase">
+                <p className="break-all font-mono text-sm font-bold uppercase tracking-tighter sm:text-base">
                   {(order._id || order.id || "").slice(-10)}
                 </p>
-                <div className="flex items-center gap-2 text-slate-400 mt-2">
-                  <Timer size={12} className="text-indigo-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                <div className="mt-1 flex items-center gap-1.5 text-slate-400">
+                  <Timer size={11} className="shrink-0 text-indigo-400" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider sm:text-[9px]">
                     {format(new Date(order.createdAt), "h:mm a • MMM d")}
                   </span>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="shrink-0 text-left sm:text-right">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 sm:text-[10px]">
                   {order.table === TAKEAWAY_TABLE ? "Order" : "Table"}
                 </span>
-                <p className="text-6xl font-black tracking-tighter leading-none">
+                <p className={`font-black leading-none tracking-tighter ${
+                  order.table === TAKEAWAY_TABLE
+                    ? "text-3xl sm:text-5xl"
+                    : "text-4xl sm:text-5xl"
+                }`}>
                   {order.table === TAKEAWAY_TABLE ? "Takeaway" : `#${order.table}`}
                 </p>
-                {/* Payment Status Badge */}
                 {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') && (
-                  <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider rounded-full">
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-white sm:mt-1.5 sm:px-2.5 sm:text-[8px]">
                     <CheckCircle size={10} /> PAID
                   </span>
                 )}
               </div>
             </div>
+
+            {/* Pickup token — takeaway only; stays on card (popup also shown below) */}
+            {isTakeawayTableOrder(order) &&
+              order.tokenNumber != null &&
+              String(order.tokenNumber).trim() !== "" && (
+                <div className="relative z-10 mt-4 border-t border-white/15 pt-3 sm:mt-5 sm:pt-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 sm:h-10 sm:w-10">
+                        <Ticket size={18} className="text-indigo-200" strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[7px] font-black uppercase tracking-[0.25em] text-slate-400 sm:text-[8px]">
+                          Pickup token
+                        </p>
+                        <p className="text-3xl font-black tabular-nums tracking-tighter text-white sm:text-4xl">
+                          {order.tokenNumber}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="max-w-full text-[8px] font-bold uppercase leading-snug tracking-wide text-indigo-200/90 sm:max-w-[140px] sm:text-right sm:text-[9px]">
+                      Show this at the counter when collecting your order
+                    </p>
+                  </div>
+                </div>
+              )}
           </div>
 
-          {/* Progress Tracker */}
-          <div className="p-8 border-b border-slate-50">
-            <div className="flex justify-between items-center mb-8">
-              <span className="text-[11px] font-black uppercase tracking-[0.1em] text-slate-400">Current Phase</span>
-              <StatusBadge status={order.status} />
-            </div>
+          {/* Order progress (steps only — no duplicate “Current Phase” row) */}
+          <div className="border-b border-slate-50 px-0 pb-2 pt-1 sm:px-1 sm:pb-3 sm:pt-2">
             <OrderProgress status={order.status} />
           </div>
 
           {/* Item Manifest */}
-          <div className="p-8 space-y-6">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Order Manifest</h3>
-            <div className="space-y-5">
+          <div className="space-y-3 p-3 sm:space-y-4 sm:p-5">
+            <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 sm:text-[10px]">Order Manifest</h3>
+            <div className="space-y-2.5 sm:space-y-3">
               {order.items.map((item, idx) => (
                 <motion.div 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={item.id || idx} 
-                  className={`flex items-start gap-4 group p-3 rounded-2xl transition-all ${
-                    !isTakeawayOrder(order) && item.isTakeaway 
+                  className={`group flex flex-col gap-2 rounded-xl p-2 transition-all sm:flex-row sm:items-start sm:gap-3 sm:p-2.5 ${
+                    !isTakeawayTableOrder(order) && item.isTakeaway 
                       ? "bg-orange-50 border border-orange-100/50" 
                       : ""
                   }`}
@@ -342,7 +372,7 @@ export default function OrderSummary() {
                       {item.selectedPortion && (
                         <span className="text-[9px] font-bold text-blue-600">({item.selectedPortion})</span>
                       )}
-                      {!isTakeawayOrder(order) && item.isTakeaway && (
+                      {!isTakeawayTableOrder(order) && item.isTakeaway && (
                         <span className="px-1.5 py-0.5 bg-orange-500 text-white text-[7px] font-black uppercase tracking-wider rounded-md flex items-center gap-0.5">
                           <Package size={7} /> TA
                         </span>
@@ -362,7 +392,7 @@ export default function OrderSummary() {
                       {item.qty} × <span className="text-slate-400">₹{item.price.toLocaleString()}</span>
                     </p>
                   </div>
-                  <p className="text-sm font-black text-slate-900 font-mono shrink-0">
+                  <p className="shrink-0 self-end font-mono text-sm font-black text-slate-900 sm:self-auto">
                     ₹{(item.price * item.qty).toLocaleString()}
                   </p>
                 </motion.div>
@@ -371,7 +401,7 @@ export default function OrderSummary() {
           </div>
 
           {/* Detailed Bill Summary */}
-          <div className="p-8 bg-slate-50/50 border-t border-slate-100 space-y-3">
+          <div className="space-y-2 border-t border-slate-100 bg-slate-50/50 p-3 sm:p-5">
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
               <span>Subtotal</span>
               <span className="text-slate-600 font-mono">₹{subtotal.toLocaleString()}</span>
@@ -385,7 +415,7 @@ export default function OrderSummary() {
               <span className="text-slate-600 font-mono">₹{sgst.toLocaleString()}</span>
             </div>
             
-            <div className="pt-4 mt-2 border-t border-slate-200/60 flex justify-between items-center">
+            <div className="mt-1 flex items-center justify-between border-t border-slate-200/60 pt-3">
               <div className="space-y-0.5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Grand Total</p>
                 {order.paymentMethod === 'online' || order.paymentStatus === 'paid' ? (
@@ -398,7 +428,7 @@ export default function OrderSummary() {
                   </p>
                 )}
               </div>
-              <span className="text-3xl font-black text-slate-900 font-mono tracking-tighter">
+              <span className="font-mono text-2xl font-black tracking-tighter text-slate-900 sm:text-3xl">
                 ₹{grandTotal.toLocaleString()}
               </span>
             </div>
@@ -406,49 +436,29 @@ export default function OrderSummary() {
 
           {/* Dynamic Cooking Notes */}
           {order.notes && (
-            <div className="m-6 mt-0 p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100/50 flex gap-4 items-start">
-              <div className="bg-indigo-600 p-2 rounded-xl text-white shrink-0 shadow-lg shadow-indigo-100">
-                <Receipt size={14} />
+            <div className="mx-3 mb-3 mt-0 flex items-start gap-2 rounded-xl border border-indigo-100/50 bg-indigo-50/50 p-3 sm:m-4 sm:gap-3 sm:p-4">
+              <div className="shrink-0 rounded-lg bg-indigo-600 p-1.5 text-white shadow-md shadow-indigo-100 sm:p-2 sm:shadow-lg">
+                <Receipt size={13} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Kitchen Request</p>
-                <p className="text-xs text-slate-600 italic leading-relaxed">"{order.notes}"</p>
+                <p className="mb-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-600">Kitchen Request</p>
+                <p className="text-[11px] italic leading-snug text-slate-600 sm:text-xs">"{order.notes}"</p>
               </div>
             </div>
           )}
         </motion.div>
 
-        <div className="w-full shrink-0 px-2 pb-6 pt-8">
-          <div className={`${mode === "takeaway" ? "flex" : "grid grid-cols-2"} gap-3`}>
-            {mode !== "takeaway" && (
-              <motion.button 
-                whileTap={{ scale: 0.95 }}
-                onClick={handleRequestBill}
-                disabled={isRequestingBill || order?.isBillRequested || order?.paymentStatus === 'paid'}
-                className={`flex items-center justify-center gap-2 py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all border-2
-                  ${(order?.isBillRequested || order?.paymentStatus === 'paid')
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 cursor-not-allowed" 
-                    : "bg-white border-slate-900 text-slate-900 active:bg-slate-50"}`}
-              >
-                {order?.paymentStatus === 'paid' ? (
-                  <><CheckCircle size={14} /> Paid</>
-                ) : order?.isBillRequested ? (
-                  <><CheckCircle size={14} /> Requested</>
-                ) : (
-                  <><Receipt size={14} /> Get Bill</>
-                )}
-              </motion.button>
-            )}
-
+        <div className="w-full shrink-0 px-1 pb-4 pt-4 sm:px-2 sm:pb-5 sm:pt-5">
+          <div className="flex gap-3">
             <motion.div 
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.98 }}
-              className={`relative group ${mode === "takeaway" ? "w-full" : ""}`}
+              className="relative group w-full"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
               <Link 
                 to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
-                className="relative flex items-center justify-center gap-2 w-full bg-slate-900 text-white py-3 rounded-[1.5rem] font-black uppercase tracking-widest text-[9px] shadow-lg transition-all"
+                className="relative flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-2.5 text-[9px] font-black uppercase tracking-widest text-white shadow-md transition-all sm:rounded-[1.25rem] sm:py-3 sm:shadow-lg"
               >
                 <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
                 Add Items
@@ -458,26 +468,27 @@ export default function OrderSummary() {
           </div>
         </div>
 
-        <p className="text-center mt-8 text-[10px] font-black uppercase tracking-[0.4em] text-slate-300">
-          Pulse Server Connection: Active 📡
-        </p>
+    
       </main>
 
-      {/* Token Popup for Takeaway Orders */}
-     <AnimatePresence>
-  {mode === "takeaway" && order.tokenNumber && showTokenPopup && (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(10px)" }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      className="fixed top-24 right-6 z-[100] w-56"
-    >
-      {/* Main Ticket Body */}
-      <div className="relative bg-white rounded-3xl shadow-[0_32px_64px_-16px_rgba(79,70,229,0.3)] border border-indigo-50 overflow-hidden">
+      {/* Token popup — takeaway-only; main card above always shows token too */}
+      <AnimatePresence>
+        {mode === "takeaway" &&
+          isTakeawayTableOrder(order) &&
+          order.tokenNumber != null &&
+          String(order.tokenNumber).trim() !== "" &&
+          showTokenPopup && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(10px)" }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="fixed inset-x-4 top-20 z-[100] mx-auto w-auto max-w-sm sm:inset-x-auto sm:left-auto sm:right-6 sm:top-24 sm:mx-0 sm:w-56"
+            >
+              <div className="relative overflow-hidden rounded-3xl border border-indigo-50 bg-white shadow-[0_32px_64px_-16px_rgba(79,70,229,0.3)]">
         
         {/* Ticket Header with Mesh Gradient */}
-        <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-4 relative overflow-hidden">
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-3">
           {/* Subtle Decorative Circles */}
           <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
           
@@ -507,13 +518,13 @@ export default function OrderSummary() {
         </div>
 
         {/* Token Content */}
-        <div className="p-7 text-center bg-gradient-to-b from-white to-indigo-50/30">
+        <div className="bg-gradient-to-b from-white to-indigo-50/30 p-4 text-center sm:p-6">
           <span className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.3em] block mb-2">
             Queue Number
           </span>
           
           <div className="relative inline-block">
-            <p className="text-6xl font-black text-slate-900 tracking-tighter italic">
+            <p className="text-4xl font-black italic tracking-tighter text-slate-900 sm:text-5xl">
               {order.tokenNumber}
             </p>
             {/* Subtle glow behind the number */}
@@ -527,10 +538,10 @@ export default function OrderSummary() {
             </p>
           </div>
         </div>
-      </div>
-    </motion.div>
-  )}
-</AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+      </AnimatePresence>
 
     </div>
   );

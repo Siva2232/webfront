@@ -58,7 +58,7 @@ export default function AdminCart() {
       table: effectiveTable,
       items: [...cart],
       orderItems: [...cart],
-      status: "Pending", 
+      status: "New", 
       customerName: customerName.trim() || undefined,
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
@@ -131,11 +131,11 @@ export default function AdminCart() {
                     <p className="text-xs text-slate-400 font-bold mt-1">₹{item.price} x {item.qty}</p>
                     <div className="flex items-center justify-between mt-3">
                        <div className="flex items-center bg-slate-100 rounded-xl p-1">
-                          <button onClick={() => updateQuantity(item._id, item.qty - 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center"><Minus size={12}/></button>
+                          <button onClick={() => updateQuantity(item._id, item.qty - 1, item.cartKey, !!item.isTakeaway)} className="w-8 h-8 flex items-center justify-center"><Minus size={12}/></button>
                           <span className="w-8 text-center text-xs font-black">{item.qty}</span>
-                          <button onClick={() => updateQuantity(item._id, item.qty + 1, item.cartKey)} className="w-8 h-8 flex items-center justify-center"><Plus size={12}/></button>
+                          <button onClick={() => updateQuantity(item._id, item.qty + 1, item.cartKey, !!item.isTakeaway)} className="w-8 h-8 flex items-center justify-center"><Plus size={12}/></button>
                         </div>
-                        <button onClick={() => removeFromCart(item._id, item.cartKey)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
+                        <button onClick={() => removeFromCart(item._id, item.cartKey, !!item.isTakeaway)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
                     </div>
                   </div>
                 </div>

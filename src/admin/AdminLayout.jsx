@@ -69,7 +69,6 @@ const menuItems = [
   { name: "Orders Status", icon: ShoppingCart, path: "orders" },
   { name: "Manual Orders", icon: UtensilsCrossed, path: "manual-order" },
   { name: "Bills", icon: Receipt, path: "bill" },
-  { name: "Split Bills", icon: Scissors, path: "manual-bill" },
   { name: "KOT", icon: Ticket, path: "kitchen-bill" },
   {
     name: "Manage Menu",

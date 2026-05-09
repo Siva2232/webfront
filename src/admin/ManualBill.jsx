@@ -17,9 +17,20 @@ import SelectCashierModal from "./manualBill/components/SelectCashierModal";
 import ConfirmRemoveItemModal from "./manualBill/components/ConfirmRemoveItemModal";
 import StickyPageHeader from "./components/StickyPageHeader";
 
+/** POS cashier picker: only when 2+ HR staff have POS cashier enabled. 0 = admin-only → print as logged-in user; 1 = print as that cashier */
+function defaultCashierLabelFromSession() {
+  try {
+    const u = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    const n = u?.name != null ? String(u.name).trim() : "";
+    return n || "Admin";
+  } catch {
+    return "Admin";
+  }
+}
+
 export default function ManualBill() {
   const { bills, fetchBills, isLoading } = useOrders();
-  const { cashiers } = useCashiers();
+  const { cashiers, reload: reloadCashiers } = useCashiers();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,17 +92,48 @@ export default function ManualBill() {
 
   const stats = useMemo(() => computeStats(customItems), [customItems]);
 
-  const handleConfirmPrint = () => {
+  const closePrintModal = useCallback(() => {
+    setPrintModalOpen(false);
+    setSelectedCashier(null);
+  }, []);
+
+  const printNow = useCallback(
+    (cashierName) => {
+      if (!foundBill) return;
+      if (!customItems.length) return toast.error("No items to print");
+      printSplitReceipt({ order: foundBill, items: customItems, cashierName, toast });
+    },
+    [foundBill, customItems],
+  );
+
+  const openPrintModal = useCallback(async () => {
+    if (!foundBill) return;
+    if (!customItems.length) return toast.error("No items to print");
+
+    const list = await reloadCashiers();
+    const n = Array.isArray(list) ? list.length : 0;
+
+    // Fewer than 2 POS cashiers: no modal — admin-only setup uses session name; one cashier uses their name
+    if (n < 2) {
+      const cashierName = n === 1 ? list[0].name : defaultCashierLabelFromSession();
+      printNow(cashierName);
+      return;
+    }
+
+    setSelectedCashier(null);
+    setPrintModalOpen(true);
+  }, [foundBill, customItems.length, reloadCashiers, printNow]);
+
+  const handleConfirmPrint = useCallback(() => {
     if (!selectedCashier) return toast.error("Select cashier");
     if (!customItems.length) return toast.error("No items to print");
 
     const name =
       cashiers.find((c) => String(c.id) === String(selectedCashier))?.name ||
       "N/A";
-    printSplitReceipt({ order: foundBill, items: customItems, cashierName: name, toast });
-    setPrintModalOpen(false);
-    setSelectedCashier(null);
-  };
+    printNow(name);
+    closePrintModal();
+  }, [selectedCashier, customItems.length, cashiers, printNow, closePrintModal]);
 
   const handleClearSearch = () => {
     setSearchQuery("");
@@ -180,7 +222,7 @@ export default function ManualBill() {
             stats={stats}
             onResetItems={resetItems}
             onRequestRemoveItem={requestRemoveItem}
-            onOpenPrint={() => setPrintModalOpen(true)}
+            onOpenPrint={openPrintModal}
           />
         )}
       </div>
@@ -190,7 +232,7 @@ export default function ManualBill() {
         cashiers={cashiers}
         selectedCashier={selectedCashier}
         onChangeCashier={setSelectedCashier}
-        onCancel={() => setPrintModalOpen(false)}
+        onCancel={closePrintModal}
         onConfirm={handleConfirmPrint}
       />
 

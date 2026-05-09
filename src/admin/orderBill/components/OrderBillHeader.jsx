@@ -1,5 +1,6 @@
 import React from "react";
-import { Calendar, RefreshCw, Receipt, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Calendar, RefreshCw, Receipt, TrendingUp, Scissors, ChevronRight } from "lucide-react";
 
 export function OrderBillHeader({
   isLoading,
@@ -18,7 +19,11 @@ export function OrderBillHeader({
             <TrendingUp size={22} strokeWidth={2.25} />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-400">Billing</p>
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400">
+              <span>Billing</span>
+              <ChevronRight size={12} className="opacity-70" />
+              {/* <span className="text-zinc-600">Order bill</span> */}
+            </div>
             <h1 className="text-xl font-black tracking-tight text-zinc-900 md:text-2xl">Order bill</h1>
             <p className="text-[11px] text-zinc-500">Active invoices, print, and payments</p>
           </div>
@@ -55,6 +60,14 @@ export function OrderBillHeader({
               </button>
             )}
           </div>
+
+          <Link
+            to="/admin/manual-bill"
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-900 shadow-sm shadow-zinc-900/10 transition-colors hover:bg-zinc-50 active:scale-[0.99]"
+          >
+            <Scissors size={14} />
+            Split bill
+          </Link>
 
           <button
             type="button"

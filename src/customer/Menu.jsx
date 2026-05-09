@@ -148,7 +148,7 @@ export default function Menu() {
           )}
           
           {/* HEADER */}
-          <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-slate-100 shadow-sm">
+          <header className="relative z-40 backdrop-blur-xl bg-white/80 border-b border-slate-100 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 {/* header removed per request; table assignment UI remains below */}
@@ -515,7 +515,7 @@ export default function Menu() {
                               product={product}
                               initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id) && (addTakeawayMode ? i.isTakeaway : !i.isTakeaway)).reduce((s, i) => s + i.qty, 0)}
                               onAdd={() => product.isAvailable !== false && addToCart(product, addTakeawayMode)}
-                              onRemove={() => removeFromCart(product._id || product.id)}
+                              onRemove={() => removeFromCart(product._id || product.id, null, addTakeawayMode)}
                               onAddConfigured={(configuredItem) => product.isAvailable !== false && addToCart({ ...configuredItem, isTakeaway: addTakeawayMode }, addTakeawayMode)}
                             />
                           </div>

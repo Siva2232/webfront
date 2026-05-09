@@ -124,24 +124,34 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  const updateQuantity = (id, newQty, cartKey = null) => {
+  /**
+   * For plain items (no cartKey), `isTakeawayLine` selects dine-in vs takeaway row.
+   * When omitted, defaults to dine-in only (false) so legacy callers don’t wipe both lines.
+   */
+  const updateQuantity = (id, newQty, cartKey = null, isTakeawayLine) => {
     if (newQty < 1) {
-      removeFromCart(id, cartKey);
+      removeFromCart(id, cartKey, isTakeawayLine);
       return;
     }
     setCart((prev) =>
       prev.map((item) => {
         if (cartKey) return item.cartKey === cartKey ? { ...item, qty: newQty } : item;
-        return (item._id || item.id) === id && !item.cartKey ? { ...item, qty: newQty } : item;
+        if ((item._id || item.id) !== id || item.cartKey) return item;
+        const itemTa = !!(item.isTakeaway);
+        const targetTa = isTakeawayLine === undefined ? false : !!isTakeawayLine;
+        return itemTa === targetTa ? { ...item, qty: newQty } : item;
       })
     );
   };
 
-  const removeFromCart = (id, cartKey = null) => {
+  const removeFromCart = (id, cartKey = null, isTakeawayLine) => {
     setCart((prev) =>
       prev.filter((i) => {
         if (cartKey) return i.cartKey !== cartKey;
-        return !((i._id || i.id) === id && !i.cartKey);
+        if ((i._id || i.id) !== id || i.cartKey) return true;
+        const itemTa = !!(i.isTakeaway);
+        const targetTa = isTakeawayLine === undefined ? false : !!isTakeawayLine;
+        return itemTa !== targetTa;
       })
     );
   };
