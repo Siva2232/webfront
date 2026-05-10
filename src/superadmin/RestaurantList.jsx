@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   getRestaurants, createRestaurant, updateBranding,
-  updateFeatures, assignPlan, updateRestaurant, deleteRestaurant, getPlans,
+  updateFeatures, assignPlan, updateRestaurant, deleteRestaurant, getPlans, renewSubscription,
 } from "../api/restaurantApi";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
@@ -570,6 +570,7 @@ export default function RestaurantList() {
   // Quick Action States
   const [actionModal, setActionModal] = useState({ open: false, type: "danger", restaurantId: null, status: "" });
   const [actionLoading, setActionLoading] = useState(false);
+  const [renewingId, setRenewingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -609,6 +610,22 @@ export default function RestaurantList() {
       toast.success("Deleted");
       load();
     } catch (e) { toast.error("Delete failed"); }
+  };
+
+  const handleRenew = async (restaurant) => {
+    const rid = restaurant?.restaurantId;
+    if (!rid) return;
+    setRenewingId(rid);
+    try {
+      // Super admin renewal: extend current plan from current expiry if still active.
+      await renewSubscription(rid, { force: true });
+      toast.success("Renewed successfully");
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Renew failed");
+    } finally {
+      setRenewingId(null);
+    }
   };
 
   return (
@@ -696,6 +713,28 @@ export default function RestaurantList() {
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-1.5">
+                      {(() => {
+                        const hasPlan = !!r.subscriptionPlan;
+                        const exp = r.subscriptionExpiry ? new Date(r.subscriptionExpiry) : null;
+                        const daysLeft = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
+                        const canShowRenew =
+                          hasPlan &&
+                          r.subscriptionStatus === "active" &&
+                          daysLeft !== null &&
+                          daysLeft >= 0 &&
+                          daysLeft <= 5;
+                        if (!canShowRenew) return null;
+                        return (
+                          <button
+                            onClick={() => handleRenew(r)}
+                            disabled={renewingId === r.restaurantId}
+                            title={`Renew now (adds ${Number(r.subscriptionPlan?.duration) || 30}d from current expiry)`}
+                            className="p-2.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-lg hover:shadow-emerald-500/20 disabled:opacity-60"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${renewingId === r.restaurantId ? "animate-spin" : ""}`} />
+                          </button>
+                        );
+                      })()}
                       {/* Renewal Button (Emerald) */}
                       {r.subscriptionStatus !== "active" && (
                         <button 

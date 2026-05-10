@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, startTransition } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
@@ -65,6 +65,17 @@ function adminChildPathActive(pathname, childPath) {
   const base = `/admin/${childPath}`;
   return pathname === base || pathname.startsWith(`${base}/`);
 }
+
+const FEATURE_MAP = {
+  hr: "hr",
+  reports: "reports",
+  analytics: "reports",
+  "kitchen-bill": "kitchenPanel",
+  tables: "qrMenu",
+  orders: "onlineOrders",
+  accounting: "accounting",
+  reservations: "reservations",
+};
 
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "dashboard" },
@@ -146,25 +157,20 @@ export default function AdminLayout() {
   const { fetchOrders, fetchBills, fetchActiveKitchenBills } = useOrders();
   const { branding, features, featuresReady } = useTheme();
 
-  const featureMap = {
-    hr: "hr",
-    reports: "reports",
-    analytics: "reports",
-    "kitchen-bill": "kitchenPanel",
-    tables: "qrMenu",
-    orders: "onlineOrders",
-    accounting: "accounting",
-    reservations: "reservations",
-  };
+  const serviceNotifications = useMemo(
+    () =>
+      notifications.filter((notif) => {
+        if (notif.type === "WaiterCall") return features.waiterCall !== false;
+        if (notif.type === "BillRequested" || notif.type === "BillRequest")
+          return features.billRequest !== false;
+        return false;
+      }),
+    [notifications, features.waiterCall, features.billRequest],
+  );
 
-  const serviceNotifications = notifications.filter((notif) => {
-    if (notif.type === "WaiterCall") return features.waiterCall !== false;
-    if (notif.type === "BillRequested" || notif.type === "BillRequest")
-      return features.billRequest !== false;
-    return false;
-  });
-  const billingNotifications = notifications.filter(
-    (notif) => notif.type === "SubscriptionBilling",
+  const billingNotifications = useMemo(
+    () => notifications.filter((notif) => notif.type === "SubscriptionBilling"),
+    [notifications],
   );
 
   /** Sidebar + alerts: last 5 days of trial/plan, or expired */
@@ -191,13 +197,14 @@ export default function AdminLayout() {
     billingReminderWindowActive || billingNotifications.length > 0;
   const showServiceNotificationControl =
     features.waiterCall !== false || features.billRequest !== false;
-  const visibleMenuItems = menuItems.filter((item) => {
-    const featureKey = featureMap[item.path];
-    if (!featureKey) return true;
-    // While flags load, keep full nav visible (no empty/staggered sidebar). Hide only once we know a module is off.
-    if (!featuresReady) return true;
-    return features[featureKey] !== false;
-  });
+  const visibleMenuItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const featureKey = FEATURE_MAP[item.path];
+      if (!featureKey) return true;
+      if (!featuresReady) return true;
+      return features[featureKey] !== false;
+    });
+  }, [features, featuresReady]);
 
   /**
    * HR: All HR routes live under the “HR Management” submenu. Staff / Attendance / Leaves are
@@ -209,7 +216,7 @@ export default function AdminLayout() {
 
     const filterFeatureChildren = (children) =>
       (children || []).filter((c) => {
-        const featureKey = featureMap[c.path];
+        const featureKey = FEATURE_MAP[c.path];
         if (!featureKey) return true;
         if (!featuresReady) return true;
         return features[featureKey] !== false;
@@ -284,22 +291,35 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!localStorage.getItem("token")) return;
     const p = location.pathname;
-    if (p.startsWith("/admin/banner") || p.startsWith("/admin/offers")) {
-      fetchCustomerPromos();
-    }
     const lightOnly =
       /^\/admin\/(banner|offers)/.test(p) ||
       p.startsWith("/admin/profile") ||
       p.startsWith("/admin/subscription") ||
       p.startsWith("/admin/customer");
-    /** Analytics / accounting / HR rarely need a fresh GET /orders on every navigation — sockets + cache cover ops. */
     const skipOrdersPrefetch =
       lightOnly ||
       /^\/admin\/(analytics|accounting)/.test(p) ||
       p.startsWith("/admin/hr");
-    if (!skipOrdersPrefetch) fetchOrders();
-    if (/^\/admin\/bill(\/|$)/.test(p) || /^\/admin\/manual-bill(\/|$)/.test(p)) fetchBills();
-    if (/^\/admin\/kitchen-bill(\/|$)/.test(p)) fetchActiveKitchenBills();
+
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled) return;
+      startTransition(() => {
+        if (cancelled) return;
+        if (p.startsWith("/admin/banner") || p.startsWith("/admin/offers")) {
+          fetchCustomerPromos();
+        }
+        if (!skipOrdersPrefetch) fetchOrders();
+        if (/^\/admin\/bill(\/|$)/.test(p) || /^\/admin\/manual-bill(\/|$)/.test(p))
+          fetchBills();
+        if (/^\/admin\/kitchen-bill(\/|$)/.test(p)) fetchActiveKitchenBills();
+      });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [location.pathname, fetchCustomerPromos, fetchOrders, fetchBills, fetchActiveKitchenBills]);
 
   const dropdownRef = useRef(null);
@@ -308,18 +328,30 @@ export default function AdminLayout() {
   // track which top‑level menu has its submenu open (if any)
   const [openSubmenu, setOpenSubmenu] = useState(null);
 
-  // Count out-of-stock products and subitems, excluding any cleared by user
-  const outOfStockProducts = products.filter(
-    (p) => p && !p.isAvailable && !clearedIds.includes(p._id || p.id),
-  );
-  const outOfStockSubitems = subitems.filter(
-    (s) => s && s.isAvailable === false && !clearedIds.includes(s._id || s.id),
-  );
-  const lowStockCount = outOfStockProducts.length + outOfStockSubitems.length;
-  const outOfStockAlertItems = [
-    ...outOfStockProducts.map((item) => ({ ...item, _alertType: "product" })),
-    ...outOfStockSubitems.map((item) => ({ ...item, _alertType: "subitem" })),
-  ];
+  const {
+    outOfStockProducts,
+    outOfStockSubitems,
+    lowStockCount,
+    outOfStockAlertItems,
+  } = useMemo(() => {
+    const outOfStockProducts = products.filter(
+      (p) => p && !p.isAvailable && !clearedIds.includes(p._id || p.id),
+    );
+    const outOfStockSubitems = subitems.filter(
+      (s) => s && s.isAvailable === false && !clearedIds.includes(s._id || s.id),
+    );
+    const lowStockCount = outOfStockProducts.length + outOfStockSubitems.length;
+    const outOfStockAlertItems = [
+      ...outOfStockProducts.map((item) => ({ ...item, _alertType: "product" })),
+      ...outOfStockSubitems.map((item) => ({ ...item, _alertType: "subitem" })),
+    ];
+    return {
+      outOfStockProducts,
+      outOfStockSubitems,
+      lowStockCount,
+      outOfStockAlertItems,
+    };
+  }, [products, subitems, clearedIds]);
 
   const loadSupportModalTickets = async () => {
     setSupportModalLoading(true);
@@ -471,11 +503,9 @@ export default function AdminLayout() {
           ? CSS.escape(openSubmenu)
           : String(openSubmenu).replace(/"/g, '\\"');
       const el = document.querySelector(`[data-nav-group="${safe}"]`);
-      el?.scrollIntoView({ block: "nearest", behavior: "smooth", inline: "nearest" });
+      el?.scrollIntoView({ block: "nearest", behavior: "instant", inline: "nearest" });
     };
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(run);
-    });
+    const id = requestAnimationFrame(run);
     return () => {
       cancelled = true;
       cancelAnimationFrame(id);
@@ -768,11 +798,11 @@ export default function AdminLayout() {
                         ).get("tab");
                         return item.children.map((child) => {
                           let icon = null;
-                          if (child.icon) {
-                            icon = React.cloneElement(<child.icon />, {
-                              size: 14,
-                              className: "inline mr-1",
-                            });
+                          const IconComp = child.icon;
+                          if (IconComp) {
+                            icon = (
+                              <IconComp size={14} className="inline mr-1" />
+                            );
                           } else if (child.tab === "overview")
                             icon = (
                               <BarChart size={14} className="inline mr-1" />
@@ -1125,11 +1155,41 @@ export default function AdminLayout() {
                       </button>
                     </div>
                     <div className="max-h-[320px] overflow-y-auto no-scrollbar">
-                      {billingNotifications.length === 0 ? (
+                      {billingNotifications.length === 0 && subscriptionSidebarAlert && (
+                        <div className="p-4 border-b border-amber-100/80 bg-gradient-to-b from-amber-50/90 to-white">
+                          <p className="text-xs font-black uppercase tracking-widest text-amber-800">
+                            {subscriptionSidebarAlert.kind === "expired"
+                              ? "Subscription expired"
+                              : "Plan ending soon"}
+                          </p>
+                          <p className="mt-2 text-sm font-semibold text-slate-800 leading-snug">
+                            {subscriptionSidebarAlert.kind === "expired"
+                              ? "Your access may be limited until you renew. Pay now to extend your plan."
+                              : `Your plan ends in ${subscriptionSidebarAlert.daysLeft} day${subscriptionSidebarAlert.daysLeft === 1 ? "" : "s"}${subscriptionSidebarAlert.expiry ? ` (${subscriptionSidebarAlert.expiry.toLocaleDateString(undefined, { dateStyle: "medium" })})` : ""}.`}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowBillingPanel(false);
+                              navigate("/admin/subscription");
+                            }}
+                            className="mt-4 w-full rounded-2xl bg-amber-600 py-3 text-center text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-amber-600/25 transition hover:bg-amber-700"
+                          >
+                            Renew now
+                          </button>
+                          {/* <p className="mt-3 text-[10px] text-slate-500 text-center leading-relaxed">
+                            You may also receive email-style alerts here when the system sends reminder pings (last 5 days, up to twice daily).
+                          </p> */}
+                        </div>
+                      )}
+
+                      {billingNotifications.length === 0 && !subscriptionSidebarAlert ? (
                         <p className="p-6 text-sm text-slate-500 text-center">
-                          No billing alerts. Reminders appear here within the last 5 days before expiry (twice daily).
+                          No billing alerts right now. When your plan is within 5 days of expiry, a reminder and renew action appear here. Server reminders may also show as separate items (twice daily when enabled).
                         </p>
-                      ) : (
+                      ) : null}
+
+                      {billingNotifications.length > 0 &&
                         billingNotifications.map((notif) => (
                           <div
                             key={notif._id}
@@ -1151,6 +1211,16 @@ export default function AdminLayout() {
                                       })
                                     : ""}
                                 </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowBillingPanel(false);
+                                    navigate("/admin/subscription");
+                                  }}
+                                  className="mt-3 w-full rounded-xl border border-amber-200 bg-amber-50 py-2.5 text-[10px] font-black uppercase tracking-widest text-amber-900 hover:bg-amber-100"
+                                >
+                                  Renew
+                                </button>
                               </div>
                               <button
                                 type="button"
@@ -1164,8 +1234,7 @@ export default function AdminLayout() {
                               </button>
                             </div>
                           </div>
-                        ))
-                      )}
+                        ))}
                     </div>
                   </motion.div>
                 )}

@@ -207,6 +207,7 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [paymentResult, setPaymentResult] = useState(null);
+  const [isRenewing, setIsRenewing] = useState(false);
 
   useEffect(() => {
     getPlans()
@@ -218,6 +219,7 @@ export default function SubscriptionPage() {
     setSelectedPlan(null);
     setPaymentResult(serverData);
     await loadBranding(branding.restaurantId);
+    setIsRenewing(false);
     toast.success("Payment verified! Your account is now active.", {
       duration: 6000,
       icon: "🚀",
@@ -229,8 +231,26 @@ export default function SubscriptionPage() {
   const daysLeft = branding.subscriptionExpiry
     ? Math.ceil((new Date(branding.subscriptionExpiry) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
+  const planDurationDays = Number(currentPlan?.duration) > 0 ? Number(currentPlan.duration) : 30;
+  const renewalAddsDays = planDurationDays + Math.max(0, daysLeft ?? 0);
+  const showRenewButton =
+    !!currentPlan &&
+    daysLeft !== null &&
+    daysLeft >= 0 &&
+    daysLeft <= 5 &&
+    branding.subscriptionStatus !== "suspended";
 
   const primary = branding.primaryColor || "#18181b";
+
+  const handleQuickRenew = async () => {
+    // Renewal must be paid: open Stripe modal for the CURRENT plan.
+    if (!currentPlan?._id) {
+      toast.error("No plan assigned. Please choose a plan below.");
+      return;
+    }
+    setIsRenewing(true);
+    setSelectedPlan(currentPlan);
+  };
 
   return (
     <div className="relative min-h-full overflow-hidden">
@@ -247,7 +267,10 @@ export default function SubscriptionPage() {
               restaurantId={branding.restaurantId}
               primaryColor={branding.primaryColor}
               onSucceed={(serverData) => handlePaymentSuccess(serverData)}
-              onCancel={() => setSelectedPlan(null)}
+              onCancel={() => {
+                setSelectedPlan(null);
+                setIsRenewing(false);
+              }}
             />
           </Elements>
         )}
@@ -381,6 +404,24 @@ export default function SubscriptionPage() {
               </div>
             </div>
           </div>
+
+          {showRenewButton && (
+            <div className="mt-5 flex flex-col gap-3 border-t border-zinc-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-zinc-600">
+                Your plan ends soon. Renew now to avoid the interruption of services.
+                {/* <span className="font-black text-zinc-900">{renewalAddsDays} days</span>. */}
+              </p>
+              <button
+                type="button"
+                disabled={isRenewing}
+                onClick={handleQuickRenew}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-zinc-900/15 transition hover:bg-zinc-800 disabled:opacity-60"
+              >
+                {isRenewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                Renew
+              </button>
+            </div>
+          )}
         </motion.div>
 
         <div className="mb-5 flex items-center justify-between gap-4">

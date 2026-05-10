@@ -17,6 +17,7 @@ export const updateFeatures      = (id, data)  => API.put(`/restaurants/${id}/fe
 export const assignPlan          = (id, data)  => API.put(`/restaurants/${id}/plan`, data);
 export const deleteRestaurant    = (id)        => API.delete(`/restaurants/${id}`);
 export const getAnalytics        = ()          => API.get("/restaurants/analytics/overview");
+export const renewSubscription   = (id, data)  => API.post(`/restaurants/${id}/renew`, data);
 
 // ── Plans ──────────────────────────────────────────────────────────────────
 export const getPlans   = ()         => API.get("/plans");
@@ -35,6 +36,7 @@ export const createPaymentIntent = (data) => API.post("/payments/create-payment-
 export const verifyPayment = (paymentIntentId) => API.get(`/payments/verify-payment/${paymentIntentId}`);
 export const getPaymentConfig = () => API.get("/payments/config");
 export const recordSubscriptionPayment = (id, data) => API.post(`/restaurants/${id}/subscription-payment`, data);
+// renewSubscription is defined above (supports optional body e.g. { force: true })
 
 // ── Super Admin Notifications ──────────────────────────────────────────────
 export const getSANotifications = () => API.get("/sa-notifications");
