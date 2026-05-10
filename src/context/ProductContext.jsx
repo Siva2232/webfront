@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useMemo, useRef } from 
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { syncRestaurantCache, getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { isSuperAdminSession } from "../utils/sessionFlags";
 
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
@@ -90,6 +91,7 @@ export const ProductProvider = ({ children }) => {
   const _fetchProductsInFlight = useRef(false);
 
   const fetchProducts = async () => {
+    if (isSuperAdminSession()) return;
     if (_fetchProductsInFlight.current) return;
     _fetchProductsInFlight.current = true;
     try {
@@ -139,6 +141,7 @@ export const ProductProvider = ({ children }) => {
 
   // Store restaurantId and fetch products on mount
   useEffect(() => {
+    if (isSuperAdminSession()) return;
     if (currentRid) {
       syncRestaurantCache(currentRid);
     }
@@ -149,6 +152,7 @@ export const ProductProvider = ({ children }) => {
   // and reset state + re-fetch when it happens.
   useEffect(() => {
     const checkRidChange = () => {
+      if (isSuperAdminSession()) return;
       const liveRid = getCurrentRestaurantId();
       if (liveRid && liveRid !== mountedRid.current) {
         mountedRid.current = liveRid;
@@ -200,6 +204,8 @@ export const ProductProvider = ({ children }) => {
 
   // Listen for real-time updates — connect for ALL users (customers need product updates too)
   useEffect(() => {
+    if (isSuperAdminSession()) return () => {};
+
     socket.connect();
 
     // Join restaurant-specific room so we only receive events for our restaurant

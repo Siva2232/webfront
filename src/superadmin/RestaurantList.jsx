@@ -228,6 +228,8 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           sidebarTextColor: form.sidebarTextColor
         };
         const { data } = await createRestaurant(createData);
+        // After create, server may merge plan features; re-apply drawer toggles (same order as edit: plan → features).
+        await updateFeatures(data.restaurantId, form.features);
         if (data.ownerCreated) {
           toast.success(`Restaurant created!\nOwner login: ${data.ownerEmail}`, { duration: 6000 });
         } else {
@@ -422,7 +424,7 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
                 <section>
                   <div className="flex items-center gap-2 mb-6">
                     <div className="w-1 h-4 bg-purple-500 rounded-full" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Global Asset Control</h3>
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Import Logo</h3>
                   </div>
                   <div className="p-8 bg-slate-900/80 border border-slate-800 rounded-[2rem] flex flex-col items-center">
                     <div className="relative group mb-6">
@@ -445,18 +447,19 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
                 <section>
                   <div className="flex items-center gap-2 mb-6">
                     <div className="w-1 h-4 bg-orange-500 rounded-full" />
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Color Spectrum</h3>
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Color Theme</h3>
                   </div>
                   <div className="grid gap-6">
-                    <div className="space-y-3">
+                    {/* <div className="space-y-3">
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Core Theme</p>
                       <ColorRow label="Primary Drive"   name="primaryColor"   value={form.primaryColor}   onChange={setColor} />
                       <ColorRow label="Secondary Axis" name="secondaryColor" value={form.secondaryColor} onChange={setColor} />
                       <ColorRow label="Accent Pulse"    name="accentColor"    value={form.accentColor}    onChange={setColor} />
-                    </div>
+                    </div> */}
 
                     <div className="pt-4 border-t border-slate-800 space-y-3">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sidebar Identity</p>
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Sidebar Theme</p>
+                      <ColorRow label="Primary Drive"   name="primaryColor"   value={form.primaryColor}   onChange={setColor} />
                       <ColorRow label="Sidebar Background" name="sidebarBgColor" value={form.sidebarBgColor} onChange={setColor} />
                       <ColorRow label="Sidebar Icons & Text" name="sidebarTextColor" value={form.sidebarTextColor} onChange={setColor} />
                     </div>

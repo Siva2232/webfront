@@ -193,6 +193,7 @@ export default function Dashboard() {
   useEffect(() => {
     const alertsMap = {};
     notifications.forEach(n => {
+      if (n.type === "SubscriptionBilling") return;
       if (n.status === "Pending") {
         const key = `table-${n.table}`;
         if (!alertsMap[key]) alertsMap[key] = { waiter: false, bill: false, ids: [] };

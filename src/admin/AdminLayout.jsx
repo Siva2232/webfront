@@ -50,6 +50,8 @@ import {
   ArrowLeftRight,
   PieChart,
   Repeat,
+  BellRing,
+  CreditCard,
 } from "lucide-react";
 import API from "../api/axios";
 import { useProducts } from "../context/ProductContext";
@@ -157,6 +159,32 @@ export default function AdminLayout() {
       return features.billRequest !== false;
     return false;
   });
+  const billingNotifications = notifications.filter(
+    (notif) => notif.type === "SubscriptionBilling",
+  );
+
+  /** Sidebar + alerts: last 5 days of trial/plan, or expired */
+  const subscriptionSidebarAlert = useMemo(() => {
+    const status = branding?.subscriptionStatus;
+    const expRaw = branding?.subscriptionExpiry;
+    if (!expRaw) return null;
+    const exp = new Date(expRaw);
+    if (Number.isNaN(+exp)) return null;
+    const daysLeft = Math.ceil((exp - new Date()) / 86400000);
+    const eligible = status === "active" || status === "trial";
+    if (eligible && daysLeft >= 0 && daysLeft <= 5) {
+      return { kind: "soon", daysLeft, expiry: exp };
+    }
+    if (status === "expired" || daysLeft < 0) {
+      return { kind: "expired", daysLeft };
+    }
+    return null;
+  }, [branding?.subscriptionExpiry, branding?.subscriptionStatus]);
+
+  /** Header reminder bell: show in final 5 days / expired, or when cron billing alerts exist */
+  const billingReminderWindowActive = !!subscriptionSidebarAlert;
+  const showBillingReminderIcon =
+    billingReminderWindowActive || billingNotifications.length > 0;
   const showServiceNotificationControl =
     features.waiterCall !== false || features.billRequest !== false;
   const visibleMenuItems = menuItems.filter((item) => {
@@ -226,11 +254,13 @@ export default function AdminLayout() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showStockAlert, setShowStockAlert] = useState(false);
   const [showWaiterPanel, setShowWaiterPanel] = useState(false);
+  const [showBillingPanel, setShowBillingPanel] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportModalLoading, setSupportModalLoading] = useState(false);
   const [supportModalTickets, setSupportModalTickets] = useState([]);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const waiterRef = useRef(null);
+  const billingRef = useRef(null);
   const supportRef = useRef(null);
 
   const { user } = useAuth();
@@ -345,6 +375,9 @@ export default function AdminLayout() {
       }
       if (waiterRef.current && !waiterRef.current.contains(e.target)) {
         setShowWaiterPanel(false);
+      }
+      if (billingRef.current && !billingRef.current.contains(e.target)) {
+        setShowBillingPanel(false);
       }
       if (supportRef.current && !supportRef.current.contains(e.target)) {
         setShowSupportModal(false);
@@ -833,6 +866,66 @@ export default function AdminLayout() {
           })}
         </nav>
 
+        {/* Billing countdown — last 5 days (trial / plan) or expired */}
+        {subscriptionSidebarAlert && (
+          <div className="shrink-0 px-3 pb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/subscription")}
+              className={`w-full rounded-2xl border text-left transition-all hover:opacity-95 active:scale-[0.98] ${
+                subscriptionSidebarAlert.kind === "expired"
+                  ? "border-rose-300 bg-rose-50"
+                  : "border-amber-300 bg-amber-50"
+              } ${isCollapsed ? "p-2 flex justify-center" : "p-3"}`}
+              title="Open Subscription"
+            >
+              <div
+                className={`flex items-start gap-2.5 ${isCollapsed ? "justify-center" : ""}`}
+              >
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                    subscriptionSidebarAlert.kind === "expired"
+                      ? "bg-rose-500 text-white"
+                      : "bg-amber-500 text-white"
+                  }`}
+                >
+                  <BellRing size={18} strokeWidth={2.25} />
+                </div>
+                {!isCollapsed && (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 leading-none">
+                      {subscriptionSidebarAlert.kind === "expired"
+                        ? "Subscription"
+                        : branding?.subscriptionStatus === "trial"
+                          ? "Free trial"
+                          : "Billing"}
+                    </p>
+                    <p className="mt-1 text-sm font-black text-slate-900 leading-tight">
+                      {subscriptionSidebarAlert.kind === "expired"
+                        ? "Expired — renew now"
+                        : subscriptionSidebarAlert.daysLeft === 0
+                          ? "Last day today"
+                          : `${subscriptionSidebarAlert.daysLeft} day${
+                              subscriptionSidebarAlert.daysLeft === 1 ? "" : "s"
+                            } left`}
+                    </p>
+                    {subscriptionSidebarAlert.kind === "soon" && (
+                      <p className="text-[10px] font-semibold text-amber-800/90 mt-1 truncate">
+                        Until{" "}
+                        {subscriptionSidebarAlert.expiry.toLocaleDateString(undefined, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* Bottom brand — compact */}
         <div
           className="shrink-0 px-2 pb-2 pt-1"
@@ -924,6 +1017,128 @@ export default function AdminLayout() {
                 })}
               </span>
             </div>
+
+            {/* Expiry reminders — BellRing icon only in last 5 days / expired, or when alerts exist */}
+            {showBillingReminderIcon && (
+            <div className="relative" ref={billingRef}>
+              <button
+                type="button"
+                onClick={() => setShowBillingPanel((p) => !p)}
+                className={`relative p-2 sm:p-3 rounded-full transition-all duration-200 ${
+                  billingNotifications.length > 0
+                    ? "bg-amber-50 text-amber-800 hover:bg-amber-100 ring-2 ring-amber-400/90 shadow-md"
+                    : billingReminderWindowActive
+                      ? "bg-amber-50/90 text-amber-700 hover:bg-amber-100 ring-2 ring-amber-300/70"
+                      : "bg-slate-50 text-amber-700 hover:bg-amber-50 ring-1 ring-amber-200/60"
+                }`}
+                aria-label={
+                  billingReminderWindowActive
+                    ? "Subscription expiry reminders"
+                    : "Billing reminder notifications"
+                }
+              >
+                {notificationsLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <BellRing
+                    size={24}
+                    strokeWidth={2}
+                    className={
+                      billingNotifications.length > 0
+                        ? "animate-bounce"
+                        : billingReminderWindowActive
+                          ? "animate-pulse"
+                          : ""
+                    }
+                  />
+                )}
+                {billingNotifications.length > 0 && !notificationsLoading && (
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
+                    {billingNotifications.length > 99
+                      ? "99+"
+                      : billingNotifications.length}
+                  </span>
+                )}
+                {billingNotifications.length === 0 &&
+                  billingReminderWindowActive &&
+                  !notificationsLoading && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-rose-500 border-2 border-white shadow-sm"
+                      title="Plan expiring soon"
+                      aria-hidden
+                    />
+                  )}
+              </button>
+
+              <AnimatePresence>
+                {showBillingPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-4 w-80 max-w-[95vw] md:max-w-[380px] bg-white rounded-3xl shadow-2xl border border-amber-100 overflow-hidden z-[100]"
+                  >
+                    <div className="p-5 border-b border-amber-50 bg-amber-50/50 flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
+                        <BellRing size={16} className="text-amber-600 shrink-0" />
+                        Expiry reminders
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/admin/subscription")}
+                        className="text-[10px] font-black uppercase tracking-widest text-amber-700 hover:text-amber-900"
+                      >
+                        Renew
+                      </button>
+                    </div>
+                    <div className="max-h-[320px] overflow-y-auto no-scrollbar">
+                      {billingNotifications.length === 0 ? (
+                        <p className="p-6 text-sm text-slate-500 text-center">
+                          No billing alerts. Reminders appear here within the last 5 days before expiry (twice daily).
+                        </p>
+                      ) : (
+                        billingNotifications.map((notif) => (
+                          <div
+                            key={notif._id}
+                            className="p-4 border-b border-slate-50 hover:bg-amber-50/40 transition-colors group"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-amber-900 uppercase tracking-tight">
+                                  Plan expiry
+                                </p>
+                                <p className="text-sm text-slate-700 mt-1 leading-snug">
+                                  {notif.message || "Renew your subscription."}
+                                </p>
+                                <span className="text-[10px] font-bold text-slate-400 mt-2 block uppercase tracking-tighter">
+                                  {notif.createdAt
+                                    ? new Date(notif.createdAt).toLocaleString([], {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                      })
+                                    : ""}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  markNotificationAsRead(notif._id);
+                                }}
+                                className="p-2 rounded-xl opacity-80 group-hover:opacity-100 bg-amber-100 text-amber-700 hover:bg-amber-200 shrink-0"
+                                title="Dismiss"
+                              >
+                                <CheckCircle2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            )}
 
             {/* Waiter Notifications */}
             {showServiceNotificationControl && (

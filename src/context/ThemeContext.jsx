@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import API from "../api/axios";
+import { isSuperAdminSession } from "../utils/sessionFlags";
 import {
   DEFAULT_RECEIPT_HEADER,
   saveReceiptHeader,
@@ -212,6 +213,7 @@ export const ThemeProvider = ({ children }) => {
   }, [branding]);
 
   useEffect(() => {
+    if (isSuperAdminSession()) return;
     const restaurantId = localStorage.getItem("restaurantId");
     if (restaurantId) loadBranding(restaurantId);
   }, [loadBranding]);
@@ -220,6 +222,7 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
+      if (isSuperAdminSession()) return;
       const rid = localStorage.getItem("restaurantId");
       if (rid) loadBranding(rid);
     };

@@ -3,6 +3,7 @@ import API from "../api/axios";
 import { useTheme } from "./ThemeContext";
 import { io as socketIOClient } from "socket.io-client";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { isSuperAdminSession } from "../utils/sessionFlags";
 
 const UIContext = createContext();
 
@@ -81,6 +82,7 @@ export const UIProvider = ({ children }) => {
   }, [reservationsEnabled]);
 
   const fetchNotifications = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     setNotificationsLoading(true);
     try {
       const { data } = await API.get("/notifications");
@@ -93,6 +95,7 @@ export const UIProvider = ({ children }) => {
   }, []);
 
   const fetchReservations = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data } = await API.get(`/reservations?date=${today}`);
@@ -103,6 +106,7 @@ export const UIProvider = ({ children }) => {
   }, []);
 
   const fetchSupportTicketCount = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     try {
       const isSupportAgent = localStorage.getItem("isSupportLoggedIn") === "true";
       
@@ -148,6 +152,7 @@ export const UIProvider = ({ children }) => {
   };
 
   const fetchBanners = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     // Only set loading if we have no items to prevent UI flashing
     if (banners.length === 0) setIsLoading(true);
     try {
@@ -172,6 +177,7 @@ export const UIProvider = ({ children }) => {
   }, [banners.length]);
 
   const fetchOffers = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     // Only set loading if we have no items
     if (offers.length === 0) setIsLoading(true);
     try {
@@ -197,6 +203,7 @@ export const UIProvider = ({ children }) => {
   }, [offers.length]);
 
   const fetchData = useCallback(async () => {
+    if (isSuperAdminSession()) return;
     // Always fetch public data (banners/offers) — needed for customer panel
     // Only fetch admin-only data (notifications/reservations) when authenticated
     const isAdmin = !!localStorage.getItem("token");
@@ -257,13 +264,13 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("connect", () => {
-      // Join the restaurant room for tenant-scoped events
+      if (isSuperAdminSession()) return;
       const rid = getCurrentRestaurantId();
       if (rid) socket.emit("joinRoom", { restaurantId: rid, token: localStorage.getItem('token') || undefined });
     });
 
     socket.on("newNotification", (notif) => {
-      if (!localStorage.getItem("token")) return;
+      if (!localStorage.getItem("token") || isSuperAdminSession()) return;
       fetchNotifications();
       // Handle different types for specific UI sounds/events
       if (notif && notif.type === "BillRequested") {
@@ -274,21 +281,22 @@ export const UIProvider = ({ children }) => {
         const event = new CustomEvent("waiterCall", { detail: notif });
         window.dispatchEvent(event);
       }
+      // SubscriptionBilling: list only under AdminLayout reminder bell — no toast / kitchen UI
     });
 
     socket.on("notificationUpdated", () => {
-      if (localStorage.getItem("token")) {
+      if (localStorage.getItem("token") && !isSuperAdminSession()) {
         fetchNotifications();
         fetchSupportTicketCount();
       }
     });
 
     socket.on("newReservation", () => {
-      if (localStorage.getItem("token") && reservationsEnabledRef.current) fetchReservations();
+      if (localStorage.getItem("token") && !isSuperAdminSession() && reservationsEnabledRef.current) fetchReservations();
     });
 
     socket.on("reservationUpdated", () => {
-      if (localStorage.getItem("token") && reservationsEnabledRef.current) fetchReservations();
+      if (localStorage.getItem("token") && !isSuperAdminSession() && reservationsEnabledRef.current) fetchReservations();
     });
 
     // HR real-time sync
@@ -318,7 +326,7 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("supportTicketUpdated", () => {
-      if (localStorage.getItem("token")) fetchSupportTicketCount();
+      if (localStorage.getItem("token") && !isSuperAdminSession()) fetchSupportTicketCount();
     });
 
     socket.on("disconnect", () => {
@@ -327,6 +335,7 @@ export const UIProvider = ({ children }) => {
 
     // Polling fallback — admin-only endpoints only polled when authenticated
     const pollInterval = setInterval(() => {
+      if (isSuperAdminSession()) return;
       if (localStorage.getItem("token")) {
         fetchNotifications();
         if (reservationsEnabledRef.current) fetchReservations();

@@ -3,6 +3,7 @@ import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
+import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
 
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
@@ -73,7 +74,7 @@ export const OrderProvider = ({ children }) => {
 
   const fetchOrders = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || isSuperAdminSession()) return;
     if (_ordersFetchInFlight.current) return;
     _ordersFetchInFlight.current = true;
 
@@ -198,7 +199,7 @@ export const OrderProvider = ({ children }) => {
   // fetch bills (invoices) - for admin billing screen
   const fetchBills = useCallback(async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || isSuperAdminSession()) return;
     if (_billsFetchInFlight.current) return;
     _billsFetchInFlight.current = true;
 
@@ -369,7 +370,7 @@ export const OrderProvider = ({ children }) => {
   // Fetch kitchen bills - separate batches for kitchen/waiter display
   const fetchKitchenBills = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || isSuperAdminSession()) return;
 
     // Try to hydrate from cache for instant UI
     try {
@@ -397,6 +398,7 @@ export const OrderProvider = ({ children }) => {
 
   // Fetch active (non-served) kitchen bills only
   const fetchActiveKitchenBills = async () => {
+    if (isSuperAdminSession()) return;
     if (_kitchenBillsFetchInFlight.current) return;
     _kitchenBillsFetchInFlight.current = true;
     try {
@@ -637,6 +639,8 @@ export const OrderProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (isSuperAdminSession()) return () => {};
+
     // reconnect socket once when provider mounts
     socket.connect();
     console.log("OrderContext: Socket initializing...");
@@ -843,7 +847,7 @@ export const OrderProvider = ({ children }) => {
   // initialisers above, so we only need to fire the network requests once.
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
+    if (token && !isSuperAdminSession()) {
       fetchOrders();
       fetchBills();
     }
@@ -852,7 +856,7 @@ export const OrderProvider = ({ children }) => {
     // Also detect restaurant switch and reset state accordingly.
     const onFocus = () => {
       const t = localStorage.getItem("token");
-      if (!t) return;
+      if (!t || isSuperAdminSession()) return;
 
       // Detect restaurant switch
       const liveRid = getCurrentRestaurantId();

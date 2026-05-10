@@ -16,14 +16,18 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     localStorage.setItem("userInfo", JSON.stringify(userData));
     if (userData.token) localStorage.setItem("token", userData.token);
-    if (userData.restaurantId) {
-      syncRestaurantCache(userData.restaurantId); // wipe stale cache from previous restaurant
-      localStorage.setItem("restaurantId", userData.restaurantId);
-    }
+
     if (userData.role === "superadmin") {
       localStorage.setItem("isSuperAdmin", "true");
+      // Super-admin JWT is not scoped to a tenant — drop stale restaurant id so axios does not call admin POS APIs.
+      localStorage.removeItem("restaurantId");
+      localStorage.removeItem("_cachedRestaurantId");
     } else {
       localStorage.removeItem("isSuperAdmin");
+      if (userData.restaurantId) {
+        syncRestaurantCache(userData.restaurantId);
+        localStorage.setItem("restaurantId", userData.restaurantId);
+      }
     }
   }, []);
 

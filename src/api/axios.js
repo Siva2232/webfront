@@ -44,15 +44,14 @@ API.interceptors.request.use((req) => {
   const urlParams = new URLSearchParams(window.location.search);
   let restaurantId = (urlParams.get('restaurantId') || localStorage.getItem('restaurantId') || '').toUpperCase().trim();
 
-  if (!restaurantId) {
-    // Last resort: decode the JWT payload to extract restaurantId
+  if (!restaurantId && localStorage.getItem('isSuperAdmin') !== 'true') {
+    // Last resort: decode the JWT payload to extract restaurantId (not for platform super-admin tokens).
     try {
       const tok = localStorage.getItem('token') || localStorage.getItem('hrToken');
       if (tok) {
         const payload = JSON.parse(atob(tok.split('.')[1]));
         if (payload.restaurantId) {
           restaurantId = String(payload.restaurantId).toUpperCase().trim();
-          // Persist so future requests don't need to decode again
           localStorage.setItem('restaurantId', restaurantId);
         }
       }

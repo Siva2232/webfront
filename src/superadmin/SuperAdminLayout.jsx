@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
