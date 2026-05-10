@@ -24,6 +24,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("_cachedRestaurantId");
     } else {
       localStorage.removeItem("isSuperAdmin");
+      // Restaurant staff login — clear support-portal flag so UIContext does not call /support-tickets/all.
+      if (userData.role !== "support") {
+        localStorage.removeItem("isSupportLoggedIn");
+      }
       if (userData.restaurantId) {
         syncRestaurantCache(userData.restaurantId);
         localStorage.setItem("restaurantId", userData.restaurantId);

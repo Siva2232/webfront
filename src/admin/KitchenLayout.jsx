@@ -1,5 +1,4 @@
-
-import { NavLink, Outlet, useNavigate, } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
 import { useState, useEffect, useRef } from "react";
@@ -19,8 +18,27 @@ import {
   CalendarX2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useOrders } from "../context/OrderContext";
+import { useUI } from "../context/UIContext";
 
 export default function KitchenLayout() {
+  const location = useLocation();
+  const { fetchOrders, fetchBills, fetchActiveKitchenBills } = useOrders();
+  const { subscribeNotifyPolling, fetchNotifications } = useUI();
+
+  useEffect(() => {
+    const unsub = subscribeNotifyPolling();
+    fetchNotifications();
+    return unsub;
+  }, [subscribeNotifyPolling, fetchNotifications]);
+
+  useEffect(() => {
+    const p = location.pathname;
+    if (p.includes("/kitchen/dashboard") || p.includes("/kitchen/orders")) fetchOrders();
+    if (/^\/kitchen\/bill(\/|$)/.test(p)) fetchBills();
+    if (p.includes("/kitchen/kot") || p.includes("/kitchen/kitchen-bill")) fetchActiveKitchenBills();
+  }, [location.pathname, fetchOrders, fetchBills, fetchActiveKitchenBills]);
+
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);

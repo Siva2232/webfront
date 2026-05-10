@@ -5,6 +5,7 @@ import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useTheme } from "../context/ThemeContext";
 import API from "../api/axios";
+import { fetchTablesCoalesced } from "../api/fetchTablesCoalesced";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -42,7 +43,7 @@ import * as XLSX from "xlsx";
 
 export default function Dashboard() {
   const { products = [], subitems = [] } = useProducts();
-  const { orders = [], fetchOrders } = useOrders();
+  const { orders = [] } = useOrders();
   const { reservations = [], notifications = [], markNotificationAsRead } = useUI();
   const { features } = useTheme();
   const reservationsEnabled = features.reservations !== false;
@@ -110,9 +111,9 @@ export default function Dashboard() {
       setIsSyncing(true);
       try {
         // Run stats + tables in parallel (2 calls instead of 3)
-        const [statsRes, tableRes] = await Promise.all([
+        const [statsRes, tableData] = await Promise.all([
           API.get('/orders/stats').catch(() => null),
-          API.get("/tables").catch(() => null),
+          fetchTablesCoalesced().catch(() => null),
         ]);
 
         if (statsRes?.data) {
@@ -135,13 +136,12 @@ export default function Dashboard() {
           localStorage.setItem(tenantKey("dashboard_last_sync", _rid), now.toString());
         }
 
-        if (tableRes?.data) {
-          setTables(tableRes.data);
-          localStorage.setItem(tenantKey("restaurant_tables_config", _rid), JSON.stringify(tableRes.data));
+        if (tableData && Array.isArray(tableData)) {
+          setTables(tableData);
+          localStorage.setItem(tenantKey("restaurant_tables_config", _rid), JSON.stringify(tableData));
         }
 
-        // Also refresh live orders list in background
-        if (fetchOrders) fetchOrders().catch(() => {});
+        // Orders list: OrderContext + route prefetch + sockets — avoid duplicate GET /orders here.
       } catch (err) {
         console.error("Dashboard sync error:", err);
       } finally {
@@ -367,7 +367,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="flex items-center gap-3 text-xl font-black text-zinc-900">
               <TableIcon className="text-zinc-700" size={24} />
-              Kitchen Floor
+              Live Table Status
             </h2>
             <Link to="/admin/tables" className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800">
               View all tables

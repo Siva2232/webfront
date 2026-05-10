@@ -9,3 +9,15 @@ export function isSuperAdminSession() {
     return false;
   }
 }
+
+/** Role claim from the POS/support JWT in localStorage (must match backend authorize checks). */
+export function getTokenRole() {
+  try {
+    const tok = localStorage.getItem("token");
+    if (!tok) return null;
+    const payload = JSON.parse(atob(tok.split(".")[1]));
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}

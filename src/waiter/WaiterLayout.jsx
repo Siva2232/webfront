@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
 import { useState, useEffect, useRef } from "react";
@@ -21,9 +21,33 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUI } from "../context/UIContext";
+import { useOrders } from "../context/OrderContext";
 
 export default function WaiterLayout() {
-  const { notifications = [], markNotificationAsRead } = useUI();
+  const location = useLocation();
+  const { fetchOrders, fetchBills, fetchActiveKitchenBills } = useOrders();
+  const {
+    notifications = [],
+    markNotificationAsRead,
+    subscribeNotifyPolling,
+    fetchNotifications,
+  } = useUI();
+
+  useEffect(() => {
+    const unsub = subscribeNotifyPolling();
+    fetchNotifications();
+    return unsub;
+  }, [subscribeNotifyPolling, fetchNotifications]);
+
+  useEffect(() => {
+    const p = location.pathname;
+    if (
+      /^\/waiter\/(dashboard|orders|tables|products|panel|order-summary|reservations|qr-generator)(\/|$)/.test(p)
+    )
+      fetchOrders();
+    if (/^\/waiter\/bill(\/|$)/.test(p)) fetchBills();
+    if (/^\/waiter\/kitchen-bill(\/|$)/.test(p)) fetchActiveKitchenBills();
+  }, [location.pathname, fetchOrders, fetchBills, fetchActiveKitchenBills]);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);

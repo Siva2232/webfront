@@ -62,7 +62,7 @@ const ActionModal = ({ open, onClose, title, message, onConfirm, type = "danger"
 const FEATURE_KEYS = [
   { key: "hr",           label: "HR Management" },
 
-  { key: "inventory",    label: "Inventory" },
+  // { key: "inventory",    label: "Inventory" },
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
   { key: "onlineOrders", label: "Online Orders" },
@@ -213,7 +213,25 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           address: form.address,
           subscriptionStatus: form.subscriptionStatus,
         });
-        if (form.subscriptionPlan && form.subscriptionStatus === "active") {
+        // Only call assignPlan when the plan changes or the subscription must be (re)started — not on every edit.
+        const selectedPlanId = String(form.subscriptionPlan || "");
+        const initialPlanId = String(
+          initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
+        );
+        const samePlan = selectedPlanId !== "" && selectedPlanId === initialPlanId;
+        const hasFutureExpiry =
+          initial.subscriptionExpiry &&
+          new Date(initial.subscriptionExpiry) > new Date();
+        const planRenewalNotNeeded =
+          samePlan &&
+          hasFutureExpiry &&
+          initial.subscriptionStatus !== "expired";
+
+        if (
+          selectedPlanId &&
+          form.subscriptionStatus === "active" &&
+          !planRenewalNotNeeded
+        ) {
           await assignPlan(initial.restaurantId, { planId: form.subscriptionPlan });
         }
         // Must run after assignPlan: plan assignment turns on plan-included modules;

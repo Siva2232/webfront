@@ -9,6 +9,9 @@ import { billIdentityKey } from "../utils/billIdentity";
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
 const orderKey = (order) => String(order?._id || order?.id || "");
 
+/** Default page size for POS orders + bills list fetches (matches admin pagination expectations). */
+const LIST_FETCH_LIMIT = 15;
+
 // the socket URL should match the backend deployment; use env var if available
 // fall back to the same host as the REST API by trimming any trailing /api segment
 const SOCKET_URL =
@@ -41,6 +44,8 @@ export const OrderProvider = ({ children }) => {
       return Array.isArray(cached) ? cached : [];
     } catch { return []; }
   });
+  const ordersRef = useRef(orders);
+  ordersRef.current = orders;
   const [bills, setBills] = useState(() => {
     try {
       const cached = _tGet('cachedBills');
@@ -68,26 +73,29 @@ export const OrderProvider = ({ children }) => {
     } catch {}
     return false;
   });
-  const _billsFetchInFlight = useRef(false);
-  const _ordersFetchInFlight = useRef(false);
-  const _kitchenBillsFetchInFlight = useRef(false);
+  /** Concurrent callers await the same in-flight promise — avoids duplicate HTTP GETs. */
+  const ordersFetchDedupeRef = useRef(null);
+  const billsFetchDedupeRef = useRef(null);
+  const kitchenActiveFetchDedupeRef = useRef(null);
+  /** Throttle window focus refetch — socket + coalesced GETs cover most updates. */
+  const lastWindowFocusFetchRef = useRef(0);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token || isSuperAdminSession()) return;
-    if (_ordersFetchInFlight.current) return;
-    _ordersFetchInFlight.current = true;
+    if (ordersFetchDedupeRef.current) return ordersFetchDedupeRef.current;
 
-    // The state is already hydrated from localStorage in the useState initializer.
-    // We only need to check if we should trigger the loader.
-    if (orders.length === 0) {
-      setIsLoading(true);
-    }
+    const run = async () => {
+      // The state is already hydrated from localStorage in the useState initializer.
+      if (ordersRef.current.length === 0) {
+        setIsLoading(true);
+      }
 
-    try {
-      // Fetch active orders only â€” keeps the Orders page fast
-      const { data } = await API.get("/orders?limit=100&status=Pending,New,Preparing,Ready,Served,Paid,Closed");
-      setOrders((prev) => {
+      try {
+        const { data } = await API.get(
+          `/orders?limit=${LIST_FETCH_LIMIT}&status=Pending,New,Preparing,Ready,Served,Paid,Closed`
+        );
+        setOrders((prev) => {
         // Merge strategy: incoming data from server is the "source of truth",
         // but we preserve any very recent optimistic updates that haven't hit the DB yet.
         const now = Date.now();
@@ -115,13 +123,18 @@ export const OrderProvider = ({ children }) => {
         try { _tSet('cachedOrders', final); } catch {}
         return final;
       });
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      _ordersFetchInFlight.current = false;
-      setIsLoading(false);
-    }
-  };
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    ordersFetchDedupeRef.current = run();
+    return ordersFetchDedupeRef.current.finally(() => {
+      ordersFetchDedupeRef.current = null;
+    });
+  }, []);
 
   const fetchTableOrders = async (tableNum) => {
     if (tableNum == null || String(tableNum).trim() === "") return;
@@ -200,62 +213,59 @@ export const OrderProvider = ({ children }) => {
   const fetchBills = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token || isSuperAdminSession()) return;
-    if (_billsFetchInFlight.current) return;
-    _billsFetchInFlight.current = true;
+    if (billsFetchDedupeRef.current) return billsFetchDedupeRef.current;
 
-    // Fast path: load from namespaced cache if we are in the middle of a session
-    const cachedData = _tGet('cachedBills');
-    if (Array.isArray(cachedData) && cachedData.length > 0) {
-      setBills(cachedData);
-      setBillsReady(true);
-    }
-
-    try {
-      // Very lean fetch: limit to 20 for fast TTI
-      const { data } = await API.get("/bills?limit=100");
-      if (!Array.isArray(data)) {
-        _billsFetchInFlight.current = false;
-        return;
+    const run = async () => {
+      const cachedData = _tGet('cachedBills');
+      if (Array.isArray(cachedData) && cachedData.length > 0) {
+        setBills(cachedData);
+        setBillsReady(true);
       }
 
-      setBills((prev) => {
-        const now = Date.now();
-        const prevMap = new Map();
-        // Index existing bills by unique ID
-        prev.forEach((p) => {
-          const key = billIdentityKey(p);
-          if (key) prevMap.set(key, p);
+      try {
+        const { data } = await API.get(`/bills?limit=${LIST_FETCH_LIMIT}`);
+        if (!Array.isArray(data)) {
+          return;
+        }
+
+        setBills((prev) => {
+          const now = Date.now();
+          const prevMap = new Map();
+          prev.forEach((p) => {
+            const key = billIdentityKey(p);
+            if (key) prevMap.set(key, p);
+          });
+
+          data.forEach((serverBill) => {
+            const key = billIdentityKey(serverBill);
+            if (!key) return;
+
+            const localBill = prevMap.get(key);
+            if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 15000)) {
+              return;
+            }
+            prevMap.set(key, serverBill);
+          });
+
+          const final = Array.from(prevMap.values())
+            .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
+            .slice(0, 120);
+
+          try { _tSet('cachedBills', final); } catch (_) {}
+          return final;
         });
+      } catch (error) {
+        console.error("fetchBills err:", error);
+      } finally {
+        setBillsReady(true);
+        setIsLoading(false);
+      }
+    };
 
-        // Merge server data
-        data.forEach((serverBill) => {
-          const key = billIdentityKey(serverBill);
-          if (!key) return;
-
-          const localBill = prevMap.get(key);
-          // Protection: Don't overwrite if we have a very recent local update (15s window)
-          if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 15000)) {
-            return; 
-          }
-          prevMap.set(key, serverBill);
-        });
-
-        // Filter out closed bills that were merged from previous state but not in the fresh server batch (if they were archived)
-        // Keep active/unpaid ones regardless
-        const final = Array.from(prevMap.values())
-          .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
-          .slice(0, 120); // memory cap; keep in sync with API limit so newer channels (e.g. delivery) aren’t dropped
-          
-        try { _tSet('cachedBills', final); } catch (_) {}
-        return final;
-      });
-    } catch (error) {
-      console.error("fetchBills err:", error);
-    } finally {
-      _billsFetchInFlight.current = false;
-      setBillsReady(true);
-      setIsLoading(false);
-    }
+    billsFetchDedupeRef.current = run();
+    return billsFetchDedupeRef.current.finally(() => {
+      billsFetchDedupeRef.current = null;
+    });
   }, []);
 
   // mark a bill as paid on the server and update local cache
@@ -384,7 +394,7 @@ export const OrderProvider = ({ children }) => {
 
     try {
       setIsLoading(true);
-      const { data } = await API.get("/kitchen-bills?limit=500");
+      const { data } = await API.get("/kitchen-bills?limit=120");
       setKitchenBills(data);
       try {
         _tSet('cachedKitchenBills', data);
@@ -397,22 +407,27 @@ export const OrderProvider = ({ children }) => {
   };
 
   // Fetch active (non-served) kitchen bills only
-  const fetchActiveKitchenBills = async () => {
+  const fetchActiveKitchenBills = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    if (_kitchenBillsFetchInFlight.current) return;
-    _kitchenBillsFetchInFlight.current = true;
-    try {
-      const { data } = await API.get("/kitchen-bills/active");
-      setKitchenBills(data);
+    if (kitchenActiveFetchDedupeRef.current) return kitchenActiveFetchDedupeRef.current;
+
+    const run = async () => {
       try {
-        _tSet('cachedKitchenBills', data);
-      } catch (e) {}
-    } catch (error) {
-      console.error("Error fetching active kitchen bills:", error);
-    } finally {
-      _kitchenBillsFetchInFlight.current = false;
-    }
-  };
+        const { data } = await API.get("/kitchen-bills/active");
+        setKitchenBills(data);
+        try {
+          _tSet('cachedKitchenBills', data);
+        } catch (e) {}
+      } catch (error) {
+        console.error("Error fetching active kitchen bills:", error);
+      }
+    };
+
+    kitchenActiveFetchDedupeRef.current = run();
+    return kitchenActiveFetchDedupeRef.current.finally(() => {
+      kitchenActiveFetchDedupeRef.current = null;
+    });
+  }, []);
 
   // Update kitchen bill status
   const updateKitchenBillStatus = async (id, status) => {
@@ -655,7 +670,8 @@ export const OrderProvider = ({ children }) => {
       const r = localStorage.getItem('restaurantId');
       if (r) socket.emit('joinRoom', { restaurantId: r, token: localStorage.getItem('token') || undefined });
       const t = localStorage.getItem("token");
-      if (t) fetchBills();
+      // Reconnect sync: one light orders pull (bills/kitchen load on their routes)
+      if (t) fetchOrders();
     });
 
     socket.on("connect_error", (err) => {
@@ -846,11 +862,7 @@ export const OrderProvider = ({ children }) => {
   // Single hydrate + fetch on mount. Cache was already loaded via useState
   // initialisers above, so we only need to fire the network requests once.
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token && !isSuperAdminSession()) {
-      fetchOrders();
-      fetchBills();
-    }
+    // Initial load is route-driven (Admin / Kitchen / Waiter layouts) to avoid a global API burst.
 
     // re-fetch only when the tab regains focus (user switched back)
     // Also detect restaurant switch and reset state accordingly.
@@ -870,10 +882,15 @@ export const OrderProvider = ({ children }) => {
         setBills(Array.isArray(cachedBills) ? cachedBills : []);
         setKitchenBills(Array.isArray(cachedKB) ? cachedKB : []);
         setBillsReady(false);
+        lastWindowFocusFetchRef.current = 0;
+        fetchOrders();
+        return;
       }
 
+      const now = Date.now();
+      if (now - lastWindowFocusFetchRef.current < 30000) return;
+      lastWindowFocusFetchRef.current = now;
       fetchOrders();
-      fetchBills();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);

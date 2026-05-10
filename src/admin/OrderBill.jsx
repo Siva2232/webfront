@@ -58,18 +58,7 @@ export default function OrderBill() {
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // No background sync timer - relies on WebSocket for real-time and initial fetch only
-  useEffect(() => {
-    // Only fetch if we don't already have bills or it's been more than 5 minutes
-    const rid = getCurrentRestaurantId();
-    const lastFetch = localStorage.getItem(tenantKey("lastBillsFetch", rid));
-    const now = Date.now();
-    
-    if (!billsReady || !bills.length || !lastFetch || (now - parseInt(lastFetch)) > 300000) {
-      fetchBills();
-      localStorage.setItem(tenantKey("lastBillsFetch", rid), now.toString());
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Bills load globally from OrderContext (mount + socket + focus); no duplicate GET here.
 
   const { uniqueBills } = useFilteredBills({
     bills,

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Trash2, Plus, Layout, Upload, X } from "lucide-react";
 import API from "../api/axios";
+import { useUI } from "../context/UIContext";
 import StickyPageHeader from "./components/StickyPageHeader";
 
 export default function BannerPanel() {
+  const { banners, fetchBanners, isLoading: uiLoading } = useUI();
   const [slides, setSlides] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState(null);
   const [formData, setFormData] = useState({
@@ -19,20 +20,8 @@ export default function BannerPanel() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    fetchBanners();
-  }, []);
-
-  const fetchBanners = async () => {
-    try {
-      setIsLoading(true);
-      const { data } = await API.get("/banners");
-      setSlides(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching banners:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setSlides(Array.isArray(banners) ? banners : []);
+  }, [banners]);
 
   const openModal = (slide = null) => {
     if (slide) {
@@ -78,7 +67,7 @@ export default function BannerPanel() {
         await API.post("/banners", payload);
       }
       setIsModalOpen(false);
-      fetchBanners();
+      await fetchBanners();
       window.dispatchEvent(new Event("bannersUpdated"));
     } catch (error) {
       console.error("Error saving banner:", error);
@@ -92,14 +81,16 @@ export default function BannerPanel() {
     if (window.confirm("Delete this banner?")) {
       try {
         await API.delete(`/banners/${id}`);
-        setSlides((prev) => prev.filter((s) => s._id !== id));
+        await fetchBanners();
+        window.dispatchEvent(new Event("bannersUpdated"));
       } catch (error) {
         console.error("Error deleting banner:", error);
       }
     }
   };
 
-  if (isLoading) return <div className="p-10 text-center font-bold">Loading Banners...</div>;
+  if (uiLoading && slides.length === 0)
+    return <div className="p-10 text-center font-bold">Loading Banners...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 font-sans text-zinc-900">

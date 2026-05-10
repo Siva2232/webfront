@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import API from "../api/axios";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import {
@@ -152,6 +152,9 @@ export const ThemeProvider = ({ children }) => {
   const [featuresReady, setFeaturesReady] = useState(hasCachedBrandingSnapshot);
   const [loading, setLoading] = useState(false);
 
+  /** Concurrent loadBranding(restaurantId) calls (login + ThemeProvider mount, tab focus overlap) share one HTTP request. */
+  const loadBrandingInflightRef = useRef(null);
+
   /** Clears Super Admin preview / stale tenant colours before loading a new restaurant theme */
   const resetBrandingToDefault = useCallback(() => {
     setBranding(DEFAULT_THEME);
@@ -163,41 +166,55 @@ export const ThemeProvider = ({ children }) => {
 
   const loadBranding = useCallback(async (restaurantId) => {
     if (!restaurantId) return;
-    setLoading(true);
-    // Apply cached VISUAL branding instantly (name/colours) — prevents first-paint flash.
-    const immediate = loadCachedBranding(restaurantId);
-    if (immediate) {
-      setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
-      setFeatures({ ...DEFAULT_FEATURES, ...immediate.features });
-      setFeaturesReady(true);
-      applyThemeToDom(immediate);
-    }
-    try {
-      // Single call — branding endpoint returns all 13 feature flags when the
-      // request carries a valid auth token (admin/kitchen/waiter panels).
-      // Customer requests get only public flags (qrMenu, onlineOrders).
-      const { data } = await API.get(`/restaurants/${restaurantId}/branding`);
-      const merged = mergeBrandingPayload(data);
+    const dedupeKey = String(restaurantId).toUpperCase().trim();
+    const inflight = loadBrandingInflightRef.current;
+    if (inflight?.key === dedupeKey && inflight.promise) return inflight.promise;
 
-      setBranding(merged);
-      applyThemeToDom(merged);
-      persistBranding(restaurantId, merged);
-
-      if (merged.receiptHeader && typeof merged.receiptHeader === "object") {
-        saveReceiptHeader(restaurantId, {
-          ...DEFAULT_RECEIPT_HEADER,
-          ...merged.receiptHeader,
-        });
+    const run = async () => {
+      setLoading(true);
+      // Apply cached VISUAL branding instantly (name/colours) — prevents first-paint flash.
+      const immediate = loadCachedBranding(restaurantId);
+      if (immediate) {
+        setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
+        setFeatures({ ...DEFAULT_FEATURES, ...immediate.features });
+        setFeaturesReady(true);
+        applyThemeToDom(immediate);
       }
+      try {
+        // Single call — branding endpoint returns all 13 feature flags when the
+        // request carries a valid auth token (admin/kitchen/waiter panels).
+        // Customer requests get only public flags (qrMenu, onlineOrders).
+        const { data } = await API.get(`/restaurants/${restaurantId}/branding`);
+        const merged = mergeBrandingPayload(data);
 
-      // features state is always set from the fresh API response — never from cache.
-      setFeatures({ ...DEFAULT_FEATURES, ...merged.features });
-    } catch (err) {
-      console.warn("[ThemeContext] Could not load branding:", err.message);
-    } finally {
-      setLoading(false);
-      setFeaturesReady(true);
-    }
+        setBranding(merged);
+        applyThemeToDom(merged);
+        persistBranding(restaurantId, merged);
+
+        if (merged.receiptHeader && typeof merged.receiptHeader === "object") {
+          saveReceiptHeader(restaurantId, {
+            ...DEFAULT_RECEIPT_HEADER,
+            ...merged.receiptHeader,
+          });
+        }
+
+        // features state is always set from the fresh API response — never from cache.
+        setFeatures({ ...DEFAULT_FEATURES, ...merged.features });
+      } catch (err) {
+        console.warn("[ThemeContext] Could not load branding:", err.message);
+      } finally {
+        setLoading(false);
+        setFeaturesReady(true);
+      }
+    };
+
+    const promise = run().finally(() => {
+      const cur = loadBrandingInflightRef.current;
+      if (cur?.promise === promise) loadBrandingInflightRef.current = null;
+    });
+
+    loadBrandingInflightRef.current = { key: dedupeKey, promise };
+    return promise;
   }, []);
 
   /** Live preview: apply visual overrides without saving. Used in the Super Admin panel. */

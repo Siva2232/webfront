@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API from "../api/axios";
+import { useUI } from "../context/UIContext";
 import toast from "react-hot-toast";
 import { 
   Headset, 
@@ -35,15 +36,19 @@ export default function CustomerSupport() {
   });
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    setSelectedTicket((prev) => {
+      if (!prev?._id) return prev;
+      const next = tickets.find((t) => t._id === prev._id);
+      return next || prev;
+    });
+  }, [tickets]);
 
   useEffect(() => {
     if (location.state?.fromSupportNotification) {
       setShowHistory(true);
-      markAllTicketsRead();
+      markAllSupportTicketsRead();
     }
-  }, [location.state]);
+  }, [location.state, markAllSupportTicketsRead]);
 
   useEffect(() => {
     if (!tickets.length) return;
@@ -59,26 +64,6 @@ export default function CustomerSupport() {
     }
   }, [location.state, tickets, selectedTicket]);
 
-  const fetchTickets = async () => {
-    try {
-      const { data } = await API.get("/support-tickets");
-      setTickets(data);
-      setUnreadCount(Array.isArray(data) ? data.filter((ticket) => ticket.isRead === false).length : 0);
-    } catch (error) {
-      console.error("Error fetching tickets", error);
-    }
-  };
-
-  const markAllTicketsRead = async () => {
-    try {
-      await API.patch("/support-tickets/read-all");
-      setUnreadCount(0);
-      setTickets((prev) => prev.map((ticket) => ({ ...ticket, isRead: true })));
-    } catch (error) {
-      console.error("Failed to mark tickets read", error);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.message.trim()) return toast.error("Please enter a message");
@@ -88,7 +73,7 @@ export default function CustomerSupport() {
       await API.post("/support-tickets", formData);
       setSubmitted(true);
       setFormData({ ...formData, message: "" });
-      fetchTickets();
+      fetchSupportTicketCount();
       setTimeout(() => setSubmitted(false), 5000);
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to submit ticket");
@@ -107,7 +92,7 @@ export default function CustomerSupport() {
       });
       setSelectedTicket(data);
       setNewReply("");
-      fetchTickets();
+      fetchSupportTicketCount();
       toast.success("Reply sent");
     } catch (error) {
       toast.error("Failed to send reply");
@@ -273,7 +258,7 @@ export default function CustomerSupport() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Support Options */}
           <div className="lg:col-span-1 space-y-4">
-            {unreadCount > 0 && (
+            {supportTicketCount > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -283,13 +268,13 @@ export default function CustomerSupport() {
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-700">New Messages</p>
                     <h3 className="mt-2 text-lg font-bold text-slate-900">Support updates waiting</h3>
-                    <p className="mt-2 text-sm text-slate-600">You have {unreadCount} unread support ticket{unreadCount !== 1 ? "s" : ""}.</p>
+                    <p className="mt-2 text-sm text-slate-600">You have {supportTicketCount} unread support ticket{supportTicketCount !== 1 ? "s" : ""}.</p>
                   </div>
                 </div>
                 <button
                   onClick={() => {
                     setShowHistory(true);
-                    markAllTicketsRead();
+                    markAllSupportTicketsRead();
                     if (tickets.length > 0) setSelectedTicket(tickets[0]);
                   }}
                   className="mt-6 w-full rounded-2xl bg-slate-900 text-white py-3 text-sm font-bold hover:bg-slate-800 transition-colors"

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
+import { useTheme } from "../context/ThemeContext";
+import { getPlanLimitsFromBranding } from "../utils/planLimits";
 import { generateId } from "../utils/generateId";
 import toast from "react-hot-toast"; // toast notifications
 
 export default function AddProduct() {
-  const { addProduct, orderedCategories = [], addCategory } = useProducts();
+  const { branding } = useTheme();
+  const { addProduct, products = [], orderedCategories = [], addCategory } = useProducts();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -101,6 +104,14 @@ export default function AddProduct() {
       !form.category
     ) {
       alert("Please fill all fields");
+      return;
+    }
+
+    const { maxProducts } = getPlanLimitsFromBranding(branding);
+    if (products.length >= maxProducts) {
+      toast.error(
+        `Menu item limit reached (${maxProducts} max). Upgrade your plan or remove items.`,
+      );
       return;
     }
 

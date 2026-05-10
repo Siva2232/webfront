@@ -107,4 +107,46 @@ API.interceptors.response.use(
   }
 );
 
+/**
+ * Coalesce concurrent identical GETs (same URL + params + tenant) so Strict Mode,
+ * multiple layouts, and overlapping effects share one HTTP round-trip.
+ * Pass `{ skipCoalesce: true }` to force a fresh request (e.g. after realtime refresh).
+ */
+const rawGet = API.get.bind(API);
+const inflightGets = new Map();
+
+function stableParamsKey(params) {
+  if (!params || typeof params !== "object") return "";
+  return Object.keys(params)
+    .sort()
+    .map((k) => `${k}=${params[k]}`)
+    .join("&");
+}
+
+API.get = function coalescedGet(url, config) {
+  const cfg =
+    config && typeof config === "object" && !Array.isArray(config) ? { ...config } : {};
+  if (cfg.skipCoalesce) {
+    delete cfg.skipCoalesce;
+    return rawGet(url, cfg);
+  }
+
+  let rid = "";
+  try {
+    rid = String(localStorage.getItem("restaurantId") || "")
+      .toUpperCase()
+      .trim();
+  } catch (_) {}
+
+  const key = `${rid}::${url}::${stableParamsKey(cfg.params)}`;
+  const existing = inflightGets.get(key);
+  if (existing) return existing;
+
+  const p = rawGet(url, cfg).finally(() => {
+    inflightGets.delete(key);
+  });
+  inflightGets.set(key, p);
+  return p;
+};
+
 export default API;

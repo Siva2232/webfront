@@ -53,8 +53,8 @@ import {
   BellRing,
   CreditCard,
 } from "lucide-react";
-import API from "../api/axios";
 import { useProducts } from "../context/ProductContext";
+import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -131,15 +131,19 @@ const menuItems = [
 ];
 
 export default function AdminLayout() {
-  const { products = [], subitems = [] } = useProducts();
+  const { products = [], subitems = [], ensureProductsLoaded } = useProducts();
   const {
     notifications = [],
     notificationsLoading,
     markNotificationAsRead,
-    fetchNotifications,
     supportTicketCount,
     markAllSupportTicketsRead,
+    fetchSupportTicketCount,
+    subscribeAdminChrome,
+    fetchAdminChromeBundle,
+    fetchCustomerPromos,
   } = useUI();
+  const { fetchOrders, fetchBills, fetchActiveKitchenBills } = useOrders();
   const { branding, features, featuresReady } = useTheme();
 
   const featureMap = {
@@ -269,6 +273,35 @@ export default function AdminLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    ensureProductsLoaded();
+    const unsub = subscribeAdminChrome();
+    fetchAdminChromeBundle();
+    return unsub;
+  }, [ensureProductsLoaded, subscribeAdminChrome, fetchAdminChromeBundle]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+    const p = location.pathname;
+    if (p.startsWith("/admin/banner") || p.startsWith("/admin/offers")) {
+      fetchCustomerPromos();
+    }
+    const lightOnly =
+      /^\/admin\/(banner|offers)/.test(p) ||
+      p.startsWith("/admin/profile") ||
+      p.startsWith("/admin/subscription") ||
+      p.startsWith("/admin/customer");
+    /** Analytics / accounting / HR rarely need a fresh GET /orders on every navigation — sockets + cache cover ops. */
+    const skipOrdersPrefetch =
+      lightOnly ||
+      /^\/admin\/(analytics|accounting)/.test(p) ||
+      p.startsWith("/admin/hr");
+    if (!skipOrdersPrefetch) fetchOrders();
+    if (/^\/admin\/bill(\/|$)/.test(p) || /^\/admin\/manual-bill(\/|$)/.test(p)) fetchBills();
+    if (/^\/admin\/kitchen-bill(\/|$)/.test(p)) fetchActiveKitchenBills();
+  }, [location.pathname, fetchCustomerPromos, fetchOrders, fetchBills, fetchActiveKitchenBills]);
+
   const dropdownRef = useRef(null);
   const stockRef = useRef(null);
 
@@ -291,8 +324,8 @@ export default function AdminLayout() {
   const loadSupportModalTickets = async () => {
     setSupportModalLoading(true);
     try {
-      const { data } = await API.get("/support-tickets");
-      setSupportModalTickets(data || []);
+      const tickets = await fetchSupportTicketCount();
+      setSupportModalTickets(Array.isArray(tickets) ? tickets : []);
     } catch (error) {
       console.error("Error loading support tickets:", error);
       setSupportModalTickets([]);

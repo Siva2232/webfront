@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { syncRestaurantCache, getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
@@ -89,64 +89,75 @@ export const ProductProvider = ({ children }) => {
   };
 
   const _fetchProductsInFlight = useRef(false);
+  const fetchProductsDedupeRef = useRef(null);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    if (_fetchProductsInFlight.current) return;
-    _fetchProductsInFlight.current = true;
-    try {
+    if (fetchProductsDedupeRef.current) return fetchProductsDedupeRef.current;
+
+    const run = async () => {
+      _fetchProductsInFlight.current = true;
+      try {
       // Only show loading spinner if there's no cached data
-      const cached = tenantGet('products', getLiveRid());
-      if (!Array.isArray(cached) || cached.length === 0) setIsLoading(true);
-      
-      // Cache-bust to prevent browser from serving stale/empty responses
-      const _t = `_t=${Date.now()}`;
-      const [categoriesRes, subitemsRes, productsRes] = await Promise.allSettled([
-        API.get(`/categories?${_t}`),
-        API.get(`/sub-items?${_t}`),
-        API.get(`/products?${_t}`)
-      ]);
+        const cached = tenantGet('products', getLiveRid());
+        if (!Array.isArray(cached) || cached.length === 0) setIsLoading(true);
 
-      if (categoriesRes.status === "fulfilled") {
-        const data = categoriesRes.value.data;
-        if (Array.isArray(data) && data.length > 0) {
-          setCategories(data);
-          tenantSet('categories', getLiveRid(), data);
-        }
-      }
+        const [categoriesRes, subitemsRes, productsRes] = await Promise.allSettled([
+          API.get("/categories"),
+          API.get("/sub-items"),
+          API.get("/products"),
+        ]);
 
-      if (subitemsRes.status === "fulfilled") {
-        const data = subitemsRes.value.data;
-        setSubitems(Array.isArray(data) ? data : []);
-      }
-
-      if (productsRes.status === "fulfilled") {
-        const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
-        // Use functional update to check CURRENT state, not stale closure
-        setProducts(prev => {
-          if (list.length > 0 || prev.length === 0) {
-            tenantSet('products', getLiveRid(), list);
-            return list;
+        if (categoriesRes.status === "fulfilled") {
+          const data = categoriesRes.value.data;
+          if (Array.isArray(data) && data.length > 0) {
+            setCategories(data);
+            tenantSet('categories', getLiveRid(), data);
           }
-          return prev;
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      _fetchProductsInFlight.current = false;
-      setIsLoading(false);
-    }
-  };
+        }
 
-  // Store restaurantId and fetch products on mount
+        if (subitemsRes.status === "fulfilled") {
+          const data = subitemsRes.value.data;
+          setSubitems(Array.isArray(data) ? data : []);
+        }
+
+        if (productsRes.status === "fulfilled") {
+          const list = Array.isArray(productsRes.value.data) ? productsRes.value.data : [];
+          setProducts(prev => {
+            if (list.length > 0 || prev.length === 0) {
+              tenantSet('products', getLiveRid(), list);
+              return list;
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        _fetchProductsInFlight.current = false;
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductsDedupeRef.current = run();
+    return fetchProductsDedupeRef.current.finally(() => {
+      fetchProductsDedupeRef.current = null;
+    });
+  }, []);
+
+  // Sync tenant cache on mount — network fetch runs when CustomerLayout / AdminLayout calls ensureProductsLoaded (route-based).
   useEffect(() => {
     if (isSuperAdminSession()) return;
     if (currentRid) {
       syncRestaurantCache(currentRid);
     }
-    fetchProducts();
   }, []);
+
+  /** Stable identity — layouts depend on this in useEffect without infinite refetch loops. */
+  const ensureProductsLoaded = useCallback(() => {
+    if (isSuperAdminSession()) return Promise.resolve();
+    return fetchProducts();
+  }, [fetchProducts]);
 
   // Detect restaurant switch (e.g. admin logged into a different restaurant)
   // and reset state + re-fetch when it happens.
@@ -179,10 +190,9 @@ export const ProductProvider = ({ children }) => {
   // Force-fresh products fetch (bypasses server cache) — used after socket events
   const fetchProductsFresh = async () => {
     try {
-      const _t = `_t=${Date.now()}`;
       const [subitemsRes, productsRes] = await Promise.allSettled([
-        API.get(`/sub-items?${_t}`),
-        API.get(`/products?${_t}`),
+        API.get("/sub-items", { skipCoalesce: true }),
+        API.get("/products", { skipCoalesce: true }),
       ]);
       if (subitemsRes.status === "fulfilled") {
         const data = subitemsRes.value.data;
@@ -491,6 +501,7 @@ export const ProductProvider = ({ children }) => {
     toggleAvailability,
     fetchProducts,
     fetchSubitems,
+    ensureProductsLoaded,
   };
 
   return (

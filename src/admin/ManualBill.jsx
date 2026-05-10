@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -40,10 +40,6 @@ export default function ManualBill() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [pendingDeleteIndex, setPendingDeleteIndex] = useState(null);
-
-  useEffect(() => {
-    fetchBills();
-  }, [fetchBills]);
 
   const handleSearch = useCallback(() => {
     const q = searchQuery.trim().replace(/^#/, "");

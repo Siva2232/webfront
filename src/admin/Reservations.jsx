@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "../api/axios";
+import { fetchTablesCoalesced } from "../api/fetchTablesCoalesced";
 import { 
   Calendar, 
   Users, 
@@ -83,7 +84,7 @@ const Reservations = () => {
   useEffect(() => {
     const loadTables = async () => {
       try {
-        const { data } = await axios.get("/tables");
+        const data = await fetchTablesCoalesced();
         setTables(Array.isArray(data) ? data : []);
       } catch (error) {
         toast.error("Failed to load table list");

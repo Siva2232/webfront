@@ -21,7 +21,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const PLAN_FEATURES = [
   ["hr", "HR Management"],
-  ["inventory", "Inventory"],
+  // ["inventory", "Inventory"],
   ["reports", "Reports"],
   ["qrMenu", "QR Menu Suite"],
   ["onlineOrders", "Online Store"],

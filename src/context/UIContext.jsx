@@ -3,7 +3,7 @@ import API from "../api/axios";
 import { useTheme } from "./ThemeContext";
 import { io as socketIOClient } from "socket.io-client";
 import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
-import { isSuperAdminSession } from "../utils/sessionFlags";
+import { isSuperAdminSession, getTokenRole } from "../utils/sessionFlags";
 
 const UIContext = createContext();
 
@@ -70,12 +70,34 @@ export const UIProvider = ({ children }) => {
     } catch {}
     return defaultOffers;
   });
+  const bannersRef = useRef(banners);
+  const offersRef = useRef(offers);
+  bannersRef.current = banners;
+  offersRef.current = offers;
   const [isLoading, setIsLoading] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [supportTicketCount, setSupportTicketCount] = useState(0);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+  /** Latest GET /support-tickets payload for restaurant admins — shared so AdminLayout / CustomerSupport avoid duplicate GETs. */
+  const [restaurantSupportTickets, setRestaurantSupportTickets] = useState([]);
   const [reservations, setReservations] = useState([]);
+
+  /** Admin POS chrome mounted (sidebar bells / support / reservations poll). */
+  const adminChromeSubscribersRef = useRef(0);
+  /** Admin, kitchen, or waiter layout mounted — drives notification polling only. */
+  const notifyPollSubscribersRef = useRef(0);
+
+  const notificationsFetchDedupeRef = useRef(null);
+  const reservationsFetchDedupeRef = useRef(null);
+  const supportTicketsFetchDedupeRef = useRef(null);
+  const bannersFetchDedupeRef = useRef(null);
+  const offersFetchDedupeRef = useRef(null);
+  const customerPromosDedupeRef = useRef(null);
+  const adminChromeBundleDedupeRef = useRef(null);
+  /** Debounce socket-driven GET bursts (newNotification + notificationUpdated firing together). */
+  const socketNotifyDebounceRef = useRef(null);
+  const socketSupportDebounceRef = useRef(null);
 
   useEffect(() => {
     if (!reservationsEnabled) setReservations([]);
@@ -83,53 +105,82 @@ export const UIProvider = ({ children }) => {
 
   const fetchNotifications = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    setNotificationsLoading(true);
-    try {
-      const { data } = await API.get("/notifications");
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setNotificationsLoading(false);
-    }
+    if (notificationsFetchDedupeRef.current) return notificationsFetchDedupeRef.current;
+
+    const run = async () => {
+      setNotificationsLoading(true);
+      try {
+        const { data } = await API.get("/notifications");
+        setNotifications(data);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+
+    notificationsFetchDedupeRef.current = run();
+    return notificationsFetchDedupeRef.current.finally(() => {
+      notificationsFetchDedupeRef.current = null;
+    });
   }, []);
 
   const fetchReservations = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await API.get(`/reservations?date=${today}`);
-      setReservations(data || []);
-    } catch (error) {
-      console.error("Error fetching reservations in UI context:", error);
-    }
+    if (reservationsFetchDedupeRef.current) return reservationsFetchDedupeRef.current;
+
+    const run = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data } = await API.get(`/reservations?date=${today}`);
+        setReservations(data || []);
+      } catch (error) {
+        console.error("Error fetching reservations in UI context:", error);
+      }
+    };
+
+    reservationsFetchDedupeRef.current = run();
+    return reservationsFetchDedupeRef.current.finally(() => {
+      reservationsFetchDedupeRef.current = null;
+    });
   }, []);
 
   const fetchSupportTicketCount = useCallback(async () => {
-    if (isSuperAdminSession()) return;
-    try {
-      const isSupportAgent = localStorage.getItem("isSupportLoggedIn") === "true";
-      
-      if (isSupportAgent) {
-        // Support team side: count unread tickets for them
-        const { data } = await API.get("/support-tickets/all");
-        const count = Array.isArray(data)
-          ? data.filter((ticket) => ticket.isRead === false).length
-          : 0;
-        setSupportUnreadCount(count);
-      } else {
-        // Restaurant owner side: count unread tickets for them
+    if (isSuperAdminSession()) return undefined;
+    if (supportTicketsFetchDedupeRef.current) return supportTicketsFetchDedupeRef.current;
+
+    const run = async () => {
+      try {
+        const role = getTokenRole();
+        const isSupportAgent = role === "support" || role === "superadmin";
+
+        if (isSupportAgent) {
+          setRestaurantSupportTickets([]);
+          const { data } = await API.get("/support-tickets/all");
+          const count = Array.isArray(data)
+            ? data.filter((ticket) => ticket.isRead === false).length
+            : 0;
+          setSupportUnreadCount(count);
+          return undefined;
+        }
         const { data } = await API.get("/support-tickets");
-        const count = Array.isArray(data)
-          ? data.filter((ticket) => ticket.isRead === false).length
-          : 0;
-        setSupportTicketCount(count);
+        const tickets = Array.isArray(data) ? data : [];
+        setRestaurantSupportTickets(tickets);
+        setSupportTicketCount(tickets.filter((ticket) => ticket.isRead === false).length);
+        return tickets;
+      } catch (error) {
+        console.error("Error fetching support ticket count:", error);
+        setSupportTicketCount(0);
+        setSupportUnreadCount(0);
+        setRestaurantSupportTickets([]);
+        return [];
       }
-    } catch (error) {
-      console.error("Error fetching support ticket count:", error);
-      setSupportTicketCount(0);
-      setSupportUnreadCount(0);
-    }
+    };
+
+    supportTicketsFetchDedupeRef.current = run();
+    return supportTicketsFetchDedupeRef.current.finally(() => {
+      supportTicketsFetchDedupeRef.current = null;
+    });
   }, []);
 
   const markNotificationAsRead = async (id) => {
@@ -141,89 +192,145 @@ export const UIProvider = ({ children }) => {
     }
   };
 
-  const markAllSupportTicketsRead = async () => {
+  const markAllSupportTicketsRead = useCallback(async () => {
     try {
       await API.patch("/support-tickets/read-all");
       setSupportUnreadCount(0);
       setSupportTicketCount(0);
+      setRestaurantSupportTickets((prev) =>
+        prev.map((t) => ({ ...t, isRead: true }))
+      );
     } catch (error) {
       console.error("Error marking all support tickets read:", error);
     }
-  };
+  }, []);
 
   const fetchBanners = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    // Only set loading if we have no items to prevent UI flashing
-    if (banners.length === 0) setIsLoading(true);
-    try {
-      const { data } = await API.get("/banners");
-      if (Array.isArray(data) && data.length > 0) {
-        // Only update state if data actually changed to prevent re-renders
-        const newData = data;
-        const oldStored = tenantGet('ui_banners', _getLiveRid());
-        if (JSON.stringify(newData) !== JSON.stringify(oldStored)) {
-          setBanners(newData);
-          tenantSet('ui_banners', _getLiveRid(), newData);
+    if (bannersFetchDedupeRef.current) return bannersFetchDedupeRef.current;
+
+    const run = async () => {
+      if (bannersRef.current.length === 0) setIsLoading(true);
+      try {
+        const { data } = await API.get("/banners");
+        if (Array.isArray(data) && data.length > 0) {
+          const newData = data;
+          const oldStored = tenantGet('ui_banners', _getLiveRid());
+          if (JSON.stringify(newData) !== JSON.stringify(oldStored)) {
+            setBanners(newData);
+            tenantSet('ui_banners', _getLiveRid(), newData);
+          }
+        } else {
+          setBanners(defaultBanners);
         }
-      } else {
+      } catch (error) {
+        console.error("Error fetching banners:", error);
         setBanners(defaultBanners);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching banners:", error);
-      setBanners(defaultBanners);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [banners.length]);
+    };
+
+    bannersFetchDedupeRef.current = run();
+    return bannersFetchDedupeRef.current.finally(() => {
+      bannersFetchDedupeRef.current = null;
+    });
+  }, []);
 
   const fetchOffers = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    // Only set loading if we have no items
-    if (offers.length === 0) setIsLoading(true);
-    try {
-      const { data } = await API.get("/offers");
-      if (Array.isArray(data) && data.length > 0) {
-        const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
-        if (valid.length > 0) {
-          const oldStored = tenantGet('ui_offers', _getLiveRid());
-          if (JSON.stringify(valid) !== JSON.stringify(oldStored)) {
-            setOffers(valid);
-            tenantSet('ui_offers', _getLiveRid(), valid);
-          }
-          return;
-        }
-      }
-      setOffers(defaultOffers);
-    } catch (error) {
-      console.error("Error fetching offers:", error);
-      setOffers(defaultOffers);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [offers.length]);
+    if (offersFetchDedupeRef.current) return offersFetchDedupeRef.current;
 
-  const fetchData = useCallback(async () => {
+    const run = async () => {
+      if (offersRef.current.length === 0) setIsLoading(true);
+      try {
+        const { data } = await API.get("/offers");
+        if (Array.isArray(data) && data.length > 0) {
+          const valid = data.filter(p => (p.isPublished ?? true) && p.imageUrl && p.title?.trim());
+          if (valid.length > 0) {
+            const oldStored = tenantGet('ui_offers', _getLiveRid());
+            if (JSON.stringify(valid) !== JSON.stringify(oldStored)) {
+              setOffers(valid);
+              tenantSet('ui_offers', _getLiveRid(), valid);
+            }
+            return;
+          }
+        }
+        setOffers(defaultOffers);
+      } catch (error) {
+        console.error("Error fetching offers:", error);
+        setOffers(defaultOffers);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    offersFetchDedupeRef.current = run();
+    return offersFetchDedupeRef.current.finally(() => {
+      offersFetchDedupeRef.current = null;
+    });
+  }, []);
+
+  /** Banners + offers — call from CustomerLayout when visiting the public menu. */
+  const fetchCustomerPromos = useCallback(async () => {
     if (isSuperAdminSession()) return;
-    // Always fetch public data (banners/offers) — needed for customer panel
-    // Only fetch admin-only data (notifications/reservations) when authenticated
-    const isAdmin = !!localStorage.getItem("token");
-    const tasks = [fetchBanners(), fetchOffers()];
-    if (isAdmin) {
-      tasks.push(fetchNotifications(), fetchSupportTicketCount());
+    if (customerPromosDedupeRef.current) return customerPromosDedupeRef.current;
+
+    const run = async () => {
+      await Promise.allSettled([fetchBanners(), fetchOffers()]);
+    };
+
+    customerPromosDedupeRef.current = run();
+    return customerPromosDedupeRef.current.finally(() => {
+      customerPromosDedupeRef.current = null;
+    });
+  }, [fetchBanners, fetchOffers]);
+
+  /** Notifications, support counts, today’s reservations — call when AdminLayout mounts. */
+  const fetchAdminChromeBundle = useCallback(async () => {
+    if (isSuperAdminSession()) return;
+    if (!localStorage.getItem("token")) return;
+    if (adminChromeBundleDedupeRef.current) return adminChromeBundleDedupeRef.current;
+
+    const run = async () => {
+      const tasks = [fetchNotifications(), fetchSupportTicketCount()];
       if (reservationsEnabled) tasks.push(fetchReservations());
-    }
-    Promise.allSettled(tasks);
+      await Promise.allSettled(tasks);
+    };
+
+    adminChromeBundleDedupeRef.current = run();
+    return adminChromeBundleDedupeRef.current.finally(() => {
+      adminChromeBundleDedupeRef.current = null;
+    });
   }, [
-    fetchBanners,
-    fetchOffers,
     fetchNotifications,
-    fetchReservations,
     fetchSupportTicketCount,
+    fetchReservations,
     reservationsEnabled,
   ]);
 
+  /** Full UI refresh (storage events / manual). */
+  const fetchData = useCallback(async () => {
+    await fetchCustomerPromos();
+    await fetchAdminChromeBundle();
+  }, [fetchCustomerPromos, fetchAdminChromeBundle]);
+
+  const subscribeAdminChrome = useCallback(() => {
+    adminChromeSubscribersRef.current += 1;
+    return () => {
+      adminChromeSubscribersRef.current = Math.max(0, adminChromeSubscribersRef.current - 1);
+    };
+  }, []);
+
+  const subscribeNotifyPolling = useCallback(() => {
+    notifyPollSubscribersRef.current += 1;
+    return () => {
+      notifyPollSubscribersRef.current = Math.max(0, notifyPollSubscribersRef.current - 1);
+    };
+  }, []);
+
   useEffect(() => {
-    fetchData();
+    // No global API burst here — CustomerLayout / AdminLayout / staff layouts trigger loads.
     window.addEventListener("bannersUpdated", fetchBanners);
     window.addEventListener("promosUpdated", fetchOffers);
     window.addEventListener("storage", fetchData);
@@ -244,7 +351,9 @@ export const UIProvider = ({ children }) => {
         setOffers(Array.isArray(cachedOffers) && cachedOffers.length > 0 ? cachedOffers : defaultOffers);
         setNotifications([]);
         setReservations([]);
-        fetchData();
+        setRestaurantSupportTickets([]);
+        fetchCustomerPromos();
+        if (localStorage.getItem("token")) fetchAdminChromeBundle();
       }
     };
     window.addEventListener("focus", checkRidChange);
@@ -263,6 +372,34 @@ export const UIProvider = ({ children }) => {
       reconnectionDelay: 1000,
     });
 
+    const debouncedFetchNotifications = () => {
+      if (socketNotifyDebounceRef.current) clearTimeout(socketNotifyDebounceRef.current);
+      socketNotifyDebounceRef.current = setTimeout(() => {
+        socketNotifyDebounceRef.current = null;
+        if (!localStorage.getItem("token") || isSuperAdminSession()) return;
+        fetchNotifications();
+      }, 400);
+    };
+
+    const debouncedFetchNotificationsAndSupport = () => {
+      if (socketNotifyDebounceRef.current) clearTimeout(socketNotifyDebounceRef.current);
+      socketNotifyDebounceRef.current = setTimeout(() => {
+        socketNotifyDebounceRef.current = null;
+        if (!localStorage.getItem("token") || isSuperAdminSession()) return;
+        fetchNotifications();
+        if (adminChromeSubscribersRef.current > 0) fetchSupportTicketCount();
+      }, 400);
+    };
+
+    const debouncedFetchSupportOnly = () => {
+      if (socketSupportDebounceRef.current) clearTimeout(socketSupportDebounceRef.current);
+      socketSupportDebounceRef.current = setTimeout(() => {
+        socketSupportDebounceRef.current = null;
+        if (!localStorage.getItem("token") || isSuperAdminSession()) return;
+        if (adminChromeSubscribersRef.current > 0) fetchSupportTicketCount();
+      }, 400);
+    };
+
     socket.on("connect", () => {
       if (isSuperAdminSession()) return;
       const rid = getCurrentRestaurantId();
@@ -271,7 +408,7 @@ export const UIProvider = ({ children }) => {
 
     socket.on("newNotification", (notif) => {
       if (!localStorage.getItem("token") || isSuperAdminSession()) return;
-      fetchNotifications();
+      debouncedFetchNotifications();
       // Handle different types for specific UI sounds/events
       if (notif && notif.type === "BillRequested") {
         const event = new CustomEvent("billRequested", { detail: notif });
@@ -286,17 +423,28 @@ export const UIProvider = ({ children }) => {
 
     socket.on("notificationUpdated", () => {
       if (localStorage.getItem("token") && !isSuperAdminSession()) {
-        fetchNotifications();
-        fetchSupportTicketCount();
+        debouncedFetchNotificationsAndSupport();
       }
     });
 
     socket.on("newReservation", () => {
-      if (localStorage.getItem("token") && !isSuperAdminSession() && reservationsEnabledRef.current) fetchReservations();
+      if (
+        localStorage.getItem("token") &&
+        !isSuperAdminSession() &&
+        reservationsEnabledRef.current &&
+        adminChromeSubscribersRef.current > 0
+      )
+        fetchReservations();
     });
 
     socket.on("reservationUpdated", () => {
-      if (localStorage.getItem("token") && !isSuperAdminSession() && reservationsEnabledRef.current) fetchReservations();
+      if (
+        localStorage.getItem("token") &&
+        !isSuperAdminSession() &&
+        reservationsEnabledRef.current &&
+        adminChromeSubscribersRef.current > 0
+      )
+        fetchReservations();
     });
 
     // HR real-time sync
@@ -326,22 +474,29 @@ export const UIProvider = ({ children }) => {
     });
 
     socket.on("supportTicketUpdated", () => {
-      if (localStorage.getItem("token") && !isSuperAdminSession()) fetchSupportTicketCount();
+      if (
+        localStorage.getItem("token") &&
+        !isSuperAdminSession() &&
+        adminChromeSubscribersRef.current > 0
+      )
+        debouncedFetchSupportOnly();
     });
 
     socket.on("disconnect", () => {
       // optional: console.debug("Socket disconnected");
     });
 
-    // Polling fallback — admin-only endpoints only polled when authenticated
+    const POLL_MS = 45000;
     const pollInterval = setInterval(() => {
       if (isSuperAdminSession()) return;
-      if (localStorage.getItem("token")) {
-        fetchNotifications();
-        if (reservationsEnabledRef.current) fetchReservations();
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (!localStorage.getItem("token")) return;
+      if (notifyPollSubscribersRef.current > 0) fetchNotifications();
+      if (adminChromeSubscribersRef.current > 0) {
         fetchSupportTicketCount();
+        if (reservationsEnabledRef.current) fetchReservations();
       }
-    }, 15000); // Poll every 15 seconds
+    }, POLL_MS);
 
     return () => {
       window.removeEventListener("bannersUpdated", fetchBanners);
@@ -351,9 +506,20 @@ export const UIProvider = ({ children }) => {
       window.removeEventListener("focus", checkRidChange);
       window.removeEventListener("popstate", checkRidChange);
       clearInterval(pollInterval);
+      clearTimeout(socketNotifyDebounceRef.current);
+      clearTimeout(socketSupportDebounceRef.current);
       socket.disconnect();
     };
-  }, [fetchData, fetchBanners, fetchOffers, fetchNotifications, fetchReservations, fetchSupportTicketCount]);
+  }, [
+    fetchData,
+    fetchBanners,
+    fetchOffers,
+    fetchNotifications,
+    fetchReservations,
+    fetchSupportTicketCount,
+    fetchCustomerPromos,
+    fetchAdminChromeBundle,
+  ]);
 
   const value = {
     banners,
@@ -361,14 +527,21 @@ export const UIProvider = ({ children }) => {
     notifications,
     supportTicketCount,
     supportUnreadCount,
+    restaurantSupportTickets,
     reservations,
     isLoading,
     notificationsLoading,
     refreshUI: fetchData,
+    fetchCustomerPromos,
+    fetchAdminChromeBundle,
+    subscribeAdminChrome,
+    subscribeNotifyPolling,
     setBanners,
     setOffers,
     fetchNotifications,
     fetchReservations,
+    fetchBanners,
+    fetchOffers,
     markNotificationAsRead,
     fetchSupportTicketCount,
     markAllSupportTicketsRead,

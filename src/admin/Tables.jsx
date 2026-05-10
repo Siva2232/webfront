@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useTheme } from "../context/ThemeContext";
+import { getPlanLimitsFromBranding } from "../utils/planLimits";
 import API from "../api/axios";
+import { fetchTablesCoalesced } from "../api/fetchTablesCoalesced";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -32,7 +34,7 @@ export default function Tables() {
 
   const { orders } = useOrders();
   const { reservations, notifications, markNotificationAsRead } = useUI();
-  const { features } = useTheme();
+  const { features, branding } = useTheme();
   const reservationsEnabled = features.reservations !== false;
   const billRequestEnabled = features.billRequest !== false;
   const waiterCallEnabled = features.waiterCall !== false;
@@ -66,7 +68,7 @@ export default function Tables() {
     const fetchTables = async () => {
       try {
         setIsLoading(true);
-        const { data } = await API.get("/tables");
+        const data = await fetchTablesCoalesced();
         setTables(data);
       } catch (err) {
         console.error("Failed to fetch tables", err);
@@ -126,7 +128,16 @@ export default function Tables() {
     toast.success(`Table ${tableId} checked out`);
   };
 
-  const addNewTable = async () => {
+  const { maxTables: tableCap } = getPlanLimitsFromBranding(branding);
+  const atTableLimit = tables.length >= tableCap;
+
+  const addNewTable = () => {
+    if (atTableLimit) {
+      toast.error(
+        `Table limit reached (${tableCap} max). Upgrade your plan or remove a table.`,
+      );
+      return;
+    }
     setShowAddModal(true);
     setNewTableId("");
     setNewTableCapacity(4);
@@ -144,6 +155,13 @@ export default function Tables() {
       return;
     }
 
+    if (tables.length >= tableCap) {
+      toast.error(
+        `Table limit reached (${tableCap} max). Upgrade your plan or remove a table.`,
+      );
+      return;
+    }
+
     setIsSavingTable(true);
 
     const newTable = { id: tableId, capacity: Number(newTableCapacity) || 4 };
@@ -153,12 +171,12 @@ export default function Tables() {
     try {
       await API.post("/tables", newTable);
       toast.success(`Table ${tableId} created and synced`);
-      const { data } = await API.get("/tables");
+      const data = await fetchTablesCoalesced();
       setTables(data);
       setShowAddModal(false);
     } catch (err) {
       console.error("Failed to save table", err);
-      toast.error("Failed to save to cloud");
+      toast.error(err.response?.data?.message || "Failed to save to cloud");
       setTables(prevTables);
     } finally {
       setIsSavingTable(false);
@@ -180,7 +198,7 @@ export default function Tables() {
     try {
       await API.delete(`/tables/${tableId}`);
       toast.success(`Table ${tableId} removed permanently`);
-      const { data } = await API.get('/tables');
+      const data = await fetchTablesCoalesced();
       setTables(data);
     } catch (err) {
       console.error('Failed to delete table', err);
@@ -254,8 +272,19 @@ export default function Tables() {
 
         {canManageTables && (
           <button
+            type="button"
+            disabled={atTableLimit}
+            title={
+              atTableLimit
+                ? `Plan limit: ${tableCap} tables. Upgrade or remove a table to add more.`
+                : undefined
+            }
             onClick={addNewTable}
-            className="group flex items-center gap-2 bg-slate-900 text-white px-5 sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all active:scale-95 shadow-xl hover:shadow-orange-200/40"
+            className={`group flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-xl ${
+              atTableLimit
+                ? "cursor-not-allowed bg-slate-300 text-slate-500 shadow-none"
+                : "bg-slate-900 text-white hover:bg-orange-600 hover:shadow-orange-200/40"
+            }`}
           >
             <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
             Add Table
@@ -474,9 +503,20 @@ export default function Tables() {
               Start building your floor plan by adding your first dining station.
             </p>
             {canManageTables && (
-              <button 
+              <button
+                type="button"
+                disabled={atTableLimit}
+                title={
+                  atTableLimit
+                    ? `Plan limit: ${tableCap} tables.`
+                    : undefined
+                }
                 onClick={addNewTable}
-                className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-orange-600 transition-all shadow-xl"
+                className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-xl ${
+                  atTableLimit
+                    ? "cursor-not-allowed bg-slate-300 text-slate-500"
+                    : "bg-slate-900 text-white hover:bg-orange-600"
+                }`}
               >
                 <Plus size={18} /> Add First Table
               </button>

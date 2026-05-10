@@ -21,8 +21,11 @@ import StockChangeModal from "./products/components/StockChangeModal";
 import AddProductModal from "./products/components/AddProductModal";
 import { compressImage } from "./products/utils/compressImage";
 import StickyPageHeader from "./components/StickyPageHeader";
+import { useTheme } from "../context/ThemeContext";
+import { getPlanLimitsFromBranding } from "../utils/planLimits";
 
 export default function AdminProducts() {
+  const { branding } = useTheme();
   const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory, subitems = [] } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("");
@@ -143,6 +146,14 @@ export default function AdminProducts() {
   const handleAddProduct = async () => {
     if (!productForm.name.trim() || !productForm.price || !productForm.description.trim() || !productForm.image || !productForm.category) {
       toast.error("Please fill all required fields");
+      return;
+    }
+
+    const { maxProducts } = getPlanLimitsFromBranding(branding);
+    if (products.length >= maxProducts) {
+      toast.error(
+        `Menu item limit reached (${maxProducts} max). Upgrade your plan or remove items.`,
+      );
       return;
     }
 
@@ -301,6 +312,9 @@ export default function AdminProducts() {
     { label: "Sold out", value: products.filter((p) => !p.isAvailable).length, icon: AlertCircle, color: "rose" },
   ];
 
+  const { maxProducts: productCap } = getPlanLimitsFromBranding(branding);
+  const atProductLimit = products.length >= productCap;
+
   return (
     <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
       <div
@@ -331,8 +345,26 @@ export default function AdminProducts() {
             </div>
             <button
               type="button"
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+              disabled={atProductLimit}
+              title={
+                atProductLimit
+                  ? `Plan limit reached (${productCap} items). Upgrade or remove items to add more.`
+                  : undefined
+              }
+              onClick={() => {
+                if (atProductLimit) {
+                  toast.error(
+                    `Menu item limit reached (${productCap} max). Upgrade your plan or remove items.`,
+                  );
+                  return;
+                }
+                setShowAddModal(true);
+              }}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide shadow-md transition-colors ${
+                atProductLimit
+                  ? "cursor-not-allowed bg-zinc-300 text-zinc-500 shadow-none"
+                  : "bg-zinc-900 text-white shadow-zinc-900/15 hover:bg-zinc-800"
+              }`}
             >
               <Plus size={14} />
               Add product

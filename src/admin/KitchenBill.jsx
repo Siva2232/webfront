@@ -14,9 +14,7 @@ export default function KitchenBill({ embedded = false }) {
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  useEffect(() => {
-    fetchActiveKitchenBills();
-  }, []);
+  // Active kitchen bills load globally from OrderContext (mount + socket + focus).
 
   const handlePrintSingle = (billId) => {
     const kb = kitchenBills.find((bill) => (bill._id || bill.id) === billId);

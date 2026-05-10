@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, Loader2, Check, X, Save } from "lucide-react";
 
 const FEATURE_KEYS = [
   { key: "hr",           label: "HR Management" },
-  { key: "inventory",    label: "Inventory" },
+  // { key: "inventory",    label: "Inventory" },
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
   { key: "onlineOrders", label: "Online Orders" },
