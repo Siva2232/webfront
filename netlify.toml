@@ -1,0 +1,9 @@
+# Netlify Site settings → Base directory: set to `webfront` if the repo root is the whole project.
+# Then Build command / Publish directory below apply relative to that folder.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
