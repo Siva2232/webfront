@@ -18,7 +18,7 @@ import {
   Package
 } from "lucide-react";
 import API from "../api/axios";
-import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from "../utils/tenantCache";
 import butter from "../assets/images/butter.png";
 import onion from "../assets/images/onion.png";
 import gopi from "../assets/images/gopi.png";
@@ -77,9 +77,9 @@ export default function Menu() {
       const _rid = getCurrentRestaurantId();
       if (localStorage.getItem(tenantKey(`tableModeChosen_${urlTable}`, _rid))) {
         setTable(urlTable);
-        navigate(`/menu?table=${urlTable}`, { replace: true });
+        navigate(appendRestaurantQuery(`/menu?table=${urlTable}`), { replace: true });
       } else {
-        navigate(`/choose-mode?table=${urlTable}`, { replace: true });
+        navigate(appendRestaurantQuery(`/choose-mode?table=${urlTable}`), { replace: true });
       }
       return;
     }
@@ -87,7 +87,7 @@ export default function Menu() {
     if (mode === "takeaway") {
       const _rid = getCurrentRestaurantId();
       if (!localStorage.getItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid))) {
-        navigate(`/choose-mode?mode=takeaway`, { replace: true });
+        navigate(appendRestaurantQuery(`/choose-mode?mode=takeaway`), { replace: true });
         return;
       }
       // don't prompt for a table; CartContext initialiser already set the
@@ -139,7 +139,7 @@ export default function Menu() {
                 </div>
               </div>
               <button 
-                onClick={() => navigate(`/cart?table=${table}`)}
+                onClick={() => navigate(appendRestaurantQuery(`/cart?table=${table}`))}
                 className="px-4 py-2 bg-white text-orange-600 rounded-xl text-xs font-black uppercase"
               >
                 Done
@@ -194,7 +194,7 @@ export default function Menu() {
                   <button 
                     onClick={() => {
                       // Navigate to takeaway mode while preserving table context in URL if needed
-                      navigate(`/menu?mode=takeaway&from=chooser`);
+                      navigate(appendRestaurantQuery(`/menu?mode=takeaway&from=chooser`));
                     }}
                     className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-orange-50 transition-colors group"
                   >
@@ -218,7 +218,7 @@ export default function Menu() {
                       // If we have a stored table or just go back to chooser/last table
                       const _rid = getCurrentRestaurantId();
                       const storedTable = localStorage.getItem(tenantKey("lastTable", _rid)) || "1";
-                      navigate(`/menu?table=${storedTable}&from=chooser`);
+                      navigate(appendRestaurantQuery(`/menu?table=${storedTable}&from=chooser`));
                     }}
                     className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors group"
                   >

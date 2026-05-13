@@ -13,7 +13,7 @@ import confetti from 'canvas-confetti';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import api from '../api/axios';
-import { getCurrentRestaurantId, tenantKey } from '../utils/tenantCache';
+import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from '../utils/tenantCache';
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -148,7 +148,7 @@ export default function Cart({ hideTable = false }) {
 
   useEffect(() => {
     if (isTakeaway && !hideTable) {
-      navigate("/takeaway-cart?mode=takeaway", { replace: true });
+      navigate(appendRestaurantQuery("/takeaway-cart?mode=takeaway"), { replace: true });
     }
   }, [isTakeaway, hideTable, navigate]);
 
@@ -296,9 +296,9 @@ export default function Cart({ hideTable = false }) {
     // Navigate after a brief delay for the success animation
     setTimeout(() => {
       if (effectiveTable === TAKEAWAY_TABLE) {
-        navigate(`/order-summary?mode=takeaway`);
+        navigate(appendRestaurantQuery(`/order-summary?mode=takeaway`));
       } else {
-        navigate(`/order-summary?table=${effectiveTable}`);
+        navigate(appendRestaurantQuery(`/order-summary?table=${effectiveTable}`));
       }
     }, 1200);
   };
@@ -410,7 +410,7 @@ export default function Cart({ hideTable = false }) {
                   {/* Add Takeaway Items button - navigates to menu to select takeaway items */}
                   {table?.trim() && (
                     <button 
-                      onClick={() => navigate(`/menu?table=${table}&addTakeaway=true&from=chooser`)}
+                      onClick={() => navigate(appendRestaurantQuery(`/menu?table=${table}&addTakeaway=true&from=chooser`))}
                       className={`w-full mt-4 flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs uppercase transition-all ${
                         cart.some(item => item.isTakeaway) 
                           ? 'bg-orange-500 text-white' 
@@ -867,9 +867,9 @@ const SuccessView = ({ details, navigate, table }) => (
         <button 
           onClick={() => {
             if (details.table === TAKEAWAY_TABLE) {
-              navigate(`/order-summary?mode=takeaway`);
+              navigate(appendRestaurantQuery(`/order-summary?mode=takeaway`));
             } else {
-              navigate(`/order-summary?table=${details.table}`);
+              navigate(appendRestaurantQuery(`/order-summary?table=${details.table}`));
             }
           }}
           className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
@@ -887,7 +887,7 @@ const EmptyView = ({ table }) => (
     </div>
     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cart is empty</h3>
     <Link 
-      to={table === TAKEAWAY_TABLE ? "/menu?mode=takeaway" : "/menu"} 
+      to={appendRestaurantQuery(table === TAKEAWAY_TABLE ? "/menu?mode=takeaway" : "/menu")} 
       className="inline-flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg mt-6"
     >
       Back to Menu

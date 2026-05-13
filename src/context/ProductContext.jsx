@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
-import { syncRestaurantCache, getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { syncRestaurantCache, getRestaurantIdForTenantData, isCustomerPublicMenuPath, getCustomerVenueRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 
 // the socket URL should match the backend deployment; use env var if available
@@ -22,37 +22,39 @@ export const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
   // Current restaurant ID from URL (priority) or localStorage
-  const currentRid = getCurrentRestaurantId();
+  const currentRid = getRestaurantIdForTenantData();
   // Track the rid at mount so we can detect switches without a hard reload
   const mountedRid = useRef(currentRid);
 
-  // Hydrate instantly from namespaced cache for THIS restaurant only
+  // Hydrate from namespaced cache for this tenant (public menu: URL venue only).
   const [products, setProducts] = useState(() => {
+    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return [];
     try {
-      const stored = tenantGet('products', currentRid);
+      const stored = tenantGet("products", currentRid);
       if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return [];
   });
   const [categories, setCategories] = useState(() => {
+    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return [];
     try {
-      const stored = tenantGet('categories', currentRid);
+      const stored = tenantGet("categories", currentRid);
       if (Array.isArray(stored) && stored.length > 0) return stored;
     } catch {}
     return [];
   });
   const [subitems, setSubitems] = useState([]);
-  // If we have cached products, mark as not-loading so UI renders immediately
   const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return false;
     try {
-      const stored = tenantGet('products', currentRid);
+      const stored = tenantGet("products", currentRid);
       return !(Array.isArray(stored) && stored.length > 0);
     } catch {}
     return true;
   });
 
   // Helper: get the LIVE restaurantId (not the stale closure value)
-  const getLiveRid = () => getCurrentRestaurantId() || mountedRid.current;
+  const getLiveRid = () => getRestaurantIdForTenantData() || mountedRid.current;
 
   const fetchCategories = async () => {
     try {
@@ -96,6 +98,11 @@ export const ProductProvider = ({ children }) => {
     if (fetchProductsDedupeRef.current) return fetchProductsDedupeRef.current;
 
     const run = async () => {
+      if (isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) {
+        setIsLoading(false);
+        _fetchProductsInFlight.current = false;
+        return;
+      }
       _fetchProductsInFlight.current = true;
       try {
       // Only show loading spinner if there's no cached data
@@ -164,7 +171,7 @@ export const ProductProvider = ({ children }) => {
   useEffect(() => {
     const checkRidChange = () => {
       if (isSuperAdminSession()) return;
-      const liveRid = getCurrentRestaurantId();
+      const liveRid = getRestaurantIdForTenantData();
       if (liveRid && liveRid !== mountedRid.current) {
         mountedRid.current = liveRid;
         // Reset state to the new restaurant's cache (or empty)
@@ -189,6 +196,7 @@ export const ProductProvider = ({ children }) => {
 
   // Force-fresh products fetch (bypasses server cache) — used after socket events
   const fetchProductsFresh = async () => {
+    if (isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return;
     try {
       const [subitemsRes, productsRes] = await Promise.allSettled([
         API.get("/sub-items", { skipCoalesce: true }),

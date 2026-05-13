@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import API from "../api/axios";
+import { getRestaurantIdForTenantData, syncRestaurantCache } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import {
   DEFAULT_RECEIPT_HEADER,
@@ -127,6 +129,8 @@ const applyThemeToDom = (branding) => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  const location = useLocation();
+
   // Visual branding (name, colours, logo) — restored from cache for instant first paint.
   const [branding, setBranding] = useState(() => {
     const rid = localStorage.getItem("restaurantId");
@@ -231,16 +235,19 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     if (isSuperAdminSession()) return;
-    const restaurantId = localStorage.getItem("restaurantId");
+    const params = new URLSearchParams(location.search);
+    const fromUrl = params.get("restaurantId");
+    if (fromUrl) syncRestaurantCache(fromUrl);
+    const restaurantId = getRestaurantIdForTenantData();
     if (restaurantId) loadBranding(restaurantId);
-  }, [loadBranding]);
+  }, [location.pathname, location.search, loadBranding]);
 
   /** Re-fetch when the tab regains focus so feature changes by Super Admin are picked up. */
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
       if (isSuperAdminSession()) return;
-      const rid = localStorage.getItem("restaurantId");
+      const rid = getRestaurantIdForTenantData();
       if (rid) loadBranding(rid);
     };
     document.addEventListener("visibilitychange", onVis);

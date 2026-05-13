@@ -7,7 +7,7 @@ import API from "../api/axios";
 import { useUI } from "../context/UIContext";
 import { useTheme } from "../context/ThemeContext";
 import { useOrders } from "../context/OrderContext";
-import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import { getRestaurantIdForTenantData, tenantKey } from "../utils/tenantCache";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export default function Navbar({ title }) {
     const n = branding?.name != null ? String(branding.name).trim() : "";
     if (n) return n;
     const t = typeof title === "string" ? title.trim() : "";
-    return t || "Restaurant";
+    return t || "Flow Diner";
   }, [branding?.name, title]);
 
   const logoUrl = useMemo(() => {
@@ -44,7 +44,7 @@ export default function Navbar({ title }) {
 
   // Track if a bill was requested for the current set of orders
   const [lastBillRequestedOrderCount, setLastBillRequestedOrderCount] = useState(() => {
-    const _rid = getCurrentRestaurantId();
+    const _rid = getRestaurantIdForTenantData();
     return parseInt(localStorage.getItem(tenantKey(`lastBillCount_${currentTable}`, _rid)) || "0");
   });
 
@@ -107,7 +107,7 @@ export default function Navbar({ title }) {
       ).length;
       
       setLastBillRequestedOrderCount(activeCount);
-      const _rid = getCurrentRestaurantId();
+      const _rid = getRestaurantIdForTenantData();
       localStorage.setItem(tenantKey(`lastBillCount_${currentTable}`, _rid), activeCount.toString());
 
       setTimeout(() => setShowCallSuccess(false), 3000);
@@ -137,7 +137,7 @@ export default function Navbar({ title }) {
     );
     if (tableOrders.length === 0 && lastBillRequestedOrderCount > 0) {
       setLastBillRequestedOrderCount(0);
-      const _rid = getCurrentRestaurantId();
+      const _rid = getRestaurantIdForTenantData();
       localStorage.removeItem(tenantKey(`lastBillCount_${currentTable}`, _rid));
     }
   }, [orders, currentTable, lastBillRequestedOrderCount]);

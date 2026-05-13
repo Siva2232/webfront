@@ -35,6 +35,12 @@ export default function CustomerSupport() {
     message: ""
   });
 
+  const {
+    fetchSupportTicketCount,
+    markAllSupportTicketsRead,
+    supportTicketCount,
+  } = useUI();
+
   useEffect(() => {
     setSelectedTicket((prev) => {
       if (!prev?._id) return prev;

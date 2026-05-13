@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function Footer() {
-  const storeName = "MY CAFE";
+  const storeName = "Flow Diner";
   const currentYear = new Date().getFullYear();
 
   return (

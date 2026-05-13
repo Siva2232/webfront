@@ -127,11 +127,19 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
   useEffect(() => {
     if (open) {
       if (initial) {
+        const pid = String(initial.subscriptionPlan?._id || initial.subscriptionPlan || "");
+        const planDoc = plans.find((p) => String(p._id) === pid);
+        const mergedFeatures = { ...BLANK_FORM.features, ...(initial.features || {}) };
+        if (planDoc?.features) {
+          for (const k of Object.keys(planDoc.features)) {
+            if (typeof planDoc.features[k] === "boolean") mergedFeatures[k] = planDoc.features[k];
+          }
+        }
         setForm({
           ...BLANK_FORM,
           ...initial,
-          features: { ...BLANK_FORM.features, ...(initial.features || {}) },
-          subscriptionPlan: initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
+          features: mergedFeatures,
+          subscriptionPlan: pid,
           logoBase64: "",
           // Ensure colors from DB are prioritized over BLANK_FORM defaults if they exist
           sidebarBgColor: initial.sidebarBgColor || BLANK_FORM.sidebarBgColor,
@@ -146,23 +154,27 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
       setPreview(false);
       setActiveTab("general");
     }
-  }, [open, initial, restaurants]);
+  }, [open, initial, restaurants, plans]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setColor = (k, v) => { set(k, v); if (preview) previewBranding({ [k]: v }); };
   const setFeature = (k, v) => setForm((f) => ({ ...f, features: { ...f.features, [k]: v } }));
 
   const handlePlanSelect = (planId) => {
-    set("subscriptionPlan", planId);
-    if (planId) {
-      set("subscriptionStatus", "active");
-    } else {
-      set("subscriptionStatus", "trial");
-    }
-    const plan = plans.find(p => p._id === planId);
-    if (plan && plan.features) {
-      setForm(f => ({ ...f, features: { ...f.features, ...plan.features } }));
-    }
+    const plan = plans.find((p) => String(p._id) === String(planId || ""));
+    setForm((f) => {
+      const next = {
+        ...f,
+        subscriptionPlan: planId || "",
+        subscriptionStatus: planId ? "active" : "trial",
+      };
+      if (!plan?.features) return next;
+      const features = { ...f.features };
+      for (const k of Object.keys(plan.features)) {
+        if (typeof plan.features[k] === "boolean") features[k] = plan.features[k];
+      }
+      return { ...next, features };
+    });
   };
 
   const handleLogo = (e) => {
@@ -213,25 +225,10 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           address: form.address,
           subscriptionStatus: form.subscriptionStatus,
         });
-        // Only call assignPlan when the plan changes or the subscription must be (re)started — not on every edit.
-        const selectedPlanId = String(form.subscriptionPlan || "");
-        const initialPlanId = String(
-          initial.subscriptionPlan?._id || initial.subscriptionPlan || "",
-        );
-        const samePlan = selectedPlanId !== "" && selectedPlanId === initialPlanId;
-        const hasFutureExpiry =
-          initial.subscriptionExpiry &&
-          new Date(initial.subscriptionExpiry) > new Date();
-        const planRenewalNotNeeded =
-          samePlan &&
-          hasFutureExpiry &&
-          initial.subscriptionStatus !== "expired";
-
-        if (
-          selectedPlanId &&
-          form.subscriptionStatus === "active" &&
-          !planRenewalNotNeeded
-        ) {
+        const selectedPlanId = String(form.subscriptionPlan || "").trim();
+        // Re-merge from the current plan document (no extra billing) when status is active;
+        // backend leaves expiry unchanged for same-plan + future-expiry tenants.
+        if (selectedPlanId && form.subscriptionStatus === "active") {
           await assignPlan(initial.restaurantId, { planId: form.subscriptionPlan });
         }
         // Must run after assignPlan: plan assignment turns on plan-included modules;

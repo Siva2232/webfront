@@ -49,6 +49,7 @@ export default function Dashboard() {
   const reservationsEnabled = features.reservations !== false;
   const billRequestEnabled = features.billRequest !== false;
   const waiterCallEnabled = features.waiterCall !== false;
+  const tablesFeatureEnabled = features.qrMenu !== false;
 
   const _rid = getCurrentRestaurantId();
 
@@ -152,9 +153,7 @@ export default function Dashboard() {
     syncSystem();
     const interval = setInterval(() => syncSystem(true), 45000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Sync with live orders map after context updates
+  }, [_rid]);
   useEffect(() => {
     const liveMap = {};
     orders.forEach(o => {
@@ -369,9 +368,14 @@ export default function Dashboard() {
               <TableIcon className="text-zinc-700" size={24} />
               Live Table Status
             </h2>
-            <Link to="/admin/tables" className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800">
-              View all tables
-            </Link>
+            {tablesFeatureEnabled && (
+              <Link
+                to="/admin/tables"
+                className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800"
+              >
+                View all tables
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-bold uppercase tracking-wider">
@@ -466,8 +470,14 @@ export default function Dashboard() {
               return (
                 <motion.div
                   key={table.id}
-                  onClick={() => navigate(`/admin/order-summary?table=${table.id}`)}
-                  className={`relative flex h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border transition-all text-slate-900 ${tileShell}`}
+                  onClick={() => {
+                    if (!tablesFeatureEnabled) return;
+                    navigate(`/admin/order-summary?table=${table.id}`);
+                  }}
+                  className={`relative flex h-24 flex-col items-center justify-center gap-2 rounded-2xl border transition-all text-slate-900 ${tileShell} ${
+                    tablesFeatureEnabled ? "cursor-pointer" : "cursor-default"
+                  }`}
+                  title={!tablesFeatureEnabled ? "Open full tables from Super Admin to enable Tables & QR" : undefined}
                 >
                   <div className={`text-[10px] font-black uppercase tracking-tighter ${idMuted}`}>
                     T{table.id}

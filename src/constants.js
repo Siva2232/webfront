@@ -1,6 +1,6 @@
 // Restaurant Info
 export const RESTAURANT_INFO = {
-  name: "MY CAFE",
+  name: "Flow Diner",
   location: "Kochi, Kerala",
   phone: "9876543210",
   gst: "18AABCT1234H1Z0",

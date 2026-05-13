@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import API from "../api/axios";
 import { io } from "socket.io-client";
 import { TAKEAWAY_TABLE } from "./CartContext";
-import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
+import { getRestaurantIdForTenantData, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
 
@@ -30,10 +30,10 @@ const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
   // namespaced cache helpers — each restaurant stores data in its own slot
-  const _rid = getCurrentRestaurantId();
+  const _rid = getRestaurantIdForTenantData();
   const _mountedRid = useRef(_rid);
   // Use live helpers that always read the CURRENT restaurantId (not the stale mount-time value)
-  const _getLiveRid = () => getCurrentRestaurantId() || _mountedRid.current;
+  const _getLiveRid = () => getRestaurantIdForTenantData() || _mountedRid.current;
   const _tGet  = (k)    => tenantGet(k, _getLiveRid());
   const _tSet  = (k, v) => tenantSet(k, _getLiveRid(), v);
   const _tDel  = (k)    => tenantRemove(k, _getLiveRid());
@@ -871,7 +871,7 @@ export const OrderProvider = ({ children }) => {
       if (!t || isSuperAdminSession()) return;
 
       // Detect restaurant switch
-      const liveRid = getCurrentRestaurantId();
+      const liveRid = getRestaurantIdForTenantData();
       if (liveRid && liveRid !== _mountedRid.current) {
         _mountedRid.current = liveRid;
         // Reset state to the new restaurant's cache (or empty)

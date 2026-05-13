@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { getCurrentRestaurantId, tenantKey, tenantRemove } from "../utils/tenantCache";
+import { syncRestaurantCache, getRestaurantIdForTenantData, tenantKey, tenantRemove } from "../utils/tenantCache";
 
 const CartContext = createContext();
 
@@ -9,7 +9,7 @@ export const TAKEAWAY_TABLE = "TAKEAWAY";
 export const DELIVERY_TABLE = "DELIVERY";
 
 const getCartKey = (table) => {
-  const rid = getCurrentRestaurantId() || '';
+  const rid = getRestaurantIdForTenantData() || '';
   return `cart_${rid}_${table?.trim() || 'guest'}`;
 };
 const MAX_CART_ITEMS = 120;
@@ -22,7 +22,7 @@ const safeSetLocalStorage = (key, value) => {
       console.warn("localStorage quota exceeded, clearing non-critical caches", err);
       try {
         // Remove caches to free some space, keep cart data in memory for now.
-        const _rid = getCurrentRestaurantId();
+        const _rid = getRestaurantIdForTenantData();
         tenantRemove("cachedOrders", _rid);
         tenantRemove("cachedBills", _rid);
         tenantRemove("cachedKitchenBills", _rid);
@@ -47,7 +47,7 @@ export const CartProvider = ({ children }) => {
       return TAKEAWAY_TABLE;
     }
     const urlTable = params.get("table")?.trim()?.replace(/^0+/, "");
-    const _rid = getCurrentRestaurantId();
+    const _rid = getRestaurantIdForTenantData();
     return urlTable || localStorage.getItem(tenantKey("lastUsedTable", _rid)) || "";
   });
 
@@ -64,7 +64,7 @@ export const CartProvider = ({ children }) => {
     if (table?.trim()) {
       const cartData = JSON.stringify(cart);
       safeSetLocalStorage(getCartKey(table), cartData);
-      const _rid = getCurrentRestaurantId();
+      const _rid = getRestaurantIdForTenantData();
       localStorage.setItem(tenantKey("lastUsedTable", _rid), table);
     }
   }, [cart, table]);

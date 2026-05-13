@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useTheme } from "../context/ThemeContext";
 import { Utensils, ShoppingBag, CalendarX, RefreshCw } from "lucide-react";
-import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from "../utils/tenantCache";
 import API from "../api/axios";
 import { format } from "date-fns";
 
@@ -76,14 +76,14 @@ export default function ChooseMode() {
     const _rid = getCurrentRestaurantId();
     if (table && localStorage.getItem(tenantKey(`tableModeChosen_${table}`, _rid))) {
       setTable(table);
-      navigate(`/menu?table=${table}`, { replace: true });
+      navigate(appendRestaurantQuery(`/menu?table=${table}`), { replace: true });
       return;
     }
 
     if (mode === "takeaway") {
-      navigate(`/menu?mode=takeaway&from=chooser`, { replace: true });
+      navigate(appendRestaurantQuery(`/menu?mode=takeaway&from=chooser`), { replace: true });
     } else if (!table) {
-      navigate("/menu", { replace: true });
+      navigate(appendRestaurantQuery("/menu"), { replace: true });
     }
   }, [mode, table, navigate, setTable, reservationChecked, isTableReserved]);
 
@@ -92,16 +92,16 @@ export default function ChooseMode() {
       const _rid = getCurrentRestaurantId();
       localStorage.setItem(tenantKey(`tableModeChosen_${table}`, _rid), "true");
       setTable(table);
-      navigate(`/menu?table=${table}&from=chooser`);
+      navigate(appendRestaurantQuery(`/menu?table=${table}&from=chooser`));
     } else {
-      navigate(`/menu`);
+      navigate(appendRestaurantQuery("/menu"));
     }
   };
 
   const chooseTakeaway = () => {
     const _rid = getCurrentRestaurantId();
     localStorage.setItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid), "true");
-    navigate(`/menu?mode=takeaway&from=chooser`);
+    navigate(appendRestaurantQuery(`/menu?mode=takeaway&from=chooser`));
   };
 
   return (

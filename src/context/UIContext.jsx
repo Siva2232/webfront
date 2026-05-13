@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import API from "../api/axios";
 import { useTheme } from "./ThemeContext";
 import { io as socketIOClient } from "socket.io-client";
-import { getCurrentRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { getRestaurantIdForTenantData, getCustomerVenueRestaurantId, isCustomerPublicMenuPath, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
 import { isSuperAdminSession, getTokenRole } from "../utils/sessionFlags";
 
 const UIContext = createContext();
@@ -50,10 +50,9 @@ export const UIProvider = ({ children }) => {
     reservationsEnabledRef.current = reservationsEnabled;
   }, [reservationsEnabled]);
 
-  const _rid = getCurrentRestaurantId();
+  const _rid = getRestaurantIdForTenantData();
   const _mountedRid = useRef(_rid);
-  // Live helper that always reads the CURRENT restaurantId
-  const _getLiveRid = () => getCurrentRestaurantId() || _mountedRid.current;
+  const _getLiveRid = () => getRestaurantIdForTenantData() || _mountedRid.current;
 
   // Hydrate instantly from namespaced cache for THIS restaurant only
   const [banners, setBanners] = useState(() => {
@@ -274,6 +273,7 @@ export const UIProvider = ({ children }) => {
   /** Banners + offers — call from CustomerLayout when visiting the public menu. */
   const fetchCustomerPromos = useCallback(async () => {
     if (isSuperAdminSession()) return;
+    if (isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return;
     if (customerPromosDedupeRef.current) return customerPromosDedupeRef.current;
 
     const run = async () => {
@@ -341,7 +341,7 @@ export const UIProvider = ({ children }) => {
 
     // Detect restaurant switch on focus and reset UI state
     const checkRidChange = () => {
-      const liveRid = getCurrentRestaurantId();
+      const liveRid = getRestaurantIdForTenantData();
       if (liveRid && liveRid !== _mountedRid.current) {
         _mountedRid.current = liveRid;
         // Reset to new restaurant's cache or defaults
@@ -402,7 +402,7 @@ export const UIProvider = ({ children }) => {
 
     socket.on("connect", () => {
       if (isSuperAdminSession()) return;
-      const rid = getCurrentRestaurantId();
+      const rid = getRestaurantIdForTenantData();
       if (rid) socket.emit("joinRoom", { restaurantId: rid, token: localStorage.getItem('token') || undefined });
     });
 

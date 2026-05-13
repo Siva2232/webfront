@@ -1,10 +1,15 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import { appendRestaurantQuery } from "../utils/tenantCache";
 
-/* Feature Guard — blocks direct URL access to disabled features */
+const CustomerDefaultMenuRedirect = () => (
+  <Navigate to={appendRestaurantQuery("/menu")} replace />
+);
+
+/* Feature Guard — blocks direct URL access to disabled features (after branding/features load). */
 const FeatureGuard = ({ feature, children }) => {
-  const { features } = useTheme();
-  if (features[feature] === false) {
+  const { features, featuresReady } = useTheme();
+  if (featuresReady && features[feature] === false) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   return children;
@@ -12,14 +17,16 @@ const FeatureGuard = ({ feature, children }) => {
 
 /** Allows /admin/hr/* when any HR area is enabled (parent `hr` off but hrStaff etc. on). */
 const HRModuleOutletGuard = ({ children }) => {
-  const { features } = useTheme();
-  const allowed =
-    features.hr !== false ||
-    features.hrStaff !== false ||
-    features.hrAttendance !== false ||
-    features.hrLeaves !== false;
-  if (!allowed) {
-    return <Navigate to="/admin/dashboard" replace />;
+  const { features, featuresReady } = useTheme();
+  if (featuresReady) {
+    const allowed =
+      features.hr !== false ||
+      features.hrStaff !== false ||
+      features.hrAttendance !== false ||
+      features.hrLeaves !== false;
+    if (!allowed) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
   }
   return children;
 };
@@ -134,7 +141,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Root redirect */}
-      <Route path="/" element={<Navigate to="/menu" replace />} />
+      <Route path="/" element={<CustomerDefaultMenuRedirect />} />
 
       {/* Login */}
       <Route
@@ -146,15 +153,15 @@ export default function AppRoutes() {
         }
       />
 
-      {/* Customer Routes */}
+      {/* Customer routes: use paths relative to "/" layout parent (RR7 + pathless parent).
+          Do not nest path="*" here — it can steal matches from siblings like /menu. */}
       <Route element={<CustomerLayout />}>
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/takeaway-cart" element={<TakeawayCart />} />
-        <Route path="/order-status/:orderId" element={<OrderStatus />} />
-        <Route path="/order-summary" element={<OrderSummary />} />
-        <Route path="/choose-mode" element={<ChooseMode />} />
-        <Route path="*" element={<Navigate to="/menu" replace />} />
+        <Route path="menu" element={<Menu />} />
+        <Route path="cart" element={<Cart />} />
+        <Route path="takeaway-cart" element={<TakeawayCart />} />
+        <Route path="order-status/:orderId" element={<OrderStatus />} />
+        <Route path="order-summary" element={<OrderSummary />} />
+        <Route path="choose-mode" element={<ChooseMode />} />
       </Route>
 
       {/* Kitchen-specific Routes */}
@@ -167,7 +174,14 @@ export default function AppRoutes() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="kitchen-bill" element={<KitchenBill />} />
+          <Route
+            path="kitchen-bill"
+            element={
+              <FeatureGuard feature="kitchenPanel">
+                <KitchenBill />
+              </FeatureGuard>
+            }
+          />
           <Route path="customer" element={<CustomerSupport />} />
           <Route path="bill" element={<OrderBill />} />
           <Route
@@ -197,19 +211,82 @@ export default function AppRoutes() {
           <Route path="products/add" element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditForm />} />
           <Route path="sub-items" element={<SubItemLibrary />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="manual-order" element={<ManualOrder />} />
+          <Route
+            path="orders"
+            element={
+              <FeatureGuard feature="onlineOrders">
+                <Orders />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="manual-order"
+            element={
+              <FeatureGuard feature="onlineOrders">
+                <ManualOrder />
+              </FeatureGuard>
+            }
+          />
           <Route path="tokens" element={<Token />} />
-          <Route path="products-ordering" element={<AdminProductsOrdering />} />
-          <Route path="cart" element={<AdminCart />} />
-          <Route path="order-summary" element={<AdminOrderSummary />} />
-          <Route path="tables" element={<Tables />} />
-          <Route path="qr-generator" element={<QrGenerator />} />
+          <Route
+            path="products-ordering"
+            element={
+              <FeatureGuard feature="qrMenu">
+                <AdminProductsOrdering />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="cart"
+            element={
+              <FeatureGuard feature="qrMenu">
+                <AdminCart />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="order-summary"
+            element={
+              <FeatureGuard feature="qrMenu">
+                <AdminOrderSummary />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="tables"
+            element={
+              <FeatureGuard feature="qrMenu">
+                <Tables />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="qr-generator"
+            element={
+              <FeatureGuard feature="qrMenu">
+                <QrGenerator />
+              </FeatureGuard>
+            }
+          />
           <Route path="offers" element={<OfferPanel />} />
           <Route path="offers/add" element={<OfferPanel autoOpen />} />
           <Route path="banner" element={<BannerPanel />} />
-          <Route path="reports" element={<Analytics />} />
-          <Route path="analytics" element={<Analytics />} />
+          <Route
+            path="reports"
+            element={
+              <FeatureGuard feature="reports">
+                <Analytics />
+              </FeatureGuard>
+            }
+          />
+          <Route
+            path="analytics"
+            element={
+              <FeatureGuard feature="reports">
+                <Analytics />
+              </FeatureGuard>
+            }
+          />
           <Route path="subscription" element={<SubscriptionPage />} />
           <Route path="profile" element={<AdminProfile />} />
 
@@ -315,10 +392,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Fallback: must stay after specific top-level routes */}
-      <Route path="*" element={<Navigate to="/menu" replace />} />
-
-      {/* ── Dedicated Support Team Panel ── */}
+      {/* ── Dedicated Support Team Panel (must be BEFORE global path="*") ── */}
       <Route path="/support-team/login" element={<SupportLogin />} />
       <Route element={<ProtectedSupportRoute />}>
         <Route path="/support-team" element={<SupportLayout />}>
@@ -336,6 +410,9 @@ export default function AppRoutes() {
           />
         </Route>
       </Route>
+
+      {/* Fallback: unknown paths → customer menu (after all specific top-level routes) */}
+      <Route path="*" element={<CustomerDefaultMenuRedirect />} />
     </Routes>
   );
 }

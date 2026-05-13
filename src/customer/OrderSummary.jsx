@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import confetti from "canvas-confetti";
 import { AnimatePresence } from "framer-motion";
 import API from "../api/axios";
-import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from "../utils/tenantCache";
 import { 
   RotateCcw, 
   Timer, 
@@ -98,7 +98,8 @@ export default function OrderSummary() {
       params.set("mode", "takeaway");
     }
     const qs = params.toString();
-    return qs ? `/menu?${qs}` : "/menu";
+    const path = qs ? `/menu?${qs}` : "/menu";
+    return appendRestaurantQuery(path);
   })();
 
   // simplified back link that preserves current table/mode to avoid losing
@@ -111,7 +112,8 @@ export default function OrderSummary() {
       params.set("table", currentTable);
     }
     const qs = params.toString();
-    return `/menu${qs ? `?${qs}` : ""}`;
+    const path = `/menu${qs ? `?${qs}` : ""}`;
+    return appendRestaurantQuery(path);
   })();
 
   // Takeaway view: only orders with table === TAKEAWAY_TABLE.
@@ -457,7 +459,7 @@ export default function OrderSummary() {
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
               <Link 
-                to={`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`} 
+                to={appendRestaurantQuery(`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`)} 
                 className="relative flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-2.5 text-[9px] font-black uppercase tracking-widest text-white shadow-md transition-all sm:rounded-[1.25rem] sm:py-3 sm:shadow-lg"
               >
                 <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
