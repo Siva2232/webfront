@@ -58,6 +58,7 @@ import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+/** Customer menu brand — `webfront/src/assets/flowdiner-mini-logo.png` */
 import flowDinerBrandLogo from "../assets/flowdiner-mini-logo.png";
 
 /** Match `/admin/{segment}` exactly or a nested route — avoids `includes()` bugs (e.g. `bill` vs `manual-bill`). */
@@ -1031,12 +1032,13 @@ export default function AdminLayout() {
               >
                 <img
                   src={flowDinerBrandLogo}
-                  alt=""
-                  role="presentation"
+                  alt="Flow Diner"
+                  width={200}
+                  height={48}
                   className={
                     isCollapsed
-                      ? "h-6 w-6 object-contain"
-                      : "h-7 w-auto max-w-[88px] object-contain sm:max-w-[100px]"
+                      ? "h-7 w-7 object-contain"
+                      : "h-8 w-auto max-w-[120px] object-contain object-left sm:max-w-[140px]"
                   }
                   loading="lazy"
                   decoding="async"
