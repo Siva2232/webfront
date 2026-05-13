@@ -1,10 +1,5 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import { appendRestaurantQuery } from "../utils/tenantCache";
-
-const CustomerDefaultMenuRedirect = () => (
-  <Navigate to={appendRestaurantQuery("/menu")} replace />
-);
 
 /* Feature Guard — blocks direct URL access to disabled features (after branding/features load). */
 const FeatureGuard = ({ feature, children }) => {
@@ -141,7 +136,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Root redirect */}
-      <Route path="/" element={<CustomerDefaultMenuRedirect />} />
+      <Route path="/" element={<Navigate to="/menu" replace />} />
 
       {/* Login */}
       <Route
@@ -153,15 +148,15 @@ export default function AppRoutes() {
         }
       />
 
-      {/* Customer routes: use paths relative to "/" layout parent (RR7 + pathless parent).
-          Do not nest path="*" here — it can steal matches from siblings like /menu. */}
+      {/* Customer Routes */}
       <Route element={<CustomerLayout />}>
-        <Route path="menu" element={<Menu />} />
-        <Route path="cart" element={<Cart />} />
-        <Route path="takeaway-cart" element={<TakeawayCart />} />
-        <Route path="order-status/:orderId" element={<OrderStatus />} />
-        <Route path="order-summary" element={<OrderSummary />} />
-        <Route path="choose-mode" element={<ChooseMode />} />
+        <Route path="/menu" element={<Menu />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/takeaway-cart" element={<TakeawayCart />} />
+        <Route path="/order-status/:orderId" element={<OrderStatus />} />
+        <Route path="/order-summary" element={<OrderSummary />} />
+        <Route path="/choose-mode" element={<ChooseMode />} />
+        <Route path="*" element={<Navigate to="/menu" replace />} />
       </Route>
 
       {/* Kitchen-specific Routes */}
@@ -392,7 +387,10 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* ── Dedicated Support Team Panel (must be BEFORE global path="*") ── */}
+      {/* Fallback: must stay after specific top-level routes */}
+      <Route path="*" element={<Navigate to="/menu" replace />} />
+
+      {/* ── Dedicated Support Team Panel ── */}
       <Route path="/support-team/login" element={<SupportLogin />} />
       <Route element={<ProtectedSupportRoute />}>
         <Route path="/support-team" element={<SupportLayout />}>
@@ -410,9 +408,6 @@ export default function AppRoutes() {
           />
         </Route>
       </Route>
-
-      {/* Fallback: unknown paths → customer menu (after all specific top-level routes) */}
-      <Route path="*" element={<CustomerDefaultMenuRedirect />} />
     </Routes>
   );
 }

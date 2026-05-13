@@ -1,9 +1,5 @@
 import axios from "axios";
-import {
-  getCurrentRestaurantId,
-  getCustomerVenueRestaurantId,
-  isCustomerPublicMenuPath,
-} from "../utils/tenantCache";
+import { getCurrentRestaurantId } from "../utils/tenantCache";
 
 // dynamic baseURL: choose between development/local and production endpoints
 // Production builds should set VITE_API_BASE_URL to the full API URL (e.g. https://myapp.com/api).
@@ -44,12 +40,10 @@ API.interceptors.request.use((req) => {
     req.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Public menu routes: only ?restaurantId= from the URL (never LS/JWT — avoids wrong-tenant leaks).
-  let restaurantId = isCustomerPublicMenuPath()
-    ? getCustomerVenueRestaurantId()
-    : getCurrentRestaurantId();
+  // Append restaurantId to every request (URL → LS → VITE_DEFAULT / dev default; see tenantCache).
+  let restaurantId = getCurrentRestaurantId();
 
-  if (!restaurantId && !isCustomerPublicMenuPath() && localStorage.getItem('isSuperAdmin') !== 'true') {
+  if (!restaurantId && localStorage.getItem('isSuperAdmin') !== 'true') {
     // Last resort: decode the JWT payload to extract restaurantId (not for platform super-admin tokens).
     try {
       const tok = localStorage.getItem('token') || localStorage.getItem('hrToken');
@@ -138,11 +132,9 @@ API.get = function coalescedGet(url, config) {
 
   let rid = "";
   try {
-    rid = isCustomerPublicMenuPath()
-      ? getCustomerVenueRestaurantId()
-      : String(localStorage.getItem("restaurantId") || "")
-          .toUpperCase()
-          .trim();
+    rid = String(localStorage.getItem("restaurantId") || "")
+      .toUpperCase()
+      .trim();
   } catch (_) {}
 
   const key = `${rid}::${url}::${stableParamsKey(cfg.params)}`;

@@ -7,7 +7,7 @@ import API from "../api/axios";
 import { useUI } from "../context/UIContext";
 import { useTheme } from "../context/ThemeContext";
 import { useOrders } from "../context/OrderContext";
-import { getRestaurantIdForTenantData, tenantKey } from "../utils/tenantCache";
+import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 
 export default function Navbar({ title }) {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ export default function Navbar({ title }) {
 
   // Track if a bill was requested for the current set of orders
   const [lastBillRequestedOrderCount, setLastBillRequestedOrderCount] = useState(() => {
-    const _rid = getRestaurantIdForTenantData();
+    const _rid = getCurrentRestaurantId();
     return parseInt(localStorage.getItem(tenantKey(`lastBillCount_${currentTable}`, _rid)) || "0");
   });
 
@@ -107,7 +107,7 @@ export default function Navbar({ title }) {
       ).length;
       
       setLastBillRequestedOrderCount(activeCount);
-      const _rid = getRestaurantIdForTenantData();
+      const _rid = getCurrentRestaurantId();
       localStorage.setItem(tenantKey(`lastBillCount_${currentTable}`, _rid), activeCount.toString());
 
       setTimeout(() => setShowCallSuccess(false), 3000);
@@ -137,7 +137,7 @@ export default function Navbar({ title }) {
     );
     if (tableOrders.length === 0 && lastBillRequestedOrderCount > 0) {
       setLastBillRequestedOrderCount(0);
-      const _rid = getRestaurantIdForTenantData();
+      const _rid = getCurrentRestaurantId();
       localStorage.removeItem(tenantKey(`lastBillCount_${currentTable}`, _rid));
     }
   }, [orders, currentTable, lastBillRequestedOrderCount]);

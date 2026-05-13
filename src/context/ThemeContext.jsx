@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import API from "../api/axios";
-import { getRestaurantIdForTenantData, syncRestaurantCache } from "../utils/tenantCache";
+import { getCurrentRestaurantId, syncRestaurantCache } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import {
   DEFAULT_RECEIPT_HEADER,
@@ -238,7 +238,7 @@ export const ThemeProvider = ({ children }) => {
     const params = new URLSearchParams(location.search);
     const fromUrl = params.get("restaurantId");
     if (fromUrl) syncRestaurantCache(fromUrl);
-    const restaurantId = getRestaurantIdForTenantData();
+    const restaurantId = getCurrentRestaurantId();
     if (restaurantId) loadBranding(restaurantId);
   }, [location.pathname, location.search, loadBranding]);
 
@@ -247,7 +247,7 @@ export const ThemeProvider = ({ children }) => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
       if (isSuperAdminSession()) return;
-      const rid = getRestaurantIdForTenantData();
+      const rid = localStorage.getItem("restaurantId");
       if (rid) loadBranding(rid);
     };
     document.addEventListener("visibilitychange", onVis);
