@@ -83,7 +83,13 @@ export default function OrderBill() {
       setDateFilter("");
       return;
     }
-    navigate("/admin/dashboard");
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const base = path.startsWith("/waiter")
+      ? "/waiter"
+      : path.startsWith("/kitchen")
+        ? "/kitchen"
+        : "/admin";
+    navigate(`${base}/dashboard`);
   }, [dateFilter, navigate]);
 
   /* mark paid — close modal & toast instantly, sync to server in background */
@@ -274,7 +280,6 @@ export default function OrderBill() {
         onDateChange={setDateFilter}
         onClearFilter={() => setDateFilter("")}
         recordCount={uniqueBills.length}
-        onBack={() => navigate(-1)}
         onRefresh={handleRefresh}
       />
       {children}
@@ -330,7 +335,6 @@ export default function OrderBill() {
         onDateChange={setDateFilter}
         onClearFilter={() => setDateFilter("")}
         recordCount={uniqueBills.length}
-        onBack={() => navigate(-1)}
         onRefresh={handleRefresh}
       />
 

@@ -150,10 +150,14 @@ export default function ManualBill() {
       />
       <StickyPageHeader
         icon={Receipt}
-        eyebrow="Billing"
         title="Split bill"
         subtitle="Customise & print partial bills"
-        onBack={() => navigate("/admin/dashboard")}
+        onBack={() => navigate("/admin/bill")}
+        breadcrumbItems={[
+          { label: "Dashboard", to: "/admin/dashboard" },
+          { label: "Order bill", to: "/admin/bill" },
+          { label: "Split bill" },
+        ]}
         rightAddon={
           <button
             type="button"

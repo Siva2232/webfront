@@ -1,6 +1,12 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useMemo } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Calendar, RefreshCw, Receipt, TrendingUp, Scissors, ChevronRight } from "lucide-react";
+
+function billingBasePath(pathname) {
+  if (pathname.startsWith("/waiter")) return "/waiter";
+  if (pathname.startsWith("/kitchen")) return "/kitchen";
+  return "/admin";
+}
 
 export function OrderBillHeader({
   isLoading,
@@ -8,24 +14,33 @@ export function OrderBillHeader({
   onDateChange,
   onClearFilter,
   recordCount,
-  onBack,
   onRefresh,
 }) {
+  const { pathname } = useLocation();
+  const base = useMemo(() => billingBasePath(pathname), [pathname]);
+  const isAdmin = base === "/admin";
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
-            <TrendingUp size={22} strokeWidth={2.25} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400">
-              <span>Billing</span>
-              <ChevronRight size={12} className="opacity-70" />
-              {/* <span className="text-zinc-600">Order bill</span> */}
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
+              <TrendingUp size={22} strokeWidth={2.25} />
             </div>
-            <h1 className="text-xl font-black tracking-tight text-zinc-900 md:text-2xl">Order bill</h1>
-            <p className="text-[11px] text-zinc-500">Active invoices, print, and payments</p>
+            <div className="min-w-0">
+              <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
+                <Link to={`${base}/dashboard`} className="transition hover:text-zinc-700">
+                  Dashboard
+                </Link>
+                <ChevronRight size={12} className="shrink-0 opacity-60" aria-hidden />
+                <span className="text-zinc-600" aria-current="page">
+                  Order bill
+                </span>
+              </nav>
+              <h1 className="text-xl font-black tracking-tight text-zinc-900 md:text-2xl">Order bill</h1>
+              <p className="text-[11px] text-zinc-500">Active invoices, print, and payments</p>
+            </div>
           </div>
         </div>
 
@@ -61,13 +76,15 @@ export function OrderBillHeader({
             )}
           </div>
 
-          <Link
-            to="/admin/manual-bill"
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-900 shadow-sm shadow-zinc-900/10 transition-colors hover:bg-zinc-50 active:scale-[0.99]"
-          >
-            <Scissors size={14} />
-            Split bill
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/manual-bill"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-900 shadow-sm shadow-zinc-900/10 transition-colors hover:bg-zinc-50 active:scale-[0.99]"
+            >
+              <Scissors size={14} />
+              Split bill
+            </Link>
+          )}
 
           <button
             type="button"

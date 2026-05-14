@@ -137,7 +137,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
         <header className="space-y-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">Kitchen Control <span className="text-orange-500">Center</span></h1>
+              <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase">Kitchen Control <span className="text-orange-500">Center</span></h1>
               <p className="text-slate-400 font-bold mt-2 uppercase tracking-[0.3em] text-[10px]">Real-time Operations & History</p>
             </div>
           </div>
