@@ -331,8 +331,11 @@ export default function Dashboard() {
                   <IndianRupee size={22} strokeWidth={2.5} />
                </div>
                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Net revenue</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Total sales</p>
                   <p className="text-2xl font-black text-green-900">₹{totalRevenue.toLocaleString("en-IN")}</p>
+                  <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
+                    Paid &amp; closed orders (all time)
+                  </p>
                </div>
             </motion.div>
           </div>

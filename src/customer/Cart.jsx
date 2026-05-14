@@ -2,7 +2,7 @@ import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useOrders } from "../context/OrderContext";
 import { generateId } from "../utils/generateId";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { 
   ShoppingBag, Trash2, Plus, Minus,
@@ -19,6 +19,7 @@ import {
   GST_CGST_PCT_LABEL,
   GST_SGST_PCT_LABEL,
 } from "../utils/gstRates";
+import { useTheme } from "../context/ThemeContext";
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -144,6 +145,17 @@ export default function Cart({ hideTable = false }) {
 
   const { addOrder } = useOrders();
   const navigate = useNavigate();
+  const { features } = useTheme();
+
+  /** Super Admin / plan can disable pay-at-table or card checkout independently. */
+  const { showPayLaterOption, showOnlineOption } = useMemo(() => {
+    const payLater = features?.customerPayLater !== false;
+    const online = features?.customerOnlinePayment !== false;
+    if (!payLater && !online) {
+      return { showPayLaterOption: true, showOnlineOption: false };
+    }
+    return { showPayLaterOption: payLater, showOnlineOption: online };
+  }, [features]);
 
   useEffect(() => {
     if (hideTable && table !== TAKEAWAY_TABLE) {
@@ -167,17 +179,32 @@ export default function Cart({ hideTable = false }) {
   const [dragConstraints, setDragConstraints] = useState(0);
   const [tableError, setTableError] = useState("");
   const [showClearCartModal, setShowClearCartModal] = useState(false);
+  const [paymentChoiceError, setPaymentChoiceError] = useState("");
   
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
 
-  /** Pay Later is the default every time the user opens checkout (/cart or /takeaway-cart). Online stays only until they leave and come back. */
+  /**
+   * When both checkout paths are enabled, customer must tap one — no default selection.
+   * When only one path exists, pre-select it (nothing to choose between).
+   */
   useEffect(() => {
     const path = location.pathname;
-    if (path === "/cart" || path === "/takeaway-cart") {
+    if (path !== "/cart" && path !== "/takeaway-cart") return;
+    if (showOnlineOption && !showPayLaterOption) {
+      setPaymentMethod("online");
+      setPaymentChoiceError("");
+    } else if (showPayLaterOption && !showOnlineOption) {
       setPaymentMethod("cod");
+      setPaymentChoiceError("");
+    } else if (showPayLaterOption && showOnlineOption) {
+      setPaymentMethod(null);
+      setPaymentChoiceError("");
+    } else {
+      setPaymentMethod("cod");
+      setPaymentChoiceError("");
     }
-  }, [location.pathname]);
+  }, [location.pathname, showPayLaterOption, showOnlineOption]);
 
   const containerRef = useRef(null);
   const x = useMotionValue(0);
@@ -246,6 +273,7 @@ export default function Cart({ hideTable = false }) {
     if (cart.length === 0) return;
 
     setTableError("");
+    setPaymentChoiceError("");
     playSynthSound('success');
 
     const orderId = generateId("ORD");
@@ -312,8 +340,14 @@ export default function Cart({ hideTable = false }) {
       setIsSwiped(false);
       return;
     }
+
+    if (showPayLaterOption && showOnlineOption && paymentMethod == null) {
+      setPaymentChoiceError("Choose Pay later or Online payment above.");
+      setIsSwiped(false);
+      return;
+    }
     
-    if (paymentMethod === 'online') {
+    if (paymentMethod === "online" && showOnlineOption) {
       setShowStripeModal(true);
       setIsSwiped(false);
     } else {
@@ -324,6 +358,11 @@ export default function Cart({ hideTable = false }) {
   const handlePaymentSuccess = (paymentIntent) => {
     placeOrder(paymentIntent);
   };
+
+  const bothPaymentChoices = showPayLaterOption && showOnlineOption;
+  const paymentChoiceReady = !bothPaymentChoices || paymentMethod != null;
+  const checkoutSwipeReady =
+    (isTakeaway || Boolean(String(table || "").trim())) && paymentChoiceReady;
 
   // Group items by portion
   const groupedItems = cart.reduce((groups, item) => {
@@ -654,41 +693,70 @@ export default function Cart({ hideTable = false }) {
                 </div>
               </div>
 
-              {/* Payment Method */}
+              {/* Payment Method — options controlled by Super Admin (Module Access) */}
+              {(showPayLaterOption || showOnlineOption) && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-2 text-slate-400">
                   <CreditCard size={14} />
                   <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Payment Method</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div
+                  className={`grid gap-3 ${
+                    showPayLaterOption && showOnlineOption ? "grid-cols-2" : "grid-cols-1"
+                  }`}
+                >
+                  {showPayLaterOption && (
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('cod')}
+                    onClick={() => {
+                      setTableError("");
+                      setPaymentChoiceError("");
+                      setPaymentMethod("cod");
+                    }}
                     className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      paymentMethod === 'cod'
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      paymentMethod === "cod"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    <Wallet size={24} className={paymentMethod === 'cod' ? 'text-emerald-500' : 'text-slate-400'} />
+                    <Wallet size={24} className={paymentMethod === "cod" ? "text-emerald-500" : "text-slate-400"} />
                     <span className="text-xs font-black uppercase">Pay Later</span>
                     <span className="text-[10px] text-slate-400">Pay at table</span>
                   </button>
+                  )}
+                  {showOnlineOption && (
                   <button
                     type="button"
-                    onClick={() => setPaymentMethod('online')}
+                    onClick={() => {
+                      setTableError("");
+                      setPaymentChoiceError("");
+                      setPaymentMethod("online");
+                    }}
                     className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      paymentMethod === 'online'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      paymentMethod === "online"
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    <CreditCard size={24} className={paymentMethod === 'online' ? 'text-blue-500' : 'text-slate-400'} />
+                    <CreditCard size={24} className={paymentMethod === "online" ? "text-blue-500" : "text-slate-400"} />
                     <span className="text-xs font-black uppercase">Online Payment</span>
                     <span className="text-[10px] text-slate-400">Pay with card</span>
                   </button>
+                  )}
                 </div>
+                {bothPaymentChoices && (
+                  <p className="text-[10px] font-bold text-slate-400 px-1 text-center">
+                    Tap an option above, then swipe to place your order.
+                  </p>
+                )}
+                {paymentChoiceError && (
+                  <p className="text-[11px] font-semibold text-rose-500 px-1 text-center flex items-center justify-center gap-1">
+                    <AlertCircle size={14} className="shrink-0" />
+                    {paymentChoiceError}
+                  </p>
+                )}
               </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -700,25 +768,38 @@ export default function Cart({ hideTable = false }) {
             <div 
               ref={containerRef}
               className={`relative h-20 p-2 rounded-[2.5rem] flex items-center transition-all duration-500 shadow-2xl overflow-hidden ${
-                (isTakeaway || table?.trim()) 
-                  ? paymentMethod === 'online' ? 'bg-blue-600' : 'bg-slate-900'
-                  : 'bg-slate-100 grayscale pointer-events-none'
+                checkoutSwipeReady
+                  ? paymentMethod === "online"
+                    ? "bg-blue-600"
+                    : "bg-slate-900"
+                  : (isTakeaway || table?.trim())
+                    ? "bg-slate-300 pointer-events-none"
+                    : "bg-slate-100 grayscale pointer-events-none"
               }`}
             >
               <motion.div style={{ opacity: textOpacity }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white">
-                  {paymentMethod === 'online' ? 'Swipe to Pay' : 'Swipe to Order'}
+                <p
+                  className={`text-[11px] font-black uppercase tracking-[0.4em] ${
+                    checkoutSwipeReady ? "text-white" : "text-slate-600"
+                  }`}
+                >
+                  {!checkoutSwipeReady && (isTakeaway || table?.trim())
+                    ? "Select payment above"
+                    : paymentMethod === "online"
+                      ? "Swipe to Pay"
+                      : "Swipe to Order"}
                 </p>
               </motion.div>
 
               <motion.div
-                drag="x"
+                drag={checkoutSwipeReady ? "x" : false}
                 x={x}
                 dragConstraints={{ left: 0, right: dragConstraints }}
                 dragElastic={0.05}
                 dragSnapToOrigin={!isSwiped}
-                onDragStart={() => playSynthSound('swipe')}
+                onDragStart={() => checkoutSwipeReady && playSynthSound("swipe")}
                 onDragEnd={(e, info) => {
+                  if (!checkoutSwipeReady) return;
                   if (info.offset.x > dragConstraints * 0.8) {
                     setIsSwiped(true);
                     handleSwipeComplete();
@@ -726,15 +807,17 @@ export default function Cart({ hideTable = false }) {
                     setIsSwiped(false);
                   }
                 }}
-                className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg ${
-                  paymentMethod === 'online' ? 'bg-emerald-500' : 'bg-orange-500'
+                className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
+                  checkoutSwipeReady ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed opacity-60"
+                } ${
+                  paymentMethod === "online" ? "bg-emerald-500" : "bg-orange-500"
                 }`}
               >
                 {isSwiped ? <CheckCircle2 className="text-white" size={24} strokeWidth={3} /> : 
-                  paymentMethod === 'online' ? <CreditCard className="text-white animate-pulse" size={24} strokeWidth={2} /> :
+                  paymentMethod === "online" ? <CreditCard className="text-white animate-pulse" size={24} strokeWidth={2} /> :
                   <ArrowRight className="text-white animate-pulse" size={24} strokeWidth={3} />}
               </motion.div>
-              <motion.div className={`absolute left-0 top-0 bottom-0 ${paymentMethod === 'online' ? 'bg-emerald-500/10' : 'bg-orange-500/10'}`} style={{ width: x }} />
+              <motion.div className={`absolute left-0 top-0 bottom-0 ${paymentMethod === "online" ? "bg-emerald-500/10" : "bg-orange-500/10"}`} style={{ width: x }} />
             </div>
           </div>
         </div>

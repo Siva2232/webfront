@@ -35,6 +35,8 @@ const DEFAULT_THEME = {
     hrAttendance: true,
     hrLeaves:     true,
     reservations: true,
+    customerPayLater: true,
+    customerOnlinePayment: true,
   },
 };
 
@@ -187,7 +189,7 @@ export const ThemeProvider = ({ children }) => {
       try {
         // Single call — branding endpoint returns all 13 feature flags when the
         // request carries a valid auth token (admin/kitchen/waiter panels).
-        // Customer requests get only public flags (qrMenu, onlineOrders).
+        // Customer requests get public flags (qr menu, reservations, checkout options).
         const { data } = await API.get(`/restaurants/${restaurantId}/branding`);
         const merged = mergeBrandingPayload(data);
 

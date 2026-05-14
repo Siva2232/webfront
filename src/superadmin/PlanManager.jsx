@@ -9,6 +9,8 @@ const FEATURE_KEYS = [
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
   { key: "onlineOrders", label: "Online Orders" },
+  { key: "customerPayLater", label: "Customer — Pay at table" },
+  { key: "customerOnlinePayment", label: "Customer — Pay online" },
   { key: "kitchenPanel", label: "Kitchen Panel" },
   { key: "waiterPanel",  label: "Waiter Panel" },
   { key: "waiterCall",   label: "Waiter Call" },
@@ -19,7 +21,7 @@ const FEATURE_KEYS = [
 
 const BLANK = {
   name: "", price: "", duration: 30, description: "",
-  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
+  features: { hr: false, inventory: false, reports: true, qrMenu: true, onlineOrders: false, customerPayLater: true, customerOnlinePayment: true, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
   maxTables: 20, maxProducts: 100, maxStaff: 10,
 };
 

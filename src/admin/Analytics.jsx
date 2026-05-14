@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import {
   AreaChart,
   Area,
@@ -11,7 +11,6 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Bar,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -23,12 +22,8 @@ import {
   Activity,
   Wallet,
   Search,
-  Zap,
   ShieldCheck,
-  ArrowUpRight,
   Layers,
-  Calendar,
-  Percent,
   Crown,
   ShoppingBag,
   Award,
@@ -37,6 +32,7 @@ import {
   Users,
   Banknote,
   Clock,
+  Calendar,
   ArrowRight,
   ArrowLeftRight,
 } from "lucide-react";
@@ -49,7 +45,8 @@ import { getAllStaff, getAttendance, getLeaves, getPayrolls } from "../api/hrApi
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
-import { taxOnTaxableAmount, GST_TOTAL_RATE } from "../utils/gstRates";
+import { useSalesMetrics } from "./analytics/useSalesMetrics";
+import { parseLocalYMD, getOrderGross, getOrderTax } from "./analytics/salesMetrics";
 
 const PIE_COLORS = ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8"];
 
@@ -72,13 +69,29 @@ export default function Analytics() {
   const { features, featuresReady, branding } = useTheme();
   const primary = branding?.primaryColor || "#18181b";
 
-  const [timeframe, setTimeframe] = useState("Weekly");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [dishSearch, setDishSearch] = useState("");
+  const [catalogSearch, setCatalogSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split("T")[0],
-    end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date();
+    const start = subDays(end, 29);
+    return {
+      start: format(start, "yyyy-MM-dd"),
+      end: format(end, "yyyy-MM-dd"),
+    };
   });
+
+  const applyDatePreset = (preset) => {
+    const end = new Date();
+    const endStr = format(end, "yyyy-MM-dd");
+    if (preset === "7d") {
+      setDateRange({ start: format(subDays(end, 6), "yyyy-MM-dd"), end: endStr });
+    } else if (preset === "30d") {
+      setDateRange({ start: format(subDays(end, 29), "yyyy-MM-dd"), end: endStr });
+    } else if (preset === "mtd") {
+      setDateRange({ start: format(startOfMonth(end), "yyyy-MM-dd"), end: endStr });
+    }
+  };
 
   /* ── Feature gates (match AdminLayout / subscription flags) ── */
   const showAccounting = featuresReady && features.accounting !== false;
@@ -333,136 +346,184 @@ export default function Analytics() {
     };
   }, [showHr, showHrStaff, showHrAttendance, showHrLeaves, showHrPayroll, hrPeriod]);
 
-  const topByRevenue = useMemo(() => {
-    const map = {};
-    orders.forEach((order) => {
-      order.items?.forEach((it) => {
-        if (!map[it.name]) {
-          map[it.name] = { name: it.name, count: 0, revenue: 0, price: it.price || 0 };
-        }
-        map[it.name].count += it.qty;
-        map[it.name].revenue += (it.price || 0) * it.qty;
-      });
-    });
-    return Object.values(map)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 8);
-  }, [orders]);
+  const sales = useSalesMetrics({ orders, products, dateRange, dishSearch });
 
-  const bestSellersByVolume = useMemo(() => {
-    const map = {};
-    orders.forEach((order) => {
-      order.items?.forEach((it) => {
-        if (!map[it.name]) {
-          map[it.name] = { name: it.name, qty: 0 };
-        }
-        map[it.name].qty += it.qty;
-      });
-    });
-    return Object.values(map)
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 5);
-  }, [orders]);
-
-  const categoryRevenue = useMemo(() => {
-    const map = {};
-    orders.forEach((o) => {
-      o.items?.forEach((item) => {
-        const cat = item.category || "Uncategorized";
-        map[cat] = (map[cat] || 0) + (item.price || 0) * item.qty;
-      });
-    });
-    return Object.entries(map)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, [orders]);
-
-  const engine = useMemo(() => {
+  const catalogSnapshot = useMemo(() => {
     const filtered = products.filter((p) => {
-      const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = p.name.toLowerCase().includes(catalogSearch.toLowerCase());
       const matchStatus =
         statusFilter === "All" ? true : statusFilter === "Live" ? p.isAvailable : !p.isAvailable;
       return matchSearch && matchStatus;
     });
-
     const inventoryValue = filtered.reduce(
       (acc, p) => acc + (Number(p.price) || 0) * (p.stock || 1),
       0,
     );
-    const multiplier = { Daily: 0.2, Weekly: 1, Monthly: 4.3, Yearly: 52 }[timeframe];
-    const estRevenue = inventoryValue * multiplier;
-    const taxLiability = estRevenue * GST_TOTAL_RATE;
-    const opsCosts = estRevenue * 0.12;
-    const netProfit = estRevenue - taxLiability - opsCosts;
-    const profitMargin = estRevenue > 0 ? (netProfit / estRevenue) * 100 : 0;
-
     const liveCount = filtered.filter((p) => p.isAvailable).length;
-    const outCount = filtered.length - liveCount;
+    const outCount = Math.max(0, filtered.length - liveCount);
     const pieData = [
-      { name: "Active Stock", value: liveCount, color: "#18181b" },
-      { name: "Out of Stock", value: outCount, color: "#f43f5e" },
+      { name: "Live listings", value: liveCount },
+      { name: "Out of stock", value: outCount },
     ];
+    return { filtered, inventoryValue, pieData };
+  }, [products, catalogSearch, statusFilter]);
 
-    const timeLabels = {
-      Daily: ["Morning", "Noon", "Evening", "Night"],
-      Weekly: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      Monthly: ["Week 1", "Week 2", "Week 3", "Week 4"],
-      Yearly: ["Q1", "Q2", "Q3", "Q4"],
-    }[timeframe];
-
-    const salesProjectionData = timeLabels.map((label, idx) => {
-      const isFuture = idx > timeLabels.length / 2;
-      const baseVal = estRevenue / timeLabels.length;
-      return {
-        name: label,
-        totalSales: isFuture ? null : Math.floor(baseVal * (0.8 + Math.random() * 0.4)),
-        futureSales: !isFuture ? null : Math.floor(baseVal * (1.1 + Math.random() * 0.5)),
-      };
-    });
-
-    return {
-      filtered,
-      inventoryValue,
-      estRevenue,
-      taxLiability,
-      netProfit,
-      opsCosts,
-      profitMargin,
-      salesProjectionData,
-      pieData,
-    };
-  }, [products, timeframe, searchTerm, statusFilter, dateRange]);
+  const {
+    ordersInRange,
+    dailySales,
+    topByRevenue,
+    categoryRevenue,
+    bestSellersByVolume,
+    currentSummary,
+    previousSummary,
+    previousRange,
+  } = sales;
 
   const handleExport = (format) => {
-    const data = engine.filtered.map((p) => ({
-      Name: p.name,
-      Price: p.price,
-      GST: taxOnTaxableAmount(p.price).toFixed(2),
-      Status: p.isAvailable ? "Live" : "Stocked",
-    }));
+    const totalGross = currentSummary.totalGross;
+    const fileBase = `Sales_summary_${dateRange.start}_${dateRange.end}`;
+
     if (format === "xlsx") {
-      const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Financial_Audit");
-      XLSX.writeFile(wb, `Audit_${timeframe}.xlsx`);
-    } else {
-      const doc = new jsPDF();
-      doc.text("Fiscal Audit Report", 14, 20);
-      doc.autoTable({
-        head: [["Product", "Price", "Tax"]],
-        body: data.map((o) => [o.Name, o.Price, o.GST]),
+      const summaryRows = [
+        {
+          "Date range": `${dateRange.start} to ${dateRange.end}`,
+          Orders: currentSummary.orderCount,
+          "Gross sales (₹)": Math.round(totalGross),
+          [`${currentSummary.taxLabel} (₹)`]: Number(currentSummary.totalTax.toFixed(2)),
+          "Avg order (₹)":
+            currentSummary.orderCount > 0 ? Math.round(currentSummary.avgOrderValue) : "",
+        },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), "Summary");
+
+      const dailyRows = dailySales.map((d) => ({
+        Date: d.dateKey,
+        "Gross sales (₹)": d.sales,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyRows), "Daily_sales");
+
+      const topRows = topByRevenue.map((row) => ({
+        Item: row.name,
+        Units: row.count,
+        "Line revenue (₹)": Math.round(row.revenue),
+        "Share %":
+          totalGross > 0
+            ? Math.min(100, Number(((row.revenue / totalGross) * 100).toFixed(1)))
+            : "",
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(topRows), "Top_items");
+
+      const orderRows = ordersInRange.map((o) => {
+        const g = getOrderGross(o);
+        const { tax, estimated } = getOrderTax(o);
+        return {
+          "Order ID": o._id != null ? String(o._id) : "",
+          Created: o.createdAt ? format(new Date(o.createdAt), "yyyy-MM-dd HH:mm") : "",
+          "Gross (₹)": Math.round(g),
+          [`Tax (${estimated ? "est." : "ledger"}, ₹)`]: Number(tax.toFixed(2)),
+        };
       });
-      doc.save("Report.pdf");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows), "Orders_in_range");
+
+      XLSX.writeFile(wb, `${fileBase}.xlsx`);
+      return;
     }
+
+    const doc = new jsPDF();
+    let y = 16;
+    doc.setFontSize(14);
+    doc.text("Sales summary (orders in range)", 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.text(
+      `${dateRange.start} to ${dateRange.end} · ${currentSummary.orderCount} orders · Gross ${fmtINR(totalGross)}`,
+      14,
+      y,
+    );
+    y += 10;
+    doc.autoTable({
+      startY: y,
+      head: [["Metric", "Value"]],
+      body: [
+        ["Gross sales", fmtINR(totalGross)],
+        [currentSummary.taxLabel, fmtINR(currentSummary.totalTax)],
+        [
+          "Avg order value",
+          currentSummary.orderCount > 0 ? fmtINR(currentSummary.avgOrderValue) : "—",
+        ],
+      ],
+    });
+    y = doc.lastAutoTable.finalY + 10;
+    doc.text("Daily sales", 14, y);
+    y += 6;
+    doc.autoTable({
+      startY: y,
+      head: [["Date", "Gross (₹)"]],
+      body: dailySales.map((d) => [d.dateKey, String(d.sales)]),
+    });
+    doc.save(`${fileBase}.pdf`);
   };
 
-  const financeKpis = [
-    { label: "Net Profit", val: engine.netProfit, icon: Wallet, key: "emerald", suffix: null },
-    { label: "Gross Forecast", val: engine.estRevenue, icon: Zap, key: "zinc", suffix: null },
-    { label: "Tax Liability", val: engine.taxLiability, icon: ShieldCheck, key: "rose", suffix: null },
-    { label: "Profit Margin", val: engine.profitMargin, icon: Percent, key: "amber", suffix: "%" },
+  const rangeStartFmt =
+    parseLocalYMD(dateRange.start) && format(parseLocalYMD(dateRange.start), "d MMM yyyy");
+  const rangeEndFmt =
+    parseLocalYMD(dateRange.end) && format(parseLocalYMD(dateRange.end), "d MMM yyyy");
+
+  const salesKpis = [
+    {
+      label: "Orders",
+      val: String(currentSummary.orderCount),
+      icon: ShoppingBag,
+      key: "emerald",
+      suffix: "",
+    },
+    {
+      label: "Gross sales",
+      val: fmtINR(currentSummary.totalGross),
+      icon: Banknote,
+      key: "zinc",
+      suffix: "",
+    },
+    {
+      label: currentSummary.taxLabel,
+      val: fmtINR(currentSummary.totalTax),
+      icon: ShieldCheck,
+      key: "rose",
+      suffix: "",
+    },
+    {
+      label: "Avg order value",
+      val: currentSummary.orderCount > 0 ? fmtINR(currentSummary.avgOrderValue) : "—",
+      icon: Wallet,
+      key: "amber",
+      suffix: "",
+    },
   ];
+
+  const cmpRows = [
+    { title: "Orders", cur: currentSummary.orderCount, prev: previousSummary.orderCount, unit: "count" },
+    { title: "Gross sales", cur: currentSummary.totalGross, prev: previousSummary.totalGross, unit: "₹" },
+    { title: "GST / tax", cur: currentSummary.totalTax, prev: previousSummary.totalTax, unit: "₹" },
+  ];
+
+  const formatCmpVal = (unit, v) => {
+    if (unit === "count") return String(Math.round(v));
+    return fmtINR(v);
+  };
+
+  const cmpDeltaDisplay = (cur, prev) => {
+    if (prev <= 0) return cur > 0 ? "New" : "—";
+    const pct = ((cur - prev) / prev) * 100;
+    return `${pct >= 0 ? "↑" : "↓"}${Math.abs(pct).toFixed(1)}%`;
+  };
+
+  const prevRangeLabel =
+    previousRange.startYmd && previousRange.endYmd
+      ? `${format(parseLocalYMD(previousRange.startYmd), "d MMM")} – ${format(parseLocalYMD(previousRange.endYmd), "d MMM yyyy")}`
+      : "";
+
+  const catTotal = categoryRevenue.reduce((s, c) => s + c.value, 0) || 1;
 
   return (
     <div className="min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
@@ -483,11 +544,30 @@ export default function Analytics() {
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
               <input
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-9 pr-3 text-[11px] outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-900/30 focus:bg-white focus:ring-2 sm:w-48"
-                placeholder="Search catalog…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2.5 pl-9 pr-3 text-[11px] outline-none ring-zinc-900/10 placeholder:text-zinc-400 focus:border-zinc-900/30 focus:bg-white focus:ring-2 sm:w-52"
+                placeholder="Filter dishes in lists…"
+                value={dishSearch}
+                onChange={(e) => setDishSearch(e.target.value)}
               />
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="hidden text-[9px] font-bold uppercase tracking-wider text-zinc-400 sm:inline">
+                Range
+              </span>
+              {[
+                { id: "7d", label: "7d" },
+                { id: "30d", label: "30d" },
+                { id: "mtd", label: "MTD" },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyDatePreset(p.id)}
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm hover:bg-zinc-50"
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
             <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5">
               <Calendar size={12} className="text-zinc-500" />
@@ -505,62 +585,32 @@ export default function Analytics() {
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               />
             </div>
-            <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value)}
-              className="min-w-[100px] cursor-pointer rounded-xl border border-zinc-200 bg-zinc-900 px-3 py-2.5 text-[10px] font-black uppercase tracking-wide text-white outline-none"
-            >
-              {["Daily", "Weekly", "Monthly", "Yearly"].map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-12 px-4 pt-8 md:space-y-14 md:px-8">
-        {/* ── Operations / inventory snapshot ── */}
-        <section>
-          <h2 className="mb-6 flex items-center gap-3 text-xl font-black tracking-tight text-zinc-900 md:text-2xl">
-            <Wallet className="text-zinc-700" size={26} />
-            Financial snapshot
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-            {financeKpis.map((k, i) => {
-              const style = KPI_STYLE[k.key];
-              return (
-                <motion.div
-                  key={k.label}
-                  whileHover={{ y: -4 }}
-                  className="relative overflow-hidden rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm ring-1 ring-zinc-100/80"
-                >
-                  <div className={`absolute -right-4 -top-4 opacity-[0.07] ${style.iconGlow}`}>
-                    <k.icon size={88} strokeWidth={1} />
-                  </div>
-                  <div className={`relative z-10 mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl ${style.iconWrap}`}>
-                    <k.icon size={22} />
-                  </div>
-                  <p className="relative z-10 text-[10px] font-bold uppercase tracking-wider text-zinc-500">{k.label}</p>
-                  <p className="relative z-10 mt-1 text-2xl font-black tabular-nums text-zinc-900">
-                    {k.suffix === "%" ? k.val.toFixed(1) : fmtINR(k.val)}
-                    {k.suffix || ""}
-                  </p>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Sales & revenue ── */}
-        <section>
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="flex items-center gap-3 text-xl font-black tracking-tight text-zinc-900 md:text-2xl">
-              <Activity className="text-zinc-700" size={26} />
-              Sales &amp; revenue
-            </h2>
-            <div className="flex gap-2">
+        {/* ── Sales performance (order-based) ── */}
+        <section className="space-y-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="flex items-center gap-3 text-xl font-black tracking-tight text-zinc-900 md:text-2xl">
+                <Activity className="text-zinc-700" size={26} />
+                Sales performance
+              </h2>
+              <p className="mt-1 max-w-xl text-sm text-zinc-500">
+                Based on orders between {rangeStartFmt || dateRange.start} and {rangeEndFmt || dateRange.end}.
+                {dishSearch.trim() ? (
+                  <span className="ml-1 font-medium text-zinc-600">
+                    Lists filtered by dish search; KPIs and chart use all orders in range.
+                  </span>
+                ) : null}
+              </p>
+              {showAccounting ? (
+                <p className="mt-2 text-xs text-zinc-400">Profit and loss: use Accounting reports.</p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 gap-2">
               <button
                 type="button"
                 onClick={() => handleExport("xlsx")}
@@ -578,63 +628,104 @@ export default function Analytics() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+            {salesKpis.map((k) => {
+              const style = KPI_STYLE[k.key];
+              return (
+                <Motion.div
+                  key={k.label}
+                  whileHover={{ y: -4 }}
+                  className="relative overflow-hidden rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm ring-1 ring-zinc-100/80"
+                >
+                  <div className={`absolute -right-4 -top-4 opacity-[0.07] ${style.iconGlow}`}>
+                    <k.icon size={88} strokeWidth={1} />
+                  </div>
+                  <div
+                    className={`relative z-10 mb-3 inline-flex h-11 w-11 items-center justify-center rounded-xl ${style.iconWrap}`}
+                  >
+                    <k.icon size={22} />
+                  </div>
+                  <p className="relative z-10 text-[10px] font-bold uppercase tracking-wider text-zinc-500">{k.label}</p>
+                  <p className="relative z-10 mt-1 text-2xl font-black tabular-nums text-zinc-900">
+                    {k.val}
+                    {k.suffix}
+                  </p>
+                </Motion.div>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm ring-1 ring-zinc-100/80 md:p-8">
               <h3 className="mb-6 flex items-center gap-2 text-base font-bold text-zinc-900">
                 <Activity className="text-zinc-500" size={18} />
-                Revenue projection · {timeframe}
+                Daily sales
               </h3>
               <div className="h-[300px] md:h-[340px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={engine.salesProjectionData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
-                    <Tooltip
-                      cursor={{ fill: "#fafafa" }}
-                      contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.08)" }}
-                    />
-                    <Bar dataKey="totalSales" fill="#18181b" radius={[8, 8, 0, 0]} barSize={28} />
-                    <Line
-                      type="monotone"
-                      dataKey="futureSales"
-                      stroke={primary}
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: primary }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
+                {dailySales.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailySales}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
+                      <XAxis
+                        dataKey="dateLabel"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9 }}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                      <Tooltip
+                        cursor={{ fill: "#fafafa" }}
+                        contentStyle={{
+                          borderRadius: "12px",
+                          border: "none",
+                          boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
+                        }}
+                        formatter={(v) => [fmtINR(v), "Gross"]}
+                      />
+                      <Bar dataKey="sales" fill="#18181b" radius={[6, 6, 0, 0]} name="Gross sales" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="flex h-full items-center justify-center text-sm text-zinc-400">
+                    Pick a valid date range to see daily totals.
+                  </p>
+                )}
               </div>
 
               <div className="mt-8 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-5">
-                <h4 className="mb-4 flex items-center gap-2 text-sm font-black text-zinc-800">
-                  <ArrowUpRight className="text-zinc-500" size={16} />
+                <h4 className="mb-1 flex items-center gap-2 text-sm font-black text-zinc-800">
+                  <ArrowLeftRight className="text-zinc-500" size={16} />
                   Period comparison
                 </h4>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    { title: "Revenue", current: engine.estRevenue, prev: engine.estRevenue * 0.92, unit: "₹" },
-                    { title: "Profit", current: engine.netProfit, prev: engine.netProfit * 1.05, unit: "₹" },
-                    { title: "Margin", current: engine.profitMargin, prev: engine.profitMargin - 2.4, unit: "%" },
-                    { title: "Orders", current: orders.length, prev: orders.length * 0.88, unit: "" },
-                  ].map((item) => (
-                    <div key={item.title} className="rounded-xl bg-white p-3 text-center shadow-sm ring-1 ring-zinc-100/80">
-                      <p className="text-[10px] text-zinc-500">{item.title}</p>
-                      <p className="text-sm font-bold tabular-nums">
-                        {item.unit === "%"
-                          ? `${item.current.toFixed(1)}%`
-                          : `${item.unit}${Math.round(item.current).toLocaleString()}`}
-                      </p>
-                      <p
-                        className={`mt-1 text-[10px] font-semibold ${
-                          item.current >= item.prev ? "text-emerald-600" : "text-rose-600"
-                        }`}
+                {prevRangeLabel ? (
+                  <p className="mb-4 text-[11px] text-zinc-500">Previous window: {prevRangeLabel}</p>
+                ) : (
+                  <p className="mb-4 text-[11px] text-zinc-500">Previous period unavailable for this range.</p>
+                )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {cmpRows.map((item) => {
+                    const d = cmpDeltaDisplay(item.cur, item.prev);
+                    const up = item.cur >= item.prev;
+                    return (
+                      <div
+                        key={item.title}
+                        className="rounded-xl bg-white p-3 text-center shadow-sm ring-1 ring-zinc-100/80"
                       >
-                        {item.current >= item.prev ? "↑" : "↓"}
-                        {Math.abs(((item.current - item.prev) / (item.prev || 1)) * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  ))}
+                        <p className="text-[10px] text-zinc-500">{item.title}</p>
+                        <p className="text-sm font-bold tabular-nums text-zinc-900">
+                          {formatCmpVal(item.unit, item.cur)}
+                        </p>
+                        <p
+                          className={`mt-1 text-[10px] font-semibold ${
+                            d === "—" || d === "New" ? "text-zinc-500" : up ? "text-emerald-600" : "text-rose-600"
+                          }`}
+                        >
+                          {d}
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -654,7 +745,7 @@ export default function Analytics() {
                         <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
                           <div
                             className="h-full rounded-full bg-zinc-900 transition-all"
-                            style={{ width: `${(cat.value / categoryRevenue[0].value) * 100}%` }}
+                            style={{ width: `${Math.min(100, (cat.value / catTotal) * 100)}%` }}
                           />
                         </div>
                       </div>
@@ -670,105 +761,105 @@ export default function Analytics() {
                 Top performers
               </h3>
               <div className="space-y-3">
-                {topByRevenue.map((item, i) => (
-                  <div
-                    key={item.name}
-                    className="flex items-center justify-between rounded-2xl border border-zinc-50 bg-zinc-50/50 p-4 transition hover:bg-zinc-100/80"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-sm font-black text-white">
-                        {i + 1}
+                {topByRevenue.map((item, i) => {
+                  const sharePct =
+                    currentSummary.totalGross > 0
+                      ? Math.min(100, (item.revenue / currentSummary.totalGross) * 100).toFixed(1)
+                      : null;
+                  return (
+                    <div
+                      key={item.name}
+                      className="flex items-center justify-between rounded-2xl border border-zinc-50 bg-zinc-50/50 p-4 transition hover:bg-zinc-100/80"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-sm font-black text-white">
+                          {i + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-zinc-900">{item.name}</p>
+                          <p className="text-[11px] text-zinc-500">
+                            {item.count} sold · {fmtINR(item.price)} list price
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-zinc-900">{item.name}</p>
-                        <p className="text-[11px] text-zinc-500">
-                          {item.count} × {fmtINR(item.price)}
+                      <div className="text-right">
+                        <p className="font-bold tabular-nums text-zinc-900">{fmtINR(item.revenue)}</p>
+                        <p className="text-[10px] font-semibold text-emerald-600">
+                          {sharePct != null ? `${sharePct}% share` : "—"}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold tabular-nums text-zinc-900">{fmtINR(item.revenue)}</p>
-                      <p className="text-[10px] font-semibold text-emerald-600">
-                        {engine.estRevenue > 0
-                          ? `${((item.revenue / engine.estRevenue) * 100).toFixed(1)}% share`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {topByRevenue.length === 0 && (
-                  <p className="py-10 text-center text-sm text-zinc-400">No sales data yet</p>
+                  <p className="py-10 text-center text-sm text-zinc-400">No matching line items in this range.</p>
                 )}
               </div>
             </div>
           </div>
-        </section>
 
-        {/* ── Volume leaders ── */}
-        <section>
-          <h2 className="mb-6 flex items-center gap-3 text-xl font-black tracking-tight text-zinc-900 md:text-2xl">
-            <ShoppingBag className="text-zinc-700" size={26} />
-            Volume leaders
-          </h2>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-6 rounded-3xl border border-zinc-100 bg-white p-8 shadow-sm ring-1 ring-zinc-100/80 lg:col-span-3"
             >
               <div className="flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-zinc-800">
-                  <span className="h-6 w-1 rounded-full bg-zinc-900" />
-                  Units sold
+                  <ShoppingBag className="h-5 w-5 text-zinc-600" />
+                  Volume leaders
                 </h3>
                 <span className="rounded-full border border-zinc-100 bg-zinc-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-400">
-                  Top items
+                  Units in range
                 </span>
               </div>
               <div className="space-y-5 py-2">
                 {bestSellersByVolume.length > 0 ? (
-                  bestSellersByVolume.map((item, idx) => (
-                    <div key={item.name} className="flex items-center gap-4">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${
-                          idx === 0 ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"
-                        }`}
-                      >
-                        {idx + 1}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="truncate font-medium text-zinc-800">{item.name}</span>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                              idx === 0 ? "bg-zinc-900/10 text-zinc-800" : "bg-zinc-50 text-zinc-500"
-                            }`}
-                          >
-                            {item.qty} units
-                          </span>
+                  bestSellersByVolume.map((item, idx) => {
+                    const maxQ = bestSellersByVolume[0]?.qty || 1;
+                    return (
+                      <div key={item.name} className="flex items-center gap-4">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${
+                            idx === 0 ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"
+                          }`}
+                        >
+                          {idx + 1}
                         </div>
-                        <div className="h-2.5 w-full overflow-hidden rounded-full border border-zinc-100 bg-zinc-50">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{
-                              width: `${(item.qty / bestSellersByVolume[0].qty) * 100}%`,
-                            }}
-                            transition={{ duration: 1.2, ease: "circOut" }}
-                            className={`h-full rounded-full ${idx === 0 ? "bg-zinc-900" : "bg-zinc-400"}`}
-                          />
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span className="truncate font-medium text-zinc-800">{item.name}</span>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${
+                                idx === 0 ? "bg-zinc-900/10 text-zinc-800" : "bg-zinc-50 text-zinc-500"
+                              }`}
+                            >
+                              {item.qty} units
+                            </span>
+                          </div>
+                          <div className="h-2.5 w-full overflow-hidden rounded-full border border-zinc-100 bg-zinc-50">
+                            <Motion.div
+                              initial={{ width: 0 }}
+                              animate={{
+                                width: `${(item.qty / maxQ) * 100}%`,
+                              }}
+                              transition={{ duration: 1.2, ease: "circOut" }}
+                              className={`h-full rounded-full ${idx === 0 ? "bg-zinc-900" : "bg-zinc-400"}`}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="py-8 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-300">
-                    Waiting for sales…
+                    No unit volume for the current filters.
                   </p>
                 )}
               </div>
-            </motion.div>
+            </Motion.div>
 
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
               className="relative flex flex-col justify-between overflow-hidden rounded-3xl bg-zinc-900 p-8 text-white shadow-xl lg:col-span-2"
@@ -798,7 +889,89 @@ export default function Analytics() {
               <div className="relative z-10 mt-8 flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300">
                 <Crown size={14} /> Top performer
               </div>
-            </motion.div>
+            </Motion.div>
+          </div>
+        </section>
+
+        {/* ── Catalog snapshot (not sales) ── */}
+        <section className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/40 p-5 md:p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-zinc-800">
+                <Layers className="text-zinc-500" size={18} />
+                Catalog (not sales)
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                Listed inventory value and availability — independent of the order date range above.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="min-w-[140px] rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[11px] outline-none focus:ring-2 focus:ring-zinc-900/10"
+                placeholder="Filter catalog…"
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="cursor-pointer rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-zinc-800 outline-none"
+              >
+                <option value="All">All</option>
+                <option value="Live">Live</option>
+                <option value="Stocked">Out of stock</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-12 md:items-center">
+            <div className="md:col-span-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Listed catalog value</p>
+              <p className="mt-1 text-2xl font-black tabular-nums text-zinc-900">{fmtINR(catalogSnapshot.inventoryValue)}</p>
+              <p className="mt-2 text-[11px] text-zinc-500">{catalogSnapshot.filtered.length} SKUs in view</p>
+            </div>
+            <div className="md:col-span-8">
+              {catalogSnapshot.pieData.some((d) => d.value > 0) ? (
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center">
+                  <div className="h-[140px] w-[140px] shrink-0 sm:h-[160px] sm:w-[160px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={catalogSnapshot.pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={58}
+                          paddingAngle={2}
+                        >
+                          {catalogSnapshot.pieData.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <ul className="w-full max-w-xs space-y-2">
+                    {catalogSnapshot.pieData.map((row, i) => (
+                      <li key={row.name} className="flex justify-between text-[11px]">
+                        <span className="flex items-center gap-2 font-medium text-zinc-700">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                          />
+                          {row.name}
+                        </span>
+                        <span className="font-bold tabular-nums text-zinc-900">{row.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="py-6 text-center text-xs text-zinc-400">No catalog rows match these filters.</p>
+              )}
+            </div>
           </div>
         </section>
 

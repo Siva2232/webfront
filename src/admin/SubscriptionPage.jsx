@@ -37,7 +37,6 @@ const PLAN_FEATURES = [
   ["hrAttendance", "HR attendance"],
   ["hrLeaves", "HR leave management"],
   ["reservations", "Table reservations"],
-  ["inventory", "Inventory"],
 ];
 
 function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId }) {
