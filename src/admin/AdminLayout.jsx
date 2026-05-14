@@ -1791,6 +1791,27 @@ export default function AdminLayout() {
                     </div>
 
                     <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-3.5 mt-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-all duration-200 group"
+                      onClick={() => {
+                        navigate("subscription");
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <CreditCard
+                          size={20}
+                          className="text-slate-400 group-hover:text-indigo-600 transition-colors"
+                        />
+                        <span>Manage subscription</span>
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        className="text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1"
+                      />
+                    </button>
+
+                    <button
                       className="w-full flex items-center justify-between px-4 py-3.5 mt-2 text-sm font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-all duration-200 group"
                       onClick={() => {
                         navigate("profile");
