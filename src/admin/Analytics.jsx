@@ -899,7 +899,7 @@ export default function Analytics() {
             <div>
               <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-zinc-800">
                 <Layers className="text-zinc-500" size={18} />
-                Catalog (not sales)
+                Catalog 
               </h2>
               <p className="mt-1 text-xs text-zinc-500">
                 Listed inventory value and availability — independent of the order date range above.

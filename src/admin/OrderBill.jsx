@@ -92,12 +92,13 @@ export default function OrderBill() {
     navigate(`${base}/dashboard`);
   }, [dateFilter, navigate]);
 
-  /* mark paid — close modal & toast instantly, sync to server in background */
-  const handleConfirmMarkPaid = useCallback(async () => {
+  /* Record payment (accounting on): dismiss UI immediately; sync bill + ledger in background */
+  const handleConfirmMarkPaid = useCallback(() => {
     if (!markPaidModal) return;
-    
+
     const billId = markPaidModal.billId;
     const total = markPaidModal.amount;
+    const orderRef = markPaidModal.orderRef;
     const { cash, bank, discount, balance } = paymentData;
 
     const netPaid = Number(cash) + Number(bank) + Number(discount) - Number(balance);
@@ -106,55 +107,79 @@ export default function OrderBill() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // 1. Mark as paid in main system
-      await markBillPaid(billId, markPaidModal.orderRef);
-      
-      // 2. Create accounting transaction
-      await accApi.payBill({
-        billId,
-        cash,
-        bank,
-        discount,
-        balance,
-        total,
-        description: `Payment for Bill #${billId}`
-      });
+    const accPayload = {
+      billId,
+      cash,
+      bank,
+      discount,
+      balance,
+      total,
+      description: `Payment for Bill #${billId}`,
+    };
 
-      setPaidBillIds(prev => new Set(prev).add(billId));
-      toast.success("Payment recorded in accounting!");
-      setMarkPaidModal(null);
-      setPaymentData({ cash: 0, bank: 0, discount: 0, balance: 0 });
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Payment sync failed";
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [markPaidModal, markBillPaid, paymentData]);
+    setMarkPaidModal(null);
+    setPaymentData({ cash: 0, bank: 0, discount: 0, balance: 0 });
+    setIsSubmitting(false);
+    setPaidBillIds((prev) => new Set(prev).add(billId));
+    toast.success("Payment recorded");
+
+    void (async () => {
+      try {
+        await markBillPaid(billId, orderRef);
+      } catch (err) {
+        setPaidBillIds((prev) => {
+          const next = new Set(prev);
+          next.delete(billId);
+          return next;
+        });
+        const msg = err?.response?.data?.message || err?.message || "Could not mark bill paid";
+        toast.error(msg);
+        try {
+          await fetchBills();
+        } catch (_) {}
+        return;
+      }
+      try {
+        await accApi.payBill(accPayload);
+      } catch (err) {
+        const msg = err?.response?.data?.message || err?.message || "Accounting entry failed";
+        toast.error(`Bill is paid. ${msg}`);
+      }
+    })();
+  }, [markPaidModal, markBillPaid, paymentData, fetchBills]);
 
   const handleCancelConfirmMarkPaid = useCallback(() => {
     if (!isSubmitting) setConfirmMarkPaid(null);
   }, [isSubmitting]);
 
-  /** Mark paid with no ledger (accounting off) — small confirm modal only */
-  const handleConfirmSimpleMarkPaid = useCallback(async () => {
+  /** Mark paid with no ledger (accounting off) — dismiss first, then sync */
+  const handleConfirmSimpleMarkPaid = useCallback(() => {
     if (!confirmMarkPaid) return;
-    setIsSubmitting(true);
-    try {
-      await markBillPaid(confirmMarkPaid.billId, confirmMarkPaid.orderRef);
-      setPaidBillIds((prev) => new Set(prev).add(confirmMarkPaid.billId));
-      toast.success("Bill marked as paid");
-      setConfirmMarkPaid(null);
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message || err?.message || "Failed to mark bill paid";
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [confirmMarkPaid, markBillPaid]);
+    const { billId, orderRef } = confirmMarkPaid;
+
+    setConfirmMarkPaid(null);
+    setIsSubmitting(false);
+    setPaidBillIds((prev) => new Set(prev).add(billId));
+    toast.success("Bill marked as paid");
+
+    void (async () => {
+      try {
+        await markBillPaid(billId, orderRef);
+      } catch (err) {
+        setPaidBillIds((prev) => {
+          const next = new Set(prev);
+          next.delete(billId);
+          return next;
+        });
+        const msg =
+          err?.response?.data?.message || err?.message || "Failed to mark bill paid";
+        toast.error(msg);
+        try {
+          await fetchBills();
+        } catch (_) {}
+      }
+    })();
+  }, [confirmMarkPaid, markBillPaid, fetchBills]);
 
   /** Accounting on: open Record Payment directly; off: only the small confirm */
   const requestMarkPaid = useCallback(

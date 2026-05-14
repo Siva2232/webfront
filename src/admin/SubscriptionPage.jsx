@@ -524,7 +524,7 @@ export default function SubscriptionPage() {
                       })}
                     </ul>
 
-                    <button
+                    {/* <button
                       type="button"
                       onClick={() => setSelectedPlan(plan)}
                       disabled={isCurrent}
@@ -545,7 +545,7 @@ export default function SubscriptionPage() {
                           <ArrowRight className="h-3.5 w-3.5" />
                         </>
                       )}
-                    </button>
+                    </button> */}
                   </div>
                 </motion.article>
               );

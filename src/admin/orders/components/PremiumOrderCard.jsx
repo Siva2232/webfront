@@ -41,10 +41,17 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
   const gradient = gradientMap[statusKey] || "from-slate-400 to-slate-600";
 
   useEffect(() => {
-    const update = () => {
-      const diff = Math.floor((new Date() - new Date(order.createdAt)) / 60000);
-      setTimeAgo(diff < 1 ? "Just now" : `${diff}m ago`);
+    const formatElapsed = () => {
+      const diffMs = Date.now() - new Date(order.createdAt).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const hours = Math.floor(diffMins / 60);
+      if (hours < 24) return `${hours} hr ago`;
+      const days = Math.floor(hours / 24);
+      return days === 1 ? "1 day ago" : `${days} days ago`;
     };
+    const update = () => setTimeAgo(formatElapsed());
     update();
     const interval = setInterval(update, 30000);
     return () => clearInterval(interval);
