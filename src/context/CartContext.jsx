@@ -65,7 +65,9 @@ export const CartProvider = ({ children }) => {
       const cartData = JSON.stringify(cart);
       safeSetLocalStorage(getCartKey(table), cartData);
       const _rid = getRestaurantIdForTenantData();
-      localStorage.setItem(tenantKey("lastUsedTable", _rid), table);
+      if (table !== TAKEAWAY_TABLE && table !== DELIVERY_TABLE) {
+        localStorage.setItem(tenantKey("lastUsedTable", _rid), table);
+      }
     }
   }, [cart, table]);
 
@@ -83,9 +85,15 @@ export const CartProvider = ({ children }) => {
   }, [table]);
 
   const setTable = (newTable) => {
-    const clean = newTable?.trim()?.replace(/[^0-9]/g, "") || "";
-    if (clean !== table) {
-      setTableState(clean);
+    const t = newTable?.trim() || "";
+    let next;
+    if (t === TAKEAWAY_TABLE || t === DELIVERY_TABLE) {
+      next = t;
+    } else {
+      next = t.replace(/[^0-9]/g, "") || "";
+    }
+    if (next !== table) {
+      setTableState(next);
     }
   };
 

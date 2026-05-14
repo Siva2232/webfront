@@ -30,9 +30,9 @@ export function OrderBillHeader({
             </div>
             <div className="min-w-0">
               <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">
-                <Link to={`${base}/dashboard`} className="transition hover:text-zinc-700">
+                {/* <Link to={`${base}/dashboard`} className="transition hover:text-zinc-700">
                   Dashboard
-                </Link>
+                </Link> */}
                 <ChevronRight size={12} className="shrink-0 opacity-60" aria-hidden />
                 <span className="text-zinc-600" aria-current="page">
                   Order bill

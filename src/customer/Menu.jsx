@@ -98,7 +98,8 @@ export default function Menu() {
     }
 
     if (urlTable && urlTable.trim() !== "") {
-      const cleanTable = urlTable.trim().replace(/^0+/, "") || "1";
+      const stripped = urlTable.trim().replace(/^0+/, "");
+      const cleanTable = stripped || urlTable.trim();
       setTable(cleanTable);
     } else if (!table) {
       // no table provided: continue showing menu but user will be prompted by
@@ -215,10 +216,15 @@ export default function Menu() {
                 {isTakeaway && !addTakeawayMode && (
                   <button 
                     onClick={() => {
-                      // If we have a stored table or just go back to chooser/last table
                       const _rid = getCurrentRestaurantId();
-                      const storedTable = localStorage.getItem(tenantKey("lastTable", _rid)) || "1";
-                      navigate(appendRestaurantQuery(`/menu?table=${storedTable}&from=chooser`));
+                      const raw = localStorage.getItem(tenantKey("lastUsedTable", _rid));
+                      const storedTable =
+                        raw?.trim()?.replace(/^0+/, "") || raw?.trim() || "";
+                      const qs =
+                        storedTable && storedTable !== TAKEAWAY_TABLE
+                          ? `/menu?table=${encodeURIComponent(storedTable)}&from=chooser`
+                          : "/menu?from=chooser";
+                      navigate(appendRestaurantQuery(qs));
                     }}
                     className="flex items-center gap-2 bg-white/80 backdrop-blur-md border border-slate-200/60 px-4 py-2 rounded-2xl shadow-sm hover:bg-emerald-50 transition-colors group"
                   >

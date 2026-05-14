@@ -154,7 +154,6 @@ export default function ManualBill() {
         subtitle="Customise & print partial bills"
         onBack={() => navigate("/admin/bill")}
         breadcrumbItems={[
-          { label: "Dashboard", to: "/admin/dashboard" },
           { label: "Order bill", to: "/admin/bill" },
           { label: "Split bill" },
         ]}
