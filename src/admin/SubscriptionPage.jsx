@@ -19,14 +19,25 @@ import { motion } from "framer-motion";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
+/**
+ * Display order + labels for plan.features (mirrors backend PLAN_FEATURE_KEYS + inventory).
+ * Keep in sync with backend-res/constants/subscriptionFeatureFlags.js and Restaurant.features.
+ */
 const PLAN_FEATURES = [
   ["hr", "HR Management"],
-  // ["inventory", "Inventory"],
-  ["reports", "Reports"],
+  ["reports", "Reports & analytics"],
   ["qrMenu", "QR Menu Suite"],
   ["onlineOrders", "Online Store"],
   ["kitchenPanel", "Kitchen Display"],
   ["waiterPanel", "Waiter Panel"],
+  ["waiterCall", "Waiter call alerts"],
+  ["billRequest", "Guest bill request"],
+  ["accounting", "Accounting"],
+  ["hrStaff", "HR staff directory"],
+  ["hrAttendance", "HR attendance"],
+  ["hrLeaves", "HR leave management"],
+  ["reservations", "Table reservations"],
+  ["inventory", "Inventory"],
 ];
 
 function CheckoutForm({ plan, onSucceed, onCancel, primaryColor, restaurantId }) {
@@ -490,11 +501,11 @@ export default function SubscriptionPage() {
 
                   <div className="flex flex-1 flex-col px-6 py-5">
                     <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Includes</p>
-                    <ul className="space-y-2.5">
+                    <ul className="mb-1 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-x-3">
                       {PLAN_FEATURES.map(([key, label]) => {
                         const on = plan.features?.[key];
                         return (
-                          <li key={key} className="flex items-start gap-2.5">
+                          <li key={key} className="flex min-w-0 items-start gap-2.5">
                             <span
                               className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
                                 on ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-300"
@@ -503,7 +514,7 @@ export default function SubscriptionPage() {
                               <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.5} />
                             </span>
                             <span
-                              className={`text-xs leading-snug ${on ? "font-semibold text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}
+                              className={`min-w-0 text-xs leading-snug ${on ? "font-semibold text-zinc-800" : "text-zinc-400 line-through decoration-zinc-300"}`}
                             >
                               {label}
                             </span>

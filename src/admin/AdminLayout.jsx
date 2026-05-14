@@ -652,14 +652,14 @@ export default function AdminLayout() {
               <img
                 src={branding.logo}
                 alt={branding.name || "Logo"}
-                className="w-10 h-10 rounded-2xl object-contain shadow-lg"
+                className="h-10 w-10 shrink-0 object-contain"
               />
             ) : (
               <div
-                className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                 style={{ backgroundColor: branding.primaryColor || "#0f172a" }}
               >
-                <Sparkles className="text-white w-6 h-6" />
+                <Sparkles className="h-6 w-6 text-white" />
               </div>
             )}
             <span
@@ -993,92 +993,59 @@ export default function AdminLayout() {
           </div>
         )}
 
-        {/* Bottom brand — Flow Diner + Powered by (compact) */}
+        {/* Bottom brand — Powered by (flat, no logo plate / gradient) */}
         <div
-          className="shrink-0 px-2 pb-2 pt-1.5"
+          className="shrink-0 border-t border-slate-200/80 px-3 py-3"
           style={{
-            borderTopWidth: 1,
-            borderTopStyle: "solid",
             borderColor:
-              "color-mix(in srgb, var(--sidebar-text) 12%, var(--sidebar-bg))",
+              "color-mix(in srgb, var(--sidebar-text) 14%, var(--sidebar-bg))",
           }}
         >
           <div
-            className={`relative overflow-hidden rounded-xl ${
-              isCollapsed ? "px-1.5 py-1.5 flex justify-center" : "px-2 py-2"
-            }`}
-            style={{
-              background:
-                "linear-gradient(145deg, color-mix(in srgb, var(--sidebar-text) 7%, var(--sidebar-bg)) 0%, color-mix(in srgb, var(--sidebar-text) 4%, var(--sidebar-bg)) 100%)",
-              boxShadow:
-                "inset 0 1px 0 color-mix(in srgb, #fff 35%, transparent), 0 1px 1px color-mix(in srgb, var(--sidebar-text) 6%, transparent)",
-            }}
+            className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}
             title="Powered by Flow Diner"
           >
+            <img
+              src={flowDinerBrandLogo}
+              alt="Flow Diner"
+              width={200}
+              height={48}
+              className={
+                isCollapsed
+                  ? "h-8 w-8 shrink-0 object-contain opacity-90"
+                  : "h-8 w-auto max-w-[100px] shrink-0 object-contain object-left opacity-90 sm:max-w-[120px]"
+              }
+              loading="lazy"
+              decoding="async"
+            />
             {!isCollapsed && (
-              <div
-                className="pointer-events-none absolute -right-4 -top-5 h-16 w-16 rounded-full opacity-[0.06]"
-                style={{ background: "var(--primary)" }}
-                aria-hidden
-              />
-            )}
-            <div
-              className={`relative flex items-center ${isCollapsed ? "justify-center" : "gap-2"}`}
-            >
-              <div
-                className={`flex shrink-0 items-center justify-center rounded-lg bg-white/70 shadow-sm ring-1 ring-black/[0.06] ${
-                  isCollapsed ? "p-1" : "p-1.5"
-                }`}
-              >
-                <img
-                  src={flowDinerBrandLogo}
-                  alt="Flow Diner"
-                  width={200}
-                  height={48}
-                  className={
-                    isCollapsed
-                      ? "h-7 w-7 object-contain"
-                      : "h-8 w-auto max-w-[120px] object-contain object-left sm:max-w-[140px]"
-                  }
-                  loading="lazy"
-                  decoding="async"
-                />
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-[8px] font-bold uppercase tracking-[0.2em] leading-none"
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--sidebar-text) 48%, var(--sidebar-bg))",
+                  }}
+                >
+                  Powered by
+                </p>
+                <p
+                  className="mt-0.5 text-xs font-black tracking-tight"
+                  style={{ color: "var(--sidebar-text)" }}
+                >
+                  Flow Diner
+                </p>
+                <p
+                  className="mt-0.5 text-[9px] font-medium leading-snug"
+                  style={{
+                    color:
+                      "color-mix(in srgb, var(--sidebar-text) 42%, var(--sidebar-bg))",
+                  }}
+                >
+                  Restaurant platform
+                </p>
               </div>
-              {!isCollapsed && (
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="text-[7px] font-bold uppercase tracking-[0.18em] leading-none"
-                    style={{
-                      color:
-                        "color-mix(in srgb, var(--sidebar-text) 52%, var(--sidebar-bg))",
-                    }}
-                  >
-                    Powered by
-                  </p>
-                  <p className="mt-1 flex flex-wrap items-baseline gap-1 leading-none">
-                    <span
-                      className="text-xs font-black tracking-tight"
-                      style={{ color: "var(--sidebar-text)" }}
-                    >
-                      Flow Diner
-                    </span>
-                    <span
-                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 shadow-[0_0_0_1px] shadow-amber-400/30"
-                      aria-hidden
-                    />
-                  </p>
-                  <p
-                    className="mt-1 text-[8px] font-medium leading-tight"
-                    style={{
-                      color:
-                        "color-mix(in srgb, var(--sidebar-text) 38%, var(--sidebar-bg))",
-                    }}
-                  >
-                    Restaurant platform
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
             {isCollapsed && (
               <span className="sr-only">Powered by Flow Diner</span>
             )}
@@ -1743,12 +1710,12 @@ export default function AdminLayout() {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
               >
-                <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200/90">
                   {branding.logo ? (
                     <img
                       src={branding.logo}
                       alt={branding.name ? `${branding.name} logo` : "logo"}
-                      className="h-full w-full object-contain bg-white"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <img

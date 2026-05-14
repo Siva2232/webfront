@@ -33,6 +33,45 @@ export function getCurrentRestaurantId() {
   return (urlParams.get('restaurantId') || localStorage.getItem('restaurantId') || '').toUpperCase().trim();
 }
 
+/** Customer SPA paths where tenant data must not rely on stale localStorage without a venue in the URL. */
+const CUSTOMER_PUBLIC_PATH_PREFIXES = [
+  '/menu',
+  '/cart',
+  '/takeaway-cart',
+  '/order-status',
+  '/order-summary',
+  '/choose-mode',
+];
+
+/**
+ * True when the current route is the unauthenticated customer flow (see routes under CustomerLayout).
+ */
+export function isCustomerPublicMenuPath() {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname;
+  return CUSTOMER_PUBLIC_PATH_PREFIXES.some(
+    (prefix) => p === prefix || p.startsWith(`${prefix}/`)
+  );
+}
+
+/**
+ * Venue id from the link only (?restaurantId=), not from localStorage — avoids wrong-tenant cache/API
+ * on /menu before the customer scans a QR.
+ */
+export function getCustomerVenueRestaurantId() {
+  if (typeof window === 'undefined') return '';
+  const urlParams = new URLSearchParams(window.location.search);
+  return (urlParams.get('restaurantId') || '').toUpperCase().trim();
+}
+
+/**
+ * Restaurant id for namespaced caches and contexts (URL wins, then localStorage).
+ * Same resolution as {@link getCurrentRestaurantId}; separate name matches context imports.
+ */
+export function getRestaurantIdForTenantData() {
+  return getCurrentRestaurantId();
+}
+
 /**
  * Returns a namespaced localStorage key for a given base key + restaurantId.
  * e.g. tenantKey('products', 'RESTO001') → 'products_RESTO001'
