@@ -514,7 +514,7 @@ export const OrderProvider = ({ children }) => {
           table: effectiveTable,
           items: orderItems,
           totalAmount: orderData.totalAmount || total,
-          status: orderData.status || 'New',
+          status: "New",
           billDetails: orderData.billDetails,
           notes: orderData.notes,
           customerName: orderData.customerName,
@@ -535,12 +535,15 @@ export const OrderProvider = ({ children }) => {
         paymentMethod: orderData.paymentMethod,
         paymentStatus: orderData.paymentStatus,
         paymentId: orderData.paymentId,
-        status: orderData.status,
         customerName: orderData.customerName,
         customerAddress: orderData.customerAddress,
         deliveryTime: orderData.deliveryTime,
         existingOrderId: orderData.existingOrderId,
       };
+      // New orders only: server forces "New"; omit on merge so payload stays minimal
+      if (!orderData.existingOrderId) {
+        payload.status = "New";
+      }
 
       // attach waiter id if current user is a waiter
       try {
@@ -595,7 +598,7 @@ export const OrderProvider = ({ children }) => {
         notes: orderData.notes,
         billDetails: orderData.billDetails,
         paymentMethod: orderData.paymentMethod,
-        status: orderData.status,
+        status: "New",
         customerName: orderData.customerName,
         customerAddress: orderData.customerAddress,
         deliveryTime: orderData.deliveryTime,

@@ -220,7 +220,7 @@ export default function ManualOrder() {
       table: orderTable,
       orderItems: items,
       notes: notes.trim(),
-      status: "Preparing",
+      status: "New",
       billDetails: {
         subtotal: items.reduce((sum, i) => sum + i.price * i.qty, 0),
       },
