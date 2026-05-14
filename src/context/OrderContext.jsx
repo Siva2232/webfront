@@ -5,6 +5,7 @@ import { TAKEAWAY_TABLE } from "./CartContext";
 import { getRestaurantIdForTenantData, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
+import { computeGstFromSubtotal } from "../utils/gstRates";
 
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
 const orderKey = (order) => String(order?._id || order?.id || "");
@@ -99,13 +100,25 @@ export const OrderProvider = ({ children }) => {
         // Merge strategy: incoming data from server is the "source of truth",
         // but we preserve any very recent optimistic updates that haven't hit the DB yet.
         const now = Date.now();
-        const serverMap = new Map(data.map(o => [o._id, o]));
-        
+        const serverMap = new Map();
+        (Array.isArray(data) ? data : []).forEach((o) => {
+          const k = orderKey(o);
+          if (k) serverMap.set(k, o);
+        });
+
         // Items in prev that are NOT in server data (might be new/local only)
-        const localOnly = prev.filter(o => !serverMap.has(o._id) && (o._optimistic || ["served", "paid", "closed"].includes(normalizeStatus(o.status))));
-        
-        const merged = data.map(serverOrder => {
-          const localOrder = prev.find(o => o._id === serverOrder._id);
+        const localOnly = prev.filter((o) => {
+          const k = orderKey(o);
+          return (
+            k &&
+            !serverMap.has(k) &&
+            (o._optimistic || ["served", "paid", "closed"].includes(normalizeStatus(o.status)))
+          );
+        });
+
+        const merged = (Array.isArray(data) ? data : []).map((serverOrder) => {
+          const k = orderKey(serverOrder);
+          const localOrder = prev.find((o) => orderKey(o) === k);
           // If we have a local version with a recent optimistic flag, 
           // and the server version has fewer items, stick with local for a few seconds.
           if (localOrder?._optimisticAt && (now - localOrder._optimisticAt < 15000)) {
@@ -159,15 +172,17 @@ export const OrderProvider = ({ children }) => {
             addedAt: new Date().toISOString(),
             isNewItem: true,
           }))];
+          const subtotal = mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+          const { cgst, sgst, grandTotal } = computeGstFromSubtotal(subtotal);
           return {
             ...order,
             items: mergedItems,
-            totalAmount: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0),
+            totalAmount: grandTotal,
             billDetails: {
-              subtotal: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0),
-              cgst: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 0.025,
-              sgst: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 0.025,
-              grandTotal: mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.05,
+              subtotal,
+              cgst,
+              sgst,
+              grandTotal,
             },
             _optimisticAt: Date.now(),
           };
@@ -467,9 +482,8 @@ export const OrderProvider = ({ children }) => {
               isNewItem: true,
             }))];
             const newSubtotal = mergedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-            const newCgst = newSubtotal * 0.025;
-            const newSgst = newSubtotal * 0.025;
-            const newGrandTotal = newSubtotal + newCgst + newSgst;
+            const { cgst: newCgst, sgst: newSgst, grandTotal: newGrandTotal } =
+              computeGstFromSubtotal(newSubtotal);
             return {
               ...o,
               items: mergedItems,

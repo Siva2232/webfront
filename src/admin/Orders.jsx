@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PremiumOrderCard from "./orders/components/PremiumOrderCard";
 import { isTakeawayOrder } from "./orders/utils/isTakeawayOrder";
 import { isStatusActive, normalizeStatus } from "./orders/utils/orderStatus";
+import { computeGstFromSubtotal } from "../utils/gstRates";
 
 export default function OrdersDashboard({ overrideOrders = null }) {
   const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders, isLoading } = useOrders();
@@ -71,7 +72,11 @@ export default function OrdersDashboard({ overrideOrders = null }) {
       
       // Revenue & Items
       const subtotal = order.items?.reduce((sum, item) => sum + (item.price * item.qty), 0) || 0;
-      const tax = order.billDetails?.cgst ? (order.billDetails.cgst + order.billDetails.sgst) : (subtotal * 0.05);
+      const gstComputed = computeGstFromSubtotal(subtotal);
+      const tax =
+        order.billDetails?.cgst != null || order.billDetails?.sgst != null
+          ? Number(order.billDetails.cgst || 0) + Number(order.billDetails.sgst || 0)
+          : gstComputed.cgst + gstComputed.sgst;
       revenue += (subtotal + tax);
       itemsSold += order.items?.reduce((sum, item) => sum + item.qty, 0) || 0;
 

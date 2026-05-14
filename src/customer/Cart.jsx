@@ -14,6 +14,11 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import api from '../api/axios';
 import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from '../utils/tenantCache';
+import {
+  computeGstFromSubtotal,
+  GST_CGST_PCT_LABEL,
+  GST_SGST_PCT_LABEL,
+} from "../utils/gstRates";
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -200,9 +205,7 @@ export default function Cart({ hideTable = false }) {
     }
   }, [cart]);
 
-  const cgst = totalAmount * 0.025;
-  const sgst = totalAmount * 0.025;
-  const grandTotal = totalAmount + cgst + sgst;
+  const { cgst, sgst, grandTotal } = computeGstFromSubtotal(totalAmount);
 
   const playSynthSound = (type) => {
     try {
@@ -638,11 +641,11 @@ export default function Cart({ hideTable = false }) {
                   <span>₹{totalAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs font-bold text-slate-400 uppercase">
-                  <span>CGST (2.5%)</span>
+                  <span>CGST ({GST_CGST_PCT_LABEL})</span>
                   <span>₹{cgst.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs font-bold text-slate-400 uppercase">
-                  <span>SGST (2.5%)</span>
+                  <span>SGST ({GST_SGST_PCT_LABEL})</span>
                   <span>₹{sgst.toLocaleString()}</span>
                 </div>
                 <div className="pt-3 border-t border-slate-100 flex justify-between items-center">

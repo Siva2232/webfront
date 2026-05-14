@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Printer, RefreshCw, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../../../context/CartContext";
+import { GST_TOTAL_PCT_LABEL } from "../../../utils/gstRates";
 
 export default function BillDetailsCard({
   foundBill,
@@ -111,7 +112,7 @@ export default function BillDetailsCard({
               <span>₹{stats.subtotal.toLocaleString("en-IN")}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="opacity-75">GST (5%)</span>
+              <span className="opacity-75">GST ({GST_TOTAL_PCT_LABEL})</span>
               <span>₹{stats.tax.toLocaleString("en-IN")}</span>
             </div>
 

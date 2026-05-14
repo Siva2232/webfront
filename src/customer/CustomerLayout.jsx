@@ -39,8 +39,8 @@ export default function CustomerLayout() {
           Venue link required
         </h1>
         <p className="mt-4 max-w-md text-sm text-slate-600 leading-relaxed">
-          Open your menu using your restaurant&apos;s QR or link. It must include your venue ID in the address, for example:
-        </p>
+          Open your menu using your restaurant&apos;s QR or link. 
+                  </p>
         {/* <code className="mt-5 break-all rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-xs font-semibold text-slate-800 shadow-sm max-w-lg">
           {typeof window !== "undefined"
             ? `${window.location.origin}/menu?restaurantId=RESTO001`

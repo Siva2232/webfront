@@ -1,3 +1,5 @@
+import { GST_TOTAL_RATE } from "../../utils/gstRates";
+
 export const isPaid = (s) =>
   ["paid", "succeeded", "success"].includes((s?.status || "").toLowerCase());
 
@@ -10,7 +12,7 @@ export const computeBillStats = (order) => {
   const tax =
     bd != null && (bd.cgst != null || bd.sgst != null)
       ? Number(bd.cgst || 0) + Number(bd.sgst || 0)
-      : subtotal * 0.05;
+      : subtotal * GST_TOTAL_RATE;
   const computedTotal = subtotal + tax;
   // Invoice total: prefer stored grand total, then GST-inclusive computed amount.
   // Do not prefer order.totalAmount first — many flows store pre-GST subtotal there
@@ -45,4 +47,3 @@ export const computeBillStats = (order) => {
     allCodPaid,
   };
 };
-

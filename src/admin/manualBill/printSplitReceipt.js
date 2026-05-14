@@ -7,6 +7,7 @@ import {
   receiptPad as pad,
   formatManifestItems,
 } from "../orderBill/receiptPrintCore";
+import { GST_TOTAL_RATE, GST_TOTAL_PCT_LABEL } from "../../utils/gstRates";
 
 export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) => {
   const w = window.open("", "_blank");
@@ -16,7 +17,7 @@ export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) 
   }
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = subtotal * 0.05;
+  const tax = subtotal * GST_TOTAL_RATE;
   const total = subtotal + tax;
   const safeCashier = escapeReceiptHtml(cashierName);
   const headerHtml = getReceiptHeaderBlock();
@@ -42,7 +43,7 @@ ${itemsText}
 
 <div class="line"></div>
 ${pad("Subtotal", "Rs." + subtotal.toFixed(2))}
-${pad("Tax (GST 5%)", "Rs." + tax.toFixed(2))}
+${pad("Tax (GST " + GST_TOTAL_PCT_LABEL + ")", "Rs." + tax.toFixed(2))}
 
 <div class="line"></div>
 <div class="bold">Total Due</div>

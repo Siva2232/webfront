@@ -644,7 +644,7 @@ export default function AdminLayout() {
           borderRightColor: "color-mix(in srgb, var(--sidebar-bg), black 10%)",
         }}
       >
-        <div className="h-24 shrink-0 flex items-center px-6 justify-between">
+        <div className="h-28 shrink-0 flex items-center px-6 justify-between">
           <div
             className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}
           >
@@ -652,14 +652,14 @@ export default function AdminLayout() {
               <img
                 src={branding.logo}
                 alt={branding.name || "Logo"}
-                className="h-10 w-10 shrink-0 object-contain"
+                className="h-14 w-14 shrink-0 object-contain"
               />
             ) : (
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
                 style={{ backgroundColor: branding.primaryColor || "#0f172a" }}
               >
-                <Sparkles className="h-6 w-6 text-white" />
+                <Sparkles className="h-8 w-8 text-white" />
               </div>
             )}
             <span
@@ -1008,12 +1008,12 @@ export default function AdminLayout() {
             <img
               src={flowDinerBrandLogo}
               alt="Flow Diner"
-              width={200}
-              height={48}
+              width={240}
+              height={56}
               className={
                 isCollapsed
-                  ? "h-8 w-8 shrink-0 object-contain opacity-90"
-                  : "h-8 w-auto max-w-[100px] shrink-0 object-contain object-left opacity-90 sm:max-w-[120px]"
+                  ? "h-10 w-10 shrink-0 object-contain opacity-90"
+                  : "h-10 w-auto max-w-[140px] shrink-0 object-contain object-left opacity-90 sm:max-w-[160px]"
               }
               loading="lazy"
               decoding="async"

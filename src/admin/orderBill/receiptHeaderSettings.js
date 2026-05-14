@@ -6,7 +6,7 @@ export const DEFAULT_RECEIPT_HEADER = {
   restaurantName: "MY CAFE",
   address: "01 SKYLINE DRIVE, BUSINESS DISTRICT",
   phone: "+91 0000 000 000",
-  gstNumber: "18AABCT1234H1Z0",
+  gstNumber: "32AAAAA0000A1Z5",
 };
 
 /** Safe for inserting into receipt HTML */

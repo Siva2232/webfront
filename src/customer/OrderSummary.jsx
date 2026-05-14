@@ -10,6 +10,11 @@ import confetti from "canvas-confetti";
 import { AnimatePresence } from "framer-motion";
 import API from "../api/axios";
 import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from "../utils/tenantCache";
+import {
+  computeGstFromSubtotal,
+  GST_CGST_PCT_LABEL,
+  GST_SGST_PCT_LABEL,
+} from "../utils/gstRates";
 import { 
   RotateCcw, 
   Timer, 
@@ -210,9 +215,10 @@ export default function OrderSummary() {
   }
 
   const subtotal = order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
-  const cgst = order.billDetails?.cgst || subtotal * 0.025;
-  const sgst = order.billDetails?.sgst || subtotal * 0.025;
-  const grandTotal = order.billDetails?.grandTotal || (subtotal + cgst + sgst);
+  const computedGst = computeGstFromSubtotal(subtotal);
+  const cgst = order.billDetails?.cgst ?? computedGst.cgst;
+  const sgst = order.billDetails?.sgst ?? computedGst.sgst;
+  const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
 
   const handleCloseBill = async () => {
     if (!order?._id || isClosingBill) return;
@@ -409,11 +415,11 @@ export default function OrderSummary() {
               <span className="text-slate-600 font-mono">₹{subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span>CGST (2.5%)</span>
+              <span>CGST ({GST_CGST_PCT_LABEL})</span>
               <span className="text-slate-600 font-mono">₹{cgst.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span>SGST (2.5%)</span>
+              <span>SGST ({GST_SGST_PCT_LABEL})</span>
               <span className="text-slate-600 font-mono">₹{sgst.toLocaleString()}</span>
             </div>
             

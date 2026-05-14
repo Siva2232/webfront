@@ -49,6 +49,7 @@ import { getAllStaff, getAttendance, getLeaves, getPayrolls } from "../api/hrApi
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { taxOnTaxableAmount, GST_TOTAL_RATE } from "../utils/gstRates";
 
 const PIE_COLORS = ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8"];
 
@@ -391,7 +392,7 @@ export default function Analytics() {
     );
     const multiplier = { Daily: 0.2, Weekly: 1, Monthly: 4.3, Yearly: 52 }[timeframe];
     const estRevenue = inventoryValue * multiplier;
-    const taxLiability = estRevenue * 0.18;
+    const taxLiability = estRevenue * GST_TOTAL_RATE;
     const opsCosts = estRevenue * 0.12;
     const netProfit = estRevenue - taxLiability - opsCosts;
     const profitMargin = estRevenue > 0 ? (netProfit / estRevenue) * 100 : 0;
@@ -437,7 +438,7 @@ export default function Analytics() {
     const data = engine.filtered.map((p) => ({
       Name: p.name,
       Price: p.price,
-      GST: (p.price * 0.18).toFixed(2),
+      GST: taxOnTaxableAmount(p.price).toFixed(2),
       Status: p.isAvailable ? "Live" : "Stocked",
     }));
     if (format === "xlsx") {

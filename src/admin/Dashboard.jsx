@@ -8,6 +8,7 @@ import API from "../api/axios";
 import { fetchTablesCoalesced } from "../api/fetchTablesCoalesced";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
+import { taxOnTaxableAmount, GST_TOTAL_PCT_LABEL } from "../utils/gstRates";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   Package,
@@ -254,13 +255,19 @@ export default function Dashboard() {
 
   // Export functionality
   const handleExport = (format) => {
-    const data = products.map(p => ({
-      Name: p.name,
-      Price: p.price,
-      GST: (p.price * 0.18).toFixed(2),
-      Status: p.isAvailable ? 'Live' : 'Stocked'
-    }));
-    if (format === 'xlsx') {
+    const data = products.map((p) => {
+      const price = Number(p.price) || 0;
+      const tax = taxOnTaxableAmount(price);
+      const total = price + tax;
+      return {
+        Name: p.name,
+        Price: price,
+        GST: tax.toFixed(2),
+        Total: total.toFixed(2),
+        Status: p.isAvailable ? "Live" : "Stocked",
+      };
+    });
+    if (format === "xlsx") {
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Inventory_Report");
@@ -268,7 +275,10 @@ export default function Dashboard() {
     } else {
       const doc = new jsPDF();
       doc.text("Inventory Report", 14, 20);
-      doc.autoTable({ head: [['Product', 'Price', 'Tax']], body: data.map(o => [o.Name, o.Price, o.GST]) });
+      doc.autoTable({
+        head: [["Product", "Price", "Tax", "Total"]],
+        body: data.map((o) => [o.Name, o.Price, o.GST, o.Total]),
+      });
       doc.save("Inventory_Report.pdf");
     }
   };
@@ -704,16 +714,22 @@ export default function Dashboard() {
                     <tr className="border-b border-zinc-200">
                       <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Product</th>
                       <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Price</th>
-                      <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Tax 18%</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Tax ({GST_TOTAL_PCT_LABEL})</th>
+                      <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Total</th>
                       <th className="pb-4 text-xs font-black uppercase tracking-wider text-zinc-500">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {products.slice(0, 10).map((p, i) => (
+                    {products.slice(0, 10).map((p, i) => {
+                      const unitPrice = Number(p.price) || 0;
+                      const unitTax = taxOnTaxableAmount(unitPrice);
+                      const lineTotal = unitPrice + unitTax;
+                      return (
                       <tr key={i} className="group transition-colors hover:bg-zinc-50">
                         <td className="py-4 font-medium text-sm">{p.name}</td>
                         <td className="py-4 font-black text-zinc-900">₹{p.price?.toLocaleString() || "—"}</td>
-                        <td className="py-4 text-sm text-zinc-600">₹{(p.price * 0.18).toFixed(0)}</td>
+                        <td className="py-4 text-sm text-zinc-600">₹{unitTax.toFixed(0)}</td>
+                        <td className="py-4 text-sm font-black text-zinc-900">₹{lineTotal.toLocaleString()}</td>
                         <td className="py-4">
                           <span className={`px-4 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider ${
                             p.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
@@ -722,7 +738,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    ); })}
                   </tbody>
                 </table>
               </div>

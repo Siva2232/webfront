@@ -10,6 +10,7 @@ import {
   UtensilsCrossed, AlertCircle, Package, CreditCard, Wallet, X, Loader2
 } from "lucide-react";
 import confetti from 'canvas-confetti';
+import { computeGstFromSubtotal, GST_TOTAL_PCT_LABEL } from "../utils/gstRates";
 
 export default function AdminCart() {
   const {
@@ -40,9 +41,7 @@ export default function AdminCart() {
     }
   }, [cart]);
 
-  const cgst = totalAmount * 0.025;
-  const sgst = totalAmount * 0.025;
-  const grandTotal = totalAmount + cgst + sgst;
+  const { cgst, sgst, grandTotal } = computeGstFromSubtotal(totalAmount);
 
   const placeOrder = async () => {
     if (isPlacing) return;
@@ -160,7 +159,7 @@ export default function AdminCart() {
 
             <div className="bg-white p-6 rounded-3xl border border-dashed border-slate-200 space-y-2">
               <div className="flex justify-between text-xs font-bold text-slate-500 uppercase"><span>Subtotal</span><span>₹{totalAmount}</span></div>
-              <div className="flex justify-between text-xs font-bold text-slate-500 uppercase"><span>Tax (5%)</span><span>₹{cgst + sgst}</span></div>
+              <div className="flex justify-between text-xs font-bold text-slate-500 uppercase"><span>Tax ({GST_TOTAL_PCT_LABEL})</span><span>₹{cgst + sgst}</span></div>
               <div className="pt-3 border-t border-slate-100 flex justify-between items-center font-black"><span>Total</span><span className="text-xl">₹{grandTotal}</span></div>
             </div>
           </div>

@@ -97,7 +97,7 @@ API.interceptors.response.use(
         localStorage.removeItem("userInfo");
         localStorage.removeItem("isAdminLoggedIn");
         localStorage.removeItem("isKitchenLoggedIn");
-        if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/menu")) {
+        if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/menu") && !window.location.pathname.includes("/order-status") && !window.location.pathname.includes("/order-summary") && !window.location.pathname.includes("/cart") && !window.location.pathname.includes("/takeaway-cart") && !window.location.pathname.includes("/choose-mode")) {
           window.location.href = "/login";
         }
       }

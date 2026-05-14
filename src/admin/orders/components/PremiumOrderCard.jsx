@@ -13,6 +13,10 @@ import { DELIVERY_TABLE } from "../../../context/CartContext";
 import { isTakeawayOrder } from "../utils/isTakeawayOrder";
 import { gradientMap, normalizeStatus, statusStep } from "../utils/orderStatus";
 import OrderCardStatusModals from "./OrderCardStatusModals";
+import {
+  computeGstFromSubtotal,
+  GST_TOTAL_PCT_LABEL,
+} from "../../../utils/gstRates";
 
 export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const [timeAgo, setTimeAgo] = useState("");
@@ -26,9 +30,10 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
     () => order.items.reduce((acc, item) => acc + item.price * item.qty, 0),
     [order.items]
   );
-  const cgst = order.billDetails?.cgst || subtotal * 0.025;
-  const sgst = order.billDetails?.sgst || subtotal * 0.025;
-  const grandTotal = order.billDetails?.grandTotal || subtotal + cgst + sgst;
+  const computedGst = computeGstFromSubtotal(subtotal);
+  const cgst = order.billDetails?.cgst ?? computedGst.cgst;
+  const sgst = order.billDetails?.sgst ?? computedGst.sgst;
+  const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
 
   const status = order.status;
   const statusKey = normalizeStatus(status);
@@ -191,7 +196,7 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
             <span>₹{subtotal.toLocaleString()}</span>
           </div>
           <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
-            <span>GST</span>
+            <span>GST ({GST_TOTAL_PCT_LABEL})</span>
             <span>₹{(cgst + sgst).toLocaleString()}</span>
           </div>
           <div className="pt-2 border-t border-slate-100 flex justify-between items-center">

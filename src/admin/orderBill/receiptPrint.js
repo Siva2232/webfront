@@ -9,6 +9,7 @@ import {
   receiptPad as pad,
   formatManifestItems,
 } from "./receiptPrintCore";
+import { GST_TOTAL_PCT_LABEL } from "../../utils/gstRates";
 
 export const printReceipt = (order, cashierName = "N/A") => {
   const w = window.open("", "_blank");
@@ -65,7 +66,7 @@ ${itemsText}
 
 <div class="line"></div>
 ${pad("Subtotal", "Rs." + subtotal.toFixed(2))}
-${pad("Tax (GST 5%)", "Rs." + tax.toFixed(2))}
+${pad("Tax (GST " + GST_TOTAL_PCT_LABEL + ")", "Rs." + tax.toFixed(2))}
 
 <div class="line"></div>
 <div class="bold">Total Summary</div>
