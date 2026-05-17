@@ -5,7 +5,7 @@ import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useTheme } from "../context/ThemeContext";
 import API from "../api/axios";
-import { fetchTablesCoalesced } from "../api/fetchTablesCoalesced";
+import { fetchTablesCoalesced, parseTablesPayload } from "../api/fetchTablesCoalesced";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { taxOnTaxableAmount, GST_TOTAL_PCT_LABEL } from "../utils/gstRates";
@@ -36,8 +36,13 @@ import {
   Receipt,
   ChevronRight,
   Table as TableIcon,
-  HandHelping 
+  HandHelping,
+  MapPin,
+  Tag,
 } from "lucide-react";
+import { getTableSessionTiming } from "./utils/tableOrderTime";
+import { useOrderTimeTick } from "./hooks/useOrderTimeTick";
+import TableOrderTimeBadge from "./components/TableOrderTimeBadge";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -57,7 +62,20 @@ export default function Dashboard() {
   const [tables, setTables] = useState(() => {
     try {
       const cached = localStorage.getItem(tenantKey("restaurant_tables_config", _rid));
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed?.tables)) return parsed.tables;
+      return [];
+    } catch { return []; }
+  });
+
+  const [categories, setCategories] = useState(() => {
+    try {
+      const cached = localStorage.getItem(tenantKey("restaurant_table_areas", _rid));
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
   
@@ -102,6 +120,7 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false);
   
   const navigate = useNavigate();
+  const orderTimeNow = useOrderTimeTick(orders);
 
   // Background sync for core data
   useEffect(() => {
@@ -138,9 +157,19 @@ export default function Dashboard() {
           localStorage.setItem(tenantKey("dashboard_last_sync", _rid), now.toString());
         }
 
-        if (tableData && Array.isArray(tableData)) {
-          setTables(tableData);
-          localStorage.setItem(tenantKey("restaurant_tables_config", _rid), JSON.stringify(tableData));
+        if (tableData) {
+          const { tables: nextTables, categories: nextCategories } =
+            parseTablesPayload(tableData);
+          setTables(nextTables);
+          setCategories(nextCategories);
+          localStorage.setItem(
+            tenantKey("restaurant_tables_config", _rid),
+            JSON.stringify(nextTables),
+          );
+          localStorage.setItem(
+            tenantKey("restaurant_table_areas", _rid),
+            JSON.stringify(nextCategories),
+          );
         }
 
         // Orders list: OrderContext + route prefetch + sockets — avoid duplicate GET /orders here.
@@ -208,6 +237,166 @@ export default function Dashboard() {
   const isOccupied = (tableId) => !!activeOrdersMap[`table-${tableId}`];
   const isReserved = (tableId) => !!reservedTables[`table-${tableId}`];
 
+  const tableList = Array.isArray(tables) ? tables : [];
+  const categoryList = Array.isArray(categories) ? categories : [];
+
+  const tableAreaSections = useMemo(() => {
+    const sections = [];
+    categoryList.forEach((cat) => {
+      const inArea = tableList.filter((t) => t.categoryId === cat.id);
+      if (inArea.length) {
+        sections.push({ id: cat.id, name: cat.name, tables: inArea });
+      }
+    });
+    const uncategorized = tableList.filter((t) => !t.categoryId);
+    if (uncategorized.length) {
+      sections.push({
+        id: "uncategorized",
+        name: "Uncategorized",
+        tables: uncategorized,
+      });
+    }
+    return sections;
+  }, [tableList, categoryList]);
+
+  const renderLiveTableTile = (table) => {
+    const occupied = isOccupied(table.id);
+    const reserved = reservationsEnabled && isReserved(table.id);
+    const alert = tableAlerts[`table-${table.id}`];
+    const isBillRequested = billRequestEnabled && alert && alert.bill;
+    const isWaiterCalled = waiterCallEnabled && alert && alert.waiter;
+    const hasAlert = isBillRequested || isWaiterCalled;
+
+    const statusText =
+      isBillRequested && isWaiterCalled
+        ? "BILL + CALL"
+        : isBillRequested
+          ? "BILL"
+          : isWaiterCalled
+            ? "CALL"
+            : occupied
+              ? "BUSY"
+              : reserved
+                ? "RESERVED"
+                : "FREE";
+
+    const tileShell =
+      isBillRequested && isWaiterCalled
+        ? "border-purple-300 bg-purple-50 shadow-md shadow-purple-100/60"
+        : isBillRequested
+          ? "border-emerald-300 bg-emerald-50 shadow-md shadow-emerald-100/60"
+          : isWaiterCalled
+            ? "border-indigo-300 bg-indigo-50 shadow-md shadow-indigo-100/60"
+            : occupied
+              ? "border-rose-200 bg-rose-50 shadow-sm"
+              : reserved
+                ? "border-amber-200 bg-amber-50 shadow-sm"
+                : "border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md";
+
+    const badgeShell =
+      isBillRequested && isWaiterCalled
+        ? "bg-purple-600 text-white border-purple-600"
+        : isBillRequested
+          ? "bg-emerald-600 text-white border-emerald-600"
+          : isWaiterCalled
+            ? "bg-indigo-600 text-white border-indigo-600"
+            : occupied
+              ? "bg-rose-100 text-rose-800 border-rose-200"
+              : reserved
+                ? "bg-amber-100 text-amber-800 border-amber-200"
+                : "bg-emerald-100 text-emerald-800 border-emerald-200";
+
+    const iconShell =
+      isBillRequested && isWaiterCalled
+        ? "bg-purple-600 text-white"
+        : isBillRequested
+          ? "bg-emerald-600 text-white"
+          : isWaiterCalled
+            ? "bg-indigo-600 text-white"
+            : occupied
+              ? "bg-rose-500 text-white"
+              : reserved
+                ? "bg-amber-500 text-white"
+                : "bg-slate-100 text-slate-500 group-hover:bg-slate-900 group-hover:text-white";
+
+    const ringClass = hasAlert
+      ? isBillRequested
+        ? "ring-2 ring-emerald-400 ring-offset-2 ring-offset-white"
+        : "ring-2 ring-indigo-400 ring-offset-2 ring-offset-white"
+      : "";
+
+    const orderTiming = getTableSessionTiming(table.id, orders, orderTimeNow);
+
+    return (
+      <motion.div
+        key={table.id}
+        layout
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        onClick={() => {
+          if (!tablesFeatureEnabled) return;
+          navigate(`/admin/order-summary?table=${table.id}`);
+        }}
+        className={`group relative flex flex-col rounded-xl border p-2 transition-all ${tileShell} ${ringClass} ${
+          tablesFeatureEnabled ? "cursor-pointer" : "cursor-default"
+        }`}
+        title={!tablesFeatureEnabled ? "Open full tables from Super Admin to enable Tables & QR" : undefined}
+      >
+        <div
+          className={`mb-2 flex w-full items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-tight ${badgeShell} ${hasAlert ? "animate-pulse" : ""}`}
+        >
+          <Circle
+            size={5}
+            fill="currentColor"
+            className={
+              isBillRequested || isWaiterCalled
+                ? "shrink-0 text-white"
+                : occupied
+                  ? "shrink-0 text-rose-500"
+                  : reserved
+                    ? "shrink-0 text-amber-500"
+                    : "shrink-0 text-emerald-600"
+            }
+          />
+          <span className="truncate">{statusText}</span>
+        </div>
+
+        <div
+          className={`mx-auto mb-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${iconShell}`}
+        >
+          {isBillRequested && isWaiterCalled ? (
+            <div className="flex items-center gap-0.5">
+              <Receipt size={14} strokeWidth={2.5} />
+              <HandHelping size={14} />
+            </div>
+          ) : isBillRequested ? (
+            <Receipt size={18} strokeWidth={2.5} />
+          ) : isWaiterCalled ? (
+            <BellRing size={18} strokeWidth={2.5} />
+          ) : occupied ? (
+            <LayoutGrid size={18} strokeWidth={1.8} />
+          ) : reserved ? (
+            <CalendarCheck size={18} strokeWidth={1.8} />
+          ) : (
+            <LayoutGrid size={18} strokeWidth={1.8} />
+          )}
+        </div>
+
+        <div className="text-center">
+          <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Table</p>
+          <p className="text-xl font-black leading-none tracking-tight text-slate-900">
+            {table.id < 10 ? `0${table.id}` : table.id}
+          </p>
+        </div>
+        <div className="mt-1.5 h-[32px] w-full shrink-0" aria-hidden={!orderTiming}>
+          {orderTiming ? (
+            <TableOrderTimeBadge timing={orderTiming} variant="inline" size="dashboard" />
+          ) : null}
+        </div>
+      </motion.div>
+    );
+  };
   // --- ANALYTICS LOGIC ---
   const activeOrders = orders.filter((o) => !["Served", "Closed", "Cancelled"].includes(o.status)).length;
   const unavailableProducts = products.filter((p) => !p.isAvailable);
@@ -375,7 +564,7 @@ export default function Dashboard() {
         </div>
 
         {/* --- 2.5 MINI TABLES GRID --- */}
-        <section className="space-y-6">
+        <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="flex items-center gap-3 text-xl font-black text-zinc-900">
               <TableIcon className="text-zinc-700" size={24} />
@@ -391,7 +580,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px] font-bold uppercase tracking-wider">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-800">
             <div className="flex items-center gap-2 text-slate-700">
               <span className="h-3 w-3 rounded-full border border-rose-500 bg-rose-300" />
               <span>Busy</span>
@@ -426,101 +615,34 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {tables.map((table) => {
-              const occupied = isOccupied(table.id);
-              const reserved = reservationsEnabled && isReserved(table.id);
-              const alert = tableAlerts[`table-${table.id}`];
-              const isBillRequested = billRequestEnabled && alert && alert.bill;
-              const isWaiterCalled = waiterCallEnabled && alert && alert.waiter;
-              const hasAlert = isBillRequested || isWaiterCalled;
-
-              const tileShell =
-                isBillRequested
-                  ? "bg-linear-to-br from-emerald-50 to-white border-emerald-200 shadow-sm shadow-emerald-100/50 ring-2 ring-emerald-400/90 ring-offset-1"
-                  : hasAlert
-                    ? "bg-linear-to-br from-indigo-50 to-white border-indigo-200 shadow-sm shadow-indigo-100/50 ring-2 ring-indigo-400/90 ring-offset-1"
-                    : occupied
-                      ? "bg-linear-to-br from-rose-50 to-white border-rose-200 shadow-rose-100/50"
-                      : reserved
-                        ? "bg-linear-to-br from-amber-50 to-white border-amber-200 shadow-amber-100/50"
-                        : "border-slate-100 bg-white shadow-sm hover:border-slate-300";
-              const idMuted =
-                isBillRequested
-                  ? "text-emerald-600/80"
-                  : hasAlert
-                    ? "text-indigo-600/80"
-                    : occupied
-                      ? "text-rose-600/80"
-                      : reserved
-                        ? "text-amber-600/80"
-                        : "text-slate-400";
-              const iconWrap =
-                isBillRequested && isWaiterCalled
-                  ? "text-purple-600"
-                  : isBillRequested
-                    ? "text-emerald-600"
-                    : isWaiterCalled
-                      ? "text-indigo-600"
-                      : occupied
-                        ? "text-rose-500"
-                        : reserved
-                          ? "text-amber-600"
-                          : "text-emerald-500";
-              const statusLabel =
-                isBillRequested && isWaiterCalled
-                  ? "text-purple-800"
-                  : isBillRequested
-                    ? "text-emerald-800"
-                    : isWaiterCalled
-                      ? "text-indigo-800"
-                      : occupied
-                        ? "text-rose-800"
-                        : reserved
-                          ? "text-amber-800"
-                          : "text-emerald-700";
-
-              return (
+          <div className="space-y-8">
+            {tableAreaSections.map((section) => (
+              <div key={section.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 sm:p-4">
+                <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <Tag size={14} className="text-slate-500" />
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800">
+                    {section.name}
+                  </h3>
+                  <span className="text-[10px] font-bold text-slate-500">
+                    {section.tables.length} table{section.tables.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
                 <motion.div
-                  key={table.id}
-                  onClick={() => {
-                    if (!tablesFeatureEnabled) return;
-                    navigate(`/admin/order-summary?table=${table.id}`);
-                  }}
-                  className={`relative flex h-24 flex-col items-center justify-center gap-2 rounded-2xl border transition-all text-slate-900 ${tileShell} ${
-                    tablesFeatureEnabled ? "cursor-pointer" : "cursor-default"
-                  }`}
-                  title={!tablesFeatureEnabled ? "Open full tables from Super Admin to enable Tables & QR" : undefined}
+                  layout
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 items-start gap-2 overflow-visible p-1"
                 >
-                  <div className={`text-[10px] font-black uppercase tracking-tighter ${idMuted}`}>
-                    T{table.id}
-                  </div>
-
-                  <div className={`flex items-center justify-center gap-1 ${iconWrap}`}>
-                    {isBillRequested && isWaiterCalled ? (
-                      <>
-                        <Receipt size={14} strokeWidth={2.5} />
-                        <HandHelping size={14} />
-                      </>
-                    ) : isBillRequested ? (
-                      <Receipt size={18} strokeWidth={2.5} />
-                    ) : isWaiterCalled ? (
-                      <BellRing size={16} />
-                    ) : occupied ? (
-                      <LayoutGrid size={16} />
-                    ) : reserved ? (
-                      <CalendarCheck size={16} />
-                    ) : (
-                      <Circle size={6} fill="currentColor" className="text-emerald-500" />
-                    )}
-                  </div>
-
-                  <div className={`text-[8px] font-black uppercase tracking-[0.1em] ${statusLabel}`}>
-                    {isBillRequested && isWaiterCalled ? "BILL + CALL" : isBillRequested ? "BILL" : isWaiterCalled ? "CALL" : occupied ? "BUSY" : reserved ? "RES" : "FREE"}
-                  </div>
+                  <AnimatePresence mode="popLayout">
+                    {section.tables.map((table) => renderLiveTableTile(table))}
+                  </AnimatePresence>
                 </motion.div>
-              );
-            })}
+              </div>
+            ))}
+
+            {tableList.length === 0 && (
+              <p className="py-10 text-center text-sm font-medium text-slate-400">
+                No tables configured. Add areas and tables from the Floor Plan page.
+              </p>
+            )}
           </div>
         </section>
 

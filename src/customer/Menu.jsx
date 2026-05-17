@@ -25,8 +25,21 @@ import gopi from "../assets/images/gopi.png";
 import masa from "../assets/images/masa.png";
 import mango from "../assets/images/mango.png";
 import fal from "../assets/images/fal.png";
+import toast from "react-hot-toast";
+import { getProductId } from "../utils/productStockCart";
+
 export default function Menu() {
   const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
+
+  const cartAdd = (product, isTakeawayItem) => {
+    if (product.isAvailable === false) return;
+    const result = addToCart(product, isTakeawayItem);
+    if (result?.ok === false) toast.error(result.message);
+  };
+
+  const cartRemove = (product, isTakeawayItem) => {
+    removeFromCart(getProductId(product), null, isTakeawayItem);
+  };
   const { products, orderedCategories } = useProducts();
   const { banners: activeSlides } = useUI();
   const [searchParams] = useSearchParams();
@@ -522,10 +535,22 @@ export default function Menu() {
                           <div key={product._id || product.id}>
                             <ProductCard
                               product={product}
-                              initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id) && (addTakeawayMode ? i.isTakeaway : !i.isTakeaway)).reduce((s, i) => s + i.qty, 0)}
-                              onAdd={() => product.isAvailable !== false && addToCart(product, addTakeawayMode)}
-                              onRemove={() => removeFromCart(product._id || product.id, null, addTakeawayMode)}
-                              onAddConfigured={(configuredItem) => product.isAvailable !== false && addToCart({ ...configuredItem, isTakeaway: addTakeawayMode }, addTakeawayMode)}
+                              isTakeawayMode={addTakeawayMode}
+                              initialQty={cart
+                                .filter(
+                                  (i) =>
+                                    getProductId(i) === getProductId(product) &&
+                                    (addTakeawayMode ? i.isTakeaway : !i.isTakeaway)
+                                )
+                                .reduce((s, i) => s + i.qty, 0)}
+                              onAdd={() => cartAdd(product, addTakeawayMode)}
+                              onRemove={() => cartRemove(product, addTakeawayMode)}
+                              onAddConfigured={(configuredItem) =>
+                                cartAdd(
+                                  { ...configuredItem, isTakeaway: addTakeawayMode },
+                                  addTakeawayMode
+                                )
+                              }
                             />
                           </div>
                         ))}

@@ -32,7 +32,7 @@ function defaultCashierLabelFromSession() {
 /* ─── component ───────────────────────────────────────────── */
 
 export default function OrderBill() {
-  const { bills, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
+  const { bills, orders, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
     useOrders();
   const { notifications, markNotificationAsRead } = useUI();
   const { cashiers, reload: reloadCashiers } = useCashiers();
@@ -62,6 +62,7 @@ export default function OrderBill() {
 
   const { uniqueBills } = useFilteredBills({
     bills,
+    orders,
     dateFilter,
     displayLimit,
   });

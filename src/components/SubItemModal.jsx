@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Check } from "lucide-react";
 
@@ -19,6 +19,9 @@ export default function SubItemModal({
   onClose,
   onAddToCart,
   initialQty = 1,
+  maxQty,
+  stockLimit,
+  cartQty = 0,
 }) {
   if (!product) return null;
 
@@ -41,7 +44,18 @@ export default function SubItemModal({
     return null;
   });
   const [selectedAddons, setSelectedAddons] = useState([]); // [{ name, price, groupName }]
-  const [qty, setQty] = useState(initialQty);
+  const maxAllowed =
+    maxQty != null && Number.isFinite(maxQty)
+      ? Math.max(1, Math.floor(maxQty))
+      : 99;
+
+  const [qty, setQty] = useState(() => Math.min(initialQty, maxAllowed));
+
+  useEffect(() => {
+    if (isOpen) {
+      setQty((q) => Math.min(Math.max(1, q), maxAllowed));
+    }
+  }, [isOpen, maxAllowed]);
 
   // ── Derived price ──
   const portionPrice = useMemo(() => {
@@ -290,6 +304,13 @@ export default function SubItemModal({
             </div>
 
             {/* ── Footer: Qty + Add ── */}
+            {maxQty != null && stockLimit != null && (
+              <p className="shrink-0 px-5 pt-3 text-center text-[10px] font-bold uppercase tracking-wide text-indigo-600 tabular-nums">
+                {cartQty > 0
+                  ? `${maxAllowed} more allowed (${stockLimit} total, ${cartQty} in cart)`
+                  : `${maxAllowed} available`}
+              </p>
+            )}
             <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
               {/* qty selector */}
               <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
@@ -303,8 +324,13 @@ export default function SubItemModal({
                   {qty}
                 </span>
                 <button
-                  onClick={() => setQty((q) => q + 1)}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                  onClick={() => setQty((q) => Math.min(maxAllowed, q + 1))}
+                  disabled={qty >= maxAllowed}
+                  className={`w-10 h-10 flex items-center justify-center transition-colors ${
+                    qty >= maxAllowed
+                      ? "cursor-not-allowed text-slate-300"
+                      : "hover:bg-slate-200"
+                  }`}
                 >
                   <Plus size={16} strokeWidth={3} />
                 </button>

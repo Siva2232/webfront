@@ -36,6 +36,9 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
   const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
 
   const status = order.status;
+  const sessionRef = order.sessionRef
+    ? String(order.sessionRef).slice(-8)
+    : null;
   const statusKey = normalizeStatus(status);
   const currentStep = statusStep[statusKey] || 1;
   const gradient = gradientMap[statusKey] || "from-slate-400 to-slate-600";
@@ -96,8 +99,13 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
                   Delivery Time: {order.deliveryTime}
                 </p>
               )}
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 flex-wrap">
                 <Timer size={12} /> {timeAgo} • #{(order._id || order.id || "").slice(-5)}
+                {sessionRef && (
+                  <span className="inline-flex items-center px-2 py-0.5 bg-violet-100 text-violet-700 text-[9px] font-black uppercase tracking-wider rounded-full">
+                    Session {sessionRef}
+                  </span>
+                )}
                 {(order.paymentMethod === "online" || order.paymentStatus === "paid") && (
                   <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-600 text-[9px] font-black uppercase tracking-wider rounded-full">
                     <CreditCard size={10} /> PAID

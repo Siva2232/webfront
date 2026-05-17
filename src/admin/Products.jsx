@@ -20,6 +20,11 @@ import DeleteProductModal from "./products/components/DeleteProductModal";
 import StockChangeModal from "./products/components/StockChangeModal";
 import AddProductModal from "./products/components/AddProductModal";
 import { compressImage } from "./products/utils/compressImage";
+import {
+  buildStockApiPayload,
+  defaultStockFormFields,
+  validateStockForm,
+} from "./products/utils/productStockForm";
 import StickyPageHeader from "./components/StickyPageHeader";
 import { useTheme } from "../context/ThemeContext";
 import { getPlanLimitsFromBranding } from "../utils/planLimits";
@@ -45,7 +50,7 @@ export default function AdminProducts() {
   // Modal state for adding product
   const [showAddModal, setShowAddModal] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [productForm, setProductForm] = useState({
+  const emptyProductForm = () => ({
     name: "",
     price: "",
     description: "",
@@ -55,7 +60,10 @@ export default function AdminProducts() {
     hasPortions: false,
     portions: [],
     addonGroups: [],
+    ...defaultStockFormFields(),
   });
+
+  const [productForm, setProductForm] = useState(() => emptyProductForm());
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [isCompressing, setIsCompressing] = useState(false);
 
@@ -171,6 +179,12 @@ export default function AdminProducts() {
       if (new Set(names).size !== names.length) { toast.error("Duplicate portion names are not allowed"); return; }
     }
 
+    const stockError = validateStockForm(productForm);
+    if (stockError) {
+      toast.error(stockError);
+      return;
+    }
+
     const cleanPortions = productForm.hasPortions
       ? productForm.portions.map(p => ({ name: p.name.trim(), price: Number(p.price) }))
       : [];
@@ -194,16 +208,16 @@ export default function AdminProducts() {
         image: productForm.image,
         category: productForm.category,
         type: productForm.type,
-        available: true,
         hasPortions: productForm.hasPortions,
         portions: cleanPortions,
         addonGroups: cleanAddonGroups,
+        ...buildStockApiPayload(productForm),
       });
       toast.success("Product created successfully!", {
         icon: <CheckCircle size={18} className="text-emerald-500" />,
       });
       setShowAddModal(false);
-      setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", hasPortions: false, portions: [], addonGroups: [] });
+      setProductForm(emptyProductForm());
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to add product");
     } finally {
@@ -213,7 +227,7 @@ export default function AdminProducts() {
 
   const resetAddModal = () => {
     setShowAddModal(false);
-    setProductForm({ name: "", price: "", description: "", image: "", category: "", type: "veg", hasPortions: false, portions: [], addonGroups: [] });
+    setProductForm(emptyProductForm());
     setNewCategoryInput("");
   };
 
@@ -230,16 +244,32 @@ export default function AdminProducts() {
     });
   };
 
-  const confirmStockChange = async () => {
+  const confirmStockChange = async (restockQty) => {
     if (!stockModal.product) return;
     setIsUpdatingStock(true);
     const { product, type } = stockModal;
     
     try {
-      await toggleAvailability(product._id);
+      let nextStock = null;
+      if (product.trackStock) {
+        nextStock =
+          type === "out"
+            ? 0
+            : Math.max(1, Math.floor(Number(restockQty) || 0));
+        await updateProduct(product._id, {
+          trackStock: true,
+          stock: nextStock,
+        });
+      } else {
+        await toggleAvailability(product._id);
+      }
       if (type === "out") {
         toast.success(`${product.name} marked as sold out`, {
           icon: <XCircle size={18} className="text-rose-500" />,
+        });
+      } else if (product.trackStock && nextStock != null) {
+        toast.success(`${product.name} restocked to ${nextStock} units`, {
+          icon: <CheckCircle size={18} className="text-emerald-500" />,
         });
       } else {
         toast.success(`${product.name} restored to menu`, {

@@ -4,7 +4,13 @@ import { useProducts } from "../context/ProductContext";
 import { useTheme } from "../context/ThemeContext";
 import { getPlanLimitsFromBranding } from "../utils/planLimits";
 import { generateId } from "../utils/generateId";
-import toast from "react-hot-toast"; // toast notifications
+import toast from "react-hot-toast";
+import StockTrackingFields from "./products/components/StockTrackingFields";
+import {
+  buildStockApiPayload,
+  defaultStockFormFields,
+  validateStockForm,
+} from "./products/utils/productStockForm";
 
 export default function AddProduct() {
   const { branding } = useTheme();
@@ -17,7 +23,8 @@ export default function AddProduct() {
     description: "",
     image: "",
     category: "",
-    type: "veg", // ✅ veg | non-veg
+    type: "veg",
+    ...defaultStockFormFields(),
   });
 
   const [newCategoryInput, setNewCategoryInput] = useState("");
@@ -115,6 +122,12 @@ export default function AddProduct() {
       return;
     }
 
+    const stockError = validateStockForm(form);
+    if (stockError) {
+      toast.error(stockError);
+      return;
+    }
+
     try {
       setAddStatus("Adding...");
       await addProduct({
@@ -124,7 +137,7 @@ export default function AddProduct() {
         image: form.image,
         category: form.category,
         type: form.type,
-        available: true,
+        ...buildStockApiPayload(form),
       });
       toast.success("Product created successfully");
       navigate("/admin/products");
@@ -169,6 +182,12 @@ export default function AddProduct() {
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           className="border rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500 font-medium"
+        />
+
+        <StockTrackingFields
+          trackStock={Boolean(form.trackStock)}
+          stock={form.stock ?? ""}
+          onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
         />
 
         {/* Veg / Non-Veg Toggle */}

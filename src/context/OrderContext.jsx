@@ -155,44 +155,9 @@ export const OrderProvider = ({ children }) => {
       const { data } = await API.get(`/orders/table/${tableNum}`);
       const rows = Array.isArray(data) ? data : [];
 
-      // if we have a persisted optimistic patch from before refresh, reapply it
-      let optimisticPatch;
-      try {
-        optimisticPatch = _tGet('optimisticOrderPatch') || null;
-      } catch (e) {
-        optimisticPatch = null;
-      }
-
-      const patchedData = rows.map((order) => {
-        if (optimisticPatch && order._id === optimisticPatch.orderId) {
-          const baseItems = order.items || order.orderItems || [];
-          const patchItems = optimisticPatch.mergedItems || [];
-          const mergedItems = [...baseItems, ...patchItems.map(item => ({
-            ...item,
-            addedAt: new Date().toISOString(),
-            isNewItem: true,
-          }))];
-          const subtotal = mergedItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
-          const { cgst, sgst, grandTotal } = computeGstFromSubtotal(subtotal);
-          return {
-            ...order,
-            items: mergedItems,
-            totalAmount: grandTotal,
-            billDetails: {
-              subtotal,
-              cgst,
-              sgst,
-              grandTotal,
-            },
-            _optimisticAt: Date.now(),
-          };
-        }
-        return order;
-      });
-
       setOrders((prev) => {
         const now = Date.now();
-        const incomingById = new Map(patchedData.map((o) => [o._id, o]));
+        const incomingById = new Map(rows.map((o) => [o._id, o]));
 
         // Merge table-scoped fetch into global orders WITHOUT dropping other tables'
         // active orders (the previous filter did that and broke dashboard / floor plan).
@@ -208,17 +173,12 @@ export const OrderProvider = ({ children }) => {
         });
 
         const prevIds = new Set(prev.map((p) => p._id));
-        const additions = patchedData.filter((o) => o && o._id != null && !prevIds.has(o._id));
+        const additions = rows.filter((o) => o && o._id != null && !prevIds.has(o._id));
         const merged = [...additions, ...updated];
 
         try { _tSet('cachedOrders', merged); } catch {}
         return merged;
       });
-
-      // if we successfully re-applied the patch, clear it once we have a packet
-      if (optimisticPatch) {
-        _tDel('optimisticOrderPatch');
-      }
     } catch (error) {
       console.error("Error fetching table orders:", error);
     }
@@ -472,41 +432,26 @@ export const OrderProvider = ({ children }) => {
       // OPTIMISTIC UPDATE â€” immediately update local state so OrderSummary
       // sees the data without waiting for the server round-trip
       if (orderData.existingOrderId) {
-        // Merge items into existing order optimistically
-        setOrders((prev) => {
-          const updated = prev.map((o) => {
-            if (o._id !== orderData.existingOrderId) return o;
-            const mergedItems = [...(o.items || []), ...orderItems.map(item => ({
-              ...item,
-              addedAt: new Date().toISOString(),
-              isNewItem: true,
-            }))];
-            const newSubtotal = mergedItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
-            const { cgst: newCgst, sgst: newSgst, grandTotal: newGrandTotal } =
-              computeGstFromSubtotal(newSubtotal);
-            return {
-              ...o,
-              items: mergedItems,
-              totalAmount: newGrandTotal,
-              billDetails: { subtotal: newSubtotal, cgst: newCgst, sgst: newSgst, grandTotal: newGrandTotal },
-              _optimisticAt: Date.now(), // protect from stale fetches
-            };
-          });
-
-          // Persist optimistic patch in case of hard refresh
-          try {
-            const patch = {
-              orderId: orderData.existingOrderId,
-              mergedItems: orderItems,
-              updatedAt: Date.now(),
-            };
-            _tSet('optimisticOrderPatch', patch);
-          } catch (e) {
-            console.warn("Could not persist optimistic patch", e);
-          }
-
-          return updated;
-        });
+        const parent = ordersRef.current.find((o) => o._id === orderData.existingOrderId);
+        const sessionRef = parent?.sessionRef || orderData.existingOrderId;
+        const optimisticOrder = {
+          _id: `optimistic-addmore-${Date.now()}`,
+          table: effectiveTable,
+          sessionRef,
+          items: orderItems,
+          totalAmount: orderData.totalAmount || total,
+          status: "New",
+          billDetails: orderData.billDetails,
+          notes: orderData.notes,
+          customerName: orderData.customerName ?? parent?.customerName,
+          paymentMethod: orderData.paymentMethod,
+          paymentStatus: orderData.paymentStatus,
+          tokenNumber: parent?.tokenNumber,
+          createdAt: new Date().toISOString(),
+          _optimistic: true,
+          _optimisticAddMore: true,
+        };
+        setOrders((prev) => [optimisticOrder, ...prev]);
       } else {
         // New order â€” append optimistic entry
         const optimisticOrder = {
@@ -555,17 +500,15 @@ export const OrderProvider = ({ children }) => {
 
       const { data } = await API.post("/orders", payload);
 
-      // Replace optimistic data with real server data
+      // Replace optimistic placeholder with confirmed server order
       setOrders((prev) => {
-        // Step 1: strip out ALL optimistic entries for this table
-        const withoutOptimistic = prev.filter((o) => !o._optimistic);
-        // Step 2: if the real server order already present (via socket), just update it
-        const alreadyExists = withoutOptimistic.find((o) => o._id === data._id);
-        if (alreadyExists) {
-          return withoutOptimistic.map((o) => (o._id === data._id ? data : o));
-        }
-        // Step 3: otherwise prepend the confirmed server order
-        const updated = [data, ...withoutOptimistic];
+        const withoutPlaceholders = orderData.existingOrderId
+          ? prev.filter((o) => !o._optimisticAddMore)
+          : prev.filter((o) => !o._optimistic);
+        const alreadyExists = withoutPlaceholders.find((o) => o._id === data._id);
+        const updated = alreadyExists
+          ? withoutPlaceholders.map((o) => (o._id === data._id ? data : o))
+          : [data, ...withoutPlaceholders];
         try { _tSet('cachedOrders', updated); } catch {}
         return updated;
       });
@@ -608,13 +551,12 @@ export const OrderProvider = ({ children }) => {
 
       const { data } = await API.post("/orders/manual", payload);
       
-      // If backend merged the order, update existing entry instead of appending
       setOrders((prev) => {
         const exists = prev.find((o) => o._id === data._id);
         if (exists) {
           return prev.map((o) => (o._id === data._id ? data : o));
         }
-        return [...prev, data];
+        return [data, ...prev];
       });
       return data;
     } catch (error) {

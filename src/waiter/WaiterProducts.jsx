@@ -1,6 +1,8 @@
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useProducts } from "../context/ProductContext";
 import ProductCard from "../components/ProductCard";
+import toast from "react-hot-toast";
+import { getProductId } from "../utils/productStockCart";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +21,12 @@ import {
 
 export default function WaiterProducts() {
   const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
+
+  const cartAdd = (product) => {
+    if (product.isAvailable === false) return;
+    const result = addToCart(product);
+    if (result?.ok === false) toast.error(result.message);
+  };
   const { products, orderedCategories } = useProducts();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -231,9 +239,9 @@ export default function WaiterProducts() {
                      key={product._id} 
                      product={product} 
                      initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id)).reduce((s, i) => s + i.qty, 0)}
-                     onAdd={() => addToCart(product)}
-                     onRemove={() => removeFromCart(product._id || product.id)}
-                     onAddConfigured={(configuredItem) => addToCart(configuredItem)}
+                     onAdd={() => cartAdd(product)}
+                     onRemove={() => removeFromCart(getProductId(product))}
+                     onAddConfigured={(configuredItem) => cartAdd(configuredItem)}
                    />
                 ))}
               </div>

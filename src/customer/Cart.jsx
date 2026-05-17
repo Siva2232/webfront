@@ -10,6 +10,7 @@ import {
   UtensilsCrossed, AlertCircle, Package, CreditCard, Wallet, X, Loader2
 } from "lucide-react";
 import confetti from 'canvas-confetti';
+import toast from "react-hot-toast";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import api from '../api/axios';
@@ -136,6 +137,17 @@ export default function Cart({ hideTable = false }) {
     cart, table, setTable, clearCart,
     totalAmount, updateQuantity, removeFromCart, updateCartItem,
   } = useCart();
+
+  const bumpQty = (item, delta) => {
+    const next = item.qty + delta;
+    const result = updateQuantity(
+      item._id || item.id,
+      next,
+      item.cartKey,
+      !!item.isTakeaway
+    );
+    if (result?.ok === false) toast.error(result.message);
+  };
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -525,14 +537,14 @@ export default function Cart({ hideTable = false }) {
                                           <span className="text-[10px] font-black uppercase italic tracking-widest">{item.selectedPortion}</span>
                                           <div className="flex items-center gap-1.5 ml-1 border-l border-blue-200 pl-1.5">
                                             <button 
-                                              onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey, !!item.isTakeaway)}
+                                              onClick={() => bumpQty(item, -1)}
                                               className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
                                             >
                                               <Minus size={10} strokeWidth={4} />
                                             </button>
                                             <span className="text-[10px] font-black">{item.qty}</span>
                                             <button 
-                                              onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey, !!item.isTakeaway)}
+                                              onClick={() => bumpQty(item, 1)}
                                               className="w-5 h-5 flex items-center justify-center hover:bg-blue-100 rounded-md transition-colors"
                                             >
                                               <Plus size={10} strokeWidth={4} />
@@ -611,14 +623,14 @@ export default function Cart({ hideTable = false }) {
                                 <div className="flex items-center justify-between mt-auto pt-4">
                                   <div className="flex items-center bg-slate-900 text-white rounded-2xl p-1 shadow-lg shadow-slate-200">
                                     <button 
-                                      onClick={() => updateQuantity(item._id || item.id, item.qty - 1, item.cartKey, !!item.isTakeaway)} 
+                                      onClick={() => bumpQty(item, -1)} 
                                       className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
                                     >
                                       <Minus size={14} strokeWidth={3} />
                                     </button>
                                     <span className="w-8 text-center text-sm font-black italic">{item.qty}</span>
                                     <button 
-                                      onClick={() => updateQuantity(item._id || item.id, item.qty + 1, item.cartKey, !!item.isTakeaway)} 
+                                      onClick={() => bumpQty(item, 1)} 
                                       className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl transition-colors"
                                     >
                                       <Plus size={14} strokeWidth={3} />

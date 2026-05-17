@@ -10,6 +10,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import StockTrackingFields from "./StockTrackingFields";
 
 export default function AddProductModal({
   open,
@@ -118,6 +119,13 @@ export default function AddProductModal({
                   className="w-full border-2 border-slate-100 rounded-xl px-4 py-3 font-medium focus:border-indigo-500 outline-none transition-colors"
                 />
               </div>
+
+              <StockTrackingFields
+                trackStock={Boolean(productForm.trackStock)}
+                stock={productForm.stock ?? ""}
+                onChange={(patch) => onChangeProductForm({ ...productForm, ...patch })}
+                compact
+              />
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">

@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { syncRestaurantCache, getRestaurantIdForTenantData, tenantKey, tenantRemove } from "../utils/tenantCache";
+import {
+  canAddProductQty,
+  getMaxLineQty,
+  getProductId,
+  tracksProductStock,
+} from "../utils/productStockCart";
 
 const CartContext = createContext();
 
@@ -98,38 +104,65 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = (product, isTakeawayItem = false) => {
+    const addQty = Math.max(1, Math.floor(Number(product.qty) || 1));
+    const preCheck = canAddProductQty(product, cart, addQty);
+    if (!preCheck.ok) return preCheck;
+
+    let blocked = null;
+
     setCart((prev) => {
-      // If the product has a cartKey (configured with portions/addons), use it for matching
+      const check = canAddProductQty(product, prev, addQty);
+      if (!check.ok) {
+        blocked = check;
+        return prev;
+      }
+
       const cartKey = product.cartKey;
       const ensureMax = (items) => (items.length > MAX_CART_ITEMS ? items.slice(-MAX_CART_ITEMS) : items);
+
       if (cartKey) {
         const exists = prev.find(
           (i) => i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
         );
         if (exists) {
-          return ensureMax(prev.map((i) =>
-            i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
-              ? { ...i, qty: i.qty + (product.qty || 1) }
-              : i
-          ));
+          return ensureMax(
+            prev.map((i) =>
+              i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayItem
+                ? { ...i, qty: i.qty + addQty }
+                : i
+            )
+          );
         }
-        return ensureMax([...prev, { ...product, qty: product.qty || 1, isTakeaway: isTakeawayItem }]);
+        return ensureMax([
+          ...prev,
+          { ...product, qty: addQty, isTakeaway: isTakeawayItem },
+        ]);
       }
 
-      // For takeaway items, check if the same product exists with same takeaway status
       const exists = prev.find(
-        (i) => (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
+        (i) =>
+          getProductId(i) === getProductId(product) &&
+          !i.cartKey &&
+          (i.isTakeaway || false) === isTakeawayItem
       );
       if (exists) {
-        return ensureMax(prev.map((i) =>
-          (i._id || i.id) === (product._id || product.id) && !i.cartKey && (i.isTakeaway || false) === isTakeawayItem
-            ? { ...i, qty: i.qty + 1 }
-            : i
-        ));
+        return ensureMax(
+          prev.map((i) =>
+            getProductId(i) === getProductId(product) &&
+            !i.cartKey &&
+            (i.isTakeaway || false) === isTakeawayItem
+              ? { ...i, qty: i.qty + addQty }
+              : i
+          )
+        );
       }
-      const next = [...prev, { ...product, qty: 1, isTakeaway: isTakeawayItem }];
-      return ensureMax(next);
+      return ensureMax([
+        ...prev,
+        { ...product, qty: addQty, isTakeaway: isTakeawayItem },
+      ]);
     });
+
+    return blocked || { ok: true };
   };
 
   /**
@@ -139,17 +172,46 @@ export const CartProvider = ({ children }) => {
   const updateQuantity = (id, newQty, cartKey = null, isTakeawayLine) => {
     if (newQty < 1) {
       removeFromCart(id, cartKey, isTakeawayLine);
-      return;
+      return { ok: true };
     }
-    setCart((prev) =>
-      prev.map((item) => {
+
+    let blocked = null;
+
+    setCart((prev) => {
+      const line = prev.find((item) => {
+        if (cartKey) return item.cartKey === cartKey;
+        if ((item._id || item.id) !== id || item.cartKey) return false;
+        const itemTa = !!item.isTakeaway;
+        const targetTa = isTakeawayLine === undefined ? false : !!isTakeawayLine;
+        return itemTa === targetTa;
+      });
+
+      if (!line) return prev;
+
+      if (tracksProductStock(line)) {
+        const maxLine = getMaxLineQty(line, prev, line);
+        if (newQty > maxLine) {
+          blocked = {
+            ok: false,
+            message:
+              maxLine <= 0
+                ? "No more stock available for this item"
+                : `Only ${maxLine} available for this item`,
+          };
+          return prev;
+        }
+      }
+
+      return prev.map((item) => {
         if (cartKey) return item.cartKey === cartKey ? { ...item, qty: newQty } : item;
         if ((item._id || item.id) !== id || item.cartKey) return item;
-        const itemTa = !!(item.isTakeaway);
+        const itemTa = !!item.isTakeaway;
         const targetTa = isTakeawayLine === undefined ? false : !!isTakeawayLine;
         return itemTa === targetTa ? { ...item, qty: newQty } : item;
-      })
-    );
+      });
+    });
+
+    return blocked || { ok: true };
   };
 
   const removeFromCart = (id, cartKey = null, isTakeawayLine) => {

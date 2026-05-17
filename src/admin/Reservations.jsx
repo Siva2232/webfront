@@ -84,8 +84,8 @@ const Reservations = () => {
   useEffect(() => {
     const loadTables = async () => {
       try {
-        const data = await fetchTablesCoalesced();
-        setTables(Array.isArray(data) ? data : []);
+        const payload = await fetchTablesCoalesced();
+        setTables(payload.tables || []);
       } catch (error) {
         toast.error("Failed to load table list");
       }

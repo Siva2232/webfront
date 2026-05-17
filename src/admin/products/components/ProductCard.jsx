@@ -25,9 +25,22 @@ export default function ProductCard({
             <h3 className="truncate text-base font-bold tracking-tight text-zinc-900 transition-colors group-hover:text-zinc-700">
               {product.name}
             </h3>
-            <div className="flex items-center gap-1 font-black text-zinc-900">
-              <IndianRupee size={15} strokeWidth={2.5} className="text-zinc-500" />
-              <span className="text-xl tabular-nums tracking-tight">{product.price.toLocaleString()}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 font-black text-zinc-900">
+                <IndianRupee size={15} strokeWidth={2.5} className="text-zinc-500" />
+                <span className="text-xl tabular-nums tracking-tight">{product.price.toLocaleString()}</span>
+              </div>
+              {product.trackStock && (
+                <span
+                  className={`rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide tabular-nums ${
+                    (product.stock ?? 0) > 0
+                      ? "border-indigo-100 bg-indigo-50 text-indigo-700"
+                      : "border-rose-100 bg-rose-50 text-rose-600"
+                  }`}
+                >
+                  Qty {product.stock ?? 0}
+                </span>
+              )}
             </div>
           </div>
 

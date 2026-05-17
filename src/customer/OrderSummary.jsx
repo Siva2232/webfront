@@ -31,13 +31,21 @@ import {
   Ticket
 } from "lucide-react";
 
+const sessionRefId = (order) =>
+  String(order?.sessionRef || order?._id || order?.id || "");
+
+const orderRoundLabel = (order, index, total) => {
+  if (total > 1) return `Round ${total - index}`;
+  return "Your order";
+};
+
 export default function OrderSummary() {
   const { orders, fetchOrders, fetchTableOrders, updateOrderStatus } = useOrders();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [isClosingBill, setIsClosingBill] = useState(false);
   const [isRequestingBill, setIsRequestingBill] = useState(false);
   const [showTokenPopup, setShowTokenPopup] = useState(true);
+  const servedCelebratedRef = useRef(new Set());
   const cheerSoundRef = useRef(new Audio("https://assets.mixkit.co/active_storage/sfx/2020/2020-preview.mp3"));
 
   /** Takeaway queue orders only (`TAKEAWAY` sentinel). Never treat missing table as takeaway — keeps dine-in separate. */
@@ -58,9 +66,9 @@ export default function OrderSummary() {
     }
   };
 
-  const handleRequestBill = async () => {
+  const handleRequestBill = async (targetOrder) => {
     const tableNum = currentTable || (mode === "takeaway" ? TAKEAWAY_TABLE : "TAKEAWAY");
-    if (!order?._id || isRequestingBill || order.isBillRequested) return;
+    if (!targetOrder?._id || isRequestingBill || targetOrder.isBillRequested) return;
     setIsRequestingBill(true);
     try {
       // 1. Send the notification to the admin dashboard
@@ -72,7 +80,7 @@ export default function OrderSummary() {
 
       // 2. Update the order object in the DB to mark bill as requested
       // This will reset to false when they order more food
-      await API.put(`/orders/${order._id}/status`, { isBillRequested: true });
+      await API.put(`/orders/${targetOrder._id}/status`, { isBillRequested: true });
       
       toast.success(tableNum === "TAKEAWAY" ? "Bill requested! Staff will assist you shortly." : "Bill requested! Waiter is arriving.");
     } catch (err) {
@@ -135,49 +143,56 @@ export default function OrderSummary() {
           )
         : [];
 
-  // Get the most recent order for this table (including Served; only Closed is hidden)
-  const order = tableOrders.length > 0 
-    ? tableOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
-    : null;
+  // All open rounds for this table (Served stays visible until bill is Closed)
+  const activeOrders = [...tableOrders].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  const latestOrder = activeOrders[0] || null;
+  const sharedSessionRef = activeOrders.length
+    ? sessionRefId(activeOrders[activeOrders.length - 1])
+    : "";
 
   useEffect(() => {
-    if (order?.status === "Served") {
-      cheerSoundRef.current.play().catch(err => console.log("Interaction needed for sound"));
+    activeOrders.forEach((o) => {
+      const id = o._id || o.id;
+      if (!id || o.status !== "Served" || servedCelebratedRef.current.has(id)) return;
+      servedCelebratedRef.current.add(id);
+      cheerSoundRef.current.play().catch(() => {});
 
       const duration = 3 * 1000;
       const end = Date.now() + duration;
-
       (function frame() {
         confetti({
           particleCount: 2,
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ['#6366f1', '#10b981']
+          colors: ["#6366f1", "#10b981"],
         });
         confetti({
           particleCount: 2,
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ['#6366f1', '#10b981']
+          colors: ["#6366f1", "#10b981"],
         });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+    });
+  }, [activeOrders]);
 
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      }());
-    }
-  }, [order?.status]);
-
-  // New takeaway order → show token popup again
   useEffect(() => {
-    if (order && isTakeawayTableOrder(order) && order.tokenNumber != null && order.tokenNumber !== "") {
+    if (
+      latestOrder &&
+      isTakeawayTableOrder(latestOrder) &&
+      latestOrder.tokenNumber != null &&
+      latestOrder.tokenNumber !== ""
+    ) {
       setShowTokenPopup(true);
     }
-  }, [order?._id]);
+  }, [latestOrder?._id]);
 
-  if (!order) {
+  if (!latestOrder) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-8 text-center bg-[#F8FAFC]">
         <motion.div 
@@ -214,36 +229,7 @@ export default function OrderSummary() {
     );
   }
 
-  const subtotal = order.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
-  const computedGst = computeGstFromSubtotal(subtotal);
-  const cgst = order.billDetails?.cgst ?? computedGst.cgst;
-  const sgst = order.billDetails?.sgst ?? computedGst.sgst;
-  const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
-
-  const handleCloseBill = async () => {
-    if (!order?._id || isClosingBill) return;
-    setIsClosingBill(true);
-    try {
-      await updateOrderStatus(order._id, "Closed");
-      toast.success("Bill closed and table released");
-
-      // Reset chooser flow so next time same table sees the choose-mode flow again
-      const _rid = getCurrentRestaurantId();
-      if (currentTable) {
-        localStorage.removeItem(tenantKey(`tableModeChosen_${currentTable}`, _rid));
-      }
-      localStorage.removeItem(tenantKey(`tableModeChosen_${TAKEAWAY_TABLE}`, _rid));
-
-      // Explicitly clear the current order from view by navigating or local state
-      // fetchOrders() will eventually sync, but navigation removes the UI immediateley
-      navigate(backLink);
-    } catch (err) {
-      console.error("close bill error", err);
-      toast.error("Failed to close bill");
-    } finally {
-      setIsClosingBill(false);
-    }
-  };
+  const addMoreMergeId = latestOrder._id || latestOrder.id;
 
   return (
     <div 
@@ -269,10 +255,39 @@ export default function OrderSummary() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-md px-3 pb-6 pt-3 sm:px-4 sm:pb-8 sm:pt-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+      <main className="mx-auto w-full max-w-md space-y-4 px-3 pb-6 pt-3 sm:px-4 sm:pb-8 sm:pt-4">
+        {activeOrders.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-indigo-100 bg-indigo-50/80 px-4 py-3 text-center"
+          >
+            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-500">
+              Table session
+            </p>
+            <p className="mt-1 font-mono text-sm font-bold uppercase tracking-tighter text-indigo-900">
+              {sharedSessionRef.slice(-10)}
+            </p>
+            <p className="mt-1 text-[10px] font-medium text-indigo-600/90">
+              {activeOrders.length} separate tickets — each round has its own dishes
+            </p>
+          </motion.div>
+        )}
+
+        {activeOrders.map((order, index) => {
+          const subtotal =
+            order.items?.reduce((sum, i) => sum + i.price * i.qty, 0) || 0;
+          const computedGst = computeGstFromSubtotal(subtotal);
+          const cgst = order.billDetails?.cgst ?? computedGst.cgst;
+          const sgst = order.billDetails?.sgst ?? computedGst.sgst;
+          const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
+
+          return (
+        <motion.div
+          key={order._id || order.id || index}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05 }}
           className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] sm:rounded-2xl"
         >
           {/* ID & Table Header */}
@@ -284,11 +299,16 @@ export default function OrderSummary() {
             <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <span className="mb-1 inline-block rounded-md bg-white/10 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-widest text-slate-300 sm:mb-2 sm:text-[8px]">
-                  ORDER REF
+                  {activeOrders.length > 1 ? "SESSION REF" : "ORDER REF"}
                 </span>
                 <p className="break-all font-mono text-sm font-bold uppercase tracking-tighter sm:text-base">
-                  {(order._id || order.id || "").slice(-10)}
+                  {(activeOrders.length > 1 ? sessionRefId(order) : order._id || order.id || "").slice(-10)}
                 </p>
+                {activeOrders.length > 1 && (
+                  <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-indigo-300">
+                    {orderRoundLabel(order, index, activeOrders.length)} · ticket {(order._id || order.id || "").slice(-6)}
+                  </p>
+                )}
                 <div className="mt-1 flex items-center gap-1.5 text-slate-400">
                   <Timer size={11} className="shrink-0 text-indigo-400" />
                   <span className="text-[8px] font-bold uppercase tracking-wider sm:text-[9px]">
@@ -316,8 +336,8 @@ export default function OrderSummary() {
             </div>
 
             {/* Pickup token — takeaway only; stays on card (popup also shown below) */}
-            {isTakeawayTableOrder(order) &&
-              order.tokenNumber != null &&
+            {isTakeawayTableOrder(latestOrder) &&
+          latestOrder.tokenNumber != null &&
               String(order.tokenNumber).trim() !== "" && (
                 <div className="relative z-10 mt-4 border-t border-white/15 pt-3 sm:mt-5 sm:pt-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
@@ -330,7 +350,7 @@ export default function OrderSummary() {
                           Pickup token
                         </p>
                         <p className="text-3xl font-black tabular-nums tracking-tighter text-white sm:text-4xl">
-                          {order.tokenNumber}
+                          {latestOrder.tokenNumber}
                         </p>
                       </div>
                     </div>
@@ -455,36 +475,35 @@ export default function OrderSummary() {
             </div>
           )}
         </motion.div>
+          );
+        })}
 
-        <div className="w-full shrink-0 px-1 pb-4 pt-4 sm:px-2 sm:pb-5 sm:pt-5">
-          <div className="flex gap-3">
-            <motion.div 
-              whileHover={{ y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              className="relative group w-full"
+        <motion.div
+          whileHover={{ y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="relative group w-full"
+        >
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+            <Link
+              to={appendRestaurantQuery(
+                `/menu?from=chooser&mergeId=${addMoreMergeId}${latestOrder.table ? `&table=${latestOrder.table}` : ""}${latestOrder.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`
+              )}
+              className="relative flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-2.5 text-[9px] font-black uppercase tracking-widest text-white shadow-md transition-all sm:rounded-[1.25rem] sm:py-3 sm:shadow-lg"
             >
-              <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
-              <Link 
-                to={appendRestaurantQuery(`/menu?from=chooser&mergeId=${order._id || order.id}${order.table ? `&table=${order.table}` : ""}${order.table === TAKEAWAY_TABLE ? `&mode=takeaway` : ""}`)} 
-                className="relative flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-2.5 text-[9px] font-black uppercase tracking-widest text-white shadow-md transition-all sm:rounded-[1.25rem] sm:py-3 sm:shadow-lg"
-              >
-                <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
-                Add Items
-                <ArrowRight size={12} className="opacity-50" />
-              </Link>
-            </motion.div>
-          </div>
-        </div>
+              <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+              Add Items
+              <ArrowRight size={12} className="opacity-50" />
+            </Link>
+        </motion.div>
 
-    
       </main>
 
       {/* Token popup — takeaway-only; main card above always shows token too */}
       <AnimatePresence>
         {mode === "takeaway" &&
-          isTakeawayTableOrder(order) &&
-          order.tokenNumber != null &&
-          String(order.tokenNumber).trim() !== "" &&
+          isTakeawayTableOrder(latestOrder) &&
+          latestOrder.tokenNumber != null &&
+          String(latestOrder.tokenNumber).trim() !== "" &&
           showTokenPopup && (
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95, filter: "blur(10px)" }}
@@ -533,7 +552,7 @@ export default function OrderSummary() {
           
           <div className="relative inline-block">
             <p className="text-4xl font-black italic tracking-tighter text-slate-900 sm:text-5xl">
-              {order.tokenNumber}
+              {latestOrder.tokenNumber}
             </p>
             {/* Subtle glow behind the number */}
             <div className="absolute inset-0 bg-indigo-500/5 blur-xl -z-10" />

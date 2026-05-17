@@ -16,9 +16,17 @@ import {
   ChevronLeft,
   ReceiptText
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { getProductId } from "../utils/productStockCart";
 
 export default function AdminProductsOrdering() {
   const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
+
+  const cartAdd = (product) => {
+    if (product.isAvailable === false) return;
+    const result = addToCart(product);
+    if (result?.ok === false) toast.error(result.message);
+  };
   const { products, orderedCategories } = useProducts();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -230,9 +238,9 @@ export default function AdminProductsOrdering() {
                      key={product._id} 
                      product={product} 
                      initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id)).reduce((s, i) => s + i.qty, 0)}
-                     onAdd={() => addToCart(product)}
-                     onRemove={() => removeFromCart(product._id || product.id)}
-                     onAddConfigured={(configuredItem) => addToCart(configuredItem)}
+                     onAdd={() => cartAdd(product)}
+                     onRemove={() => removeFromCart(getProductId(product))}
+                     onAddConfigured={(configuredItem) => cartAdd(configuredItem)}
                    />
                 ))}
               </div>

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import API from "../api/axios";
-import { ArrowLeft, Save, IndianRupee, Type, Image as ImageIcon, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import toast from "react-hot-toast"; // notifications
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Upload, X } from "lucide-react";
+import toast from "react-hot-toast";
+import { compressImage } from "./products/utils/compressImage";
 
 export default function EditForm() {
   const { id } = useParams(); // Gets the ID from the URL
@@ -49,6 +50,7 @@ export default function EditForm() {
         setFormData({
           ...existingProduct,
           price: existingProduct.price.toString(),
+          image: existingProduct.image || "",
           category: existingProduct.category?.name || existingProduct.category || "Main Courses",
           hasPortions: existingProduct.hasPortions || false,
           portions: existingProduct.portions || [],
@@ -147,8 +149,45 @@ export default function EditForm() {
   const toggleGroupCollapse = (idx) =>
     setCollapsedGroups(prev => ({ ...prev, [idx]: !prev[idx] }));
 
+  const [isCompressing, setIsCompressing] = useState(false);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file (JPG, PNG, etc.)");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be under 8MB");
+      e.target.value = "";
+      return;
+    }
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(file);
+      setFormData((prev) => ({ ...prev, image: compressed }));
+    } catch (err) {
+      console.error(err);
+      toast.error("Could not process image");
+    } finally {
+      setIsCompressing(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleClearImage = () => {
+    setFormData((prev) => ({ ...prev, image: "" }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.image?.trim()) {
+      toast.error("Please upload a product image");
+      return;
+    }
 
     // Validation for portions
     if (formData.hasPortions) {
@@ -270,13 +309,61 @@ export default function EditForm() {
             </div>
 
             <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Image URL</label>
-                <input 
-                  name="image"
-                  value={formData.image}
-                  onChange={(e) => setFormData({...formData, image: e.target.value})}
-                  className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-medium text-slate-500 text-sm"
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-2">
+                Product Image <span className="text-red-500">*</span>
+              </label>
+              <label
+                className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-8 cursor-pointer transition-colors ${
+                  formData.image
+                    ? "border-emerald-300 bg-emerald-50/50"
+                    : "border-slate-200 bg-slate-50 hover:border-blue-300 hover:bg-blue-50/30"
+                } ${isCompressing ? "pointer-events-none opacity-70" : ""}`}
+              >
+                {isCompressing ? (
+                  <div className="flex items-center gap-2 text-slate-500 text-sm font-bold">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" />
+                    Compressing…
+                  </div>
+                ) : formData.image ? (
+                  <p className="text-sm font-black uppercase tracking-widest text-emerald-600">
+                    Image ready — tap to replace
+                  </p>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <Upload size={28} className="text-slate-300" />
+                    <span className="text-sm font-bold text-slate-500">Click to upload image</span>
+                    <span className="text-[10px] font-medium text-slate-400">JPG or PNG, max 8MB</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={isCompressing}
+                  className="hidden"
                 />
+              </label>
+              {formData.image && (
+                <div className="relative overflow-hidden rounded-2xl border border-slate-100 shadow-inner">
+                  <img
+                    src={formData.image}
+                    alt={formData.name || "Preview"}
+                    className="h-48 w-full object-cover"
+                    onError={(ev) => {
+                      ev.target.onerror = null;
+                      ev.target.src = "https://via.placeholder.com/400x200?text=Invalid+Image";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="absolute top-3 right-3 rounded-full bg-black/55 p-2 text-white transition-colors hover:bg-black/75"
+                    aria-label="Remove image"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
