@@ -1,8 +1,9 @@
 import { useCart, TAKEAWAY_TABLE } from "../context/CartContext";
 import { useProducts } from "../context/ProductContext";
-import ProductCard from "../components/ProductCard";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo, useRef } from "react";
+import AdminOrderingProductCard from "./ordering/AdminOrderingProductCard";
+import SubItemModal from "../components/SubItemModal";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -17,23 +18,93 @@ import {
   ReceiptText
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getProductId } from "../utils/productStockCart";
+import {
+  canAddProductQty,
+  countProductQtyInCart,
+  getProductId,
+  getRemainingStock,
+  getStockLimit,
+} from "../utils/productStockCart";
+import { getProductCategoryNameFromProduct } from "../utils/productCategory";
 
 export default function AdminProductsOrdering() {
   const { addToCart, decrementProductFromCart, cart = [], table, setTable } = useCart();
 
-  const cartAdd = (product) => {
+  const cartAdd = useCallback((product) => {
     if (product.isAvailable === false) return;
     const result = addToCart(product);
     if (result?.ok === false) toast.error(result.message);
-  };
+  }, [addToCart]);
   const { products, orderedCategories } = useProducts();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [subItemProduct, setSubItemProduct] = useState(null);
+  const [showSubItemModal, setShowSubItemModal] = useState(false);
   const sectionRefs = useRef({});
+
+  const itemsMap = useMemo(() => {
+    const map = new Map();
+    cart.forEach((item) => {
+      const id = getProductId(item);
+      if (map.has(id)) {
+        const existing = map.get(id);
+        map.set(id, { ...existing, qty: existing.qty + (item.qty || 1) });
+      } else {
+        map.set(id, item);
+      }
+    });
+    return map;
+  }, [cart]);
+
+  const subItemStockProps = useMemo(() => {
+    if (!subItemProduct) return {};
+    const pid = getProductId(subItemProduct);
+    return {
+      maxQty: getRemainingStock(subItemProduct, cart) ?? undefined,
+      stockLimit: getStockLimit(subItemProduct),
+      cartQty: countProductQtyInCart(cart, pid),
+    };
+  }, [subItemProduct, cart]);
+
+  const openCustomise = useCallback((product) => {
+    setSubItemProduct(product);
+    setShowSubItemModal(true);
+  }, []);
+
+  const handleConfiguredAdd = useCallback(
+    (configuredItem) => {
+      const addQty = configuredItem.qty || 1;
+      const check = canAddProductQty(configuredItem, cart, addQty);
+      if (!check.ok) {
+        toast.error(check.message);
+        return;
+      }
+      cartAdd(configuredItem);
+      setShowSubItemModal(false);
+      setSubItemProduct(null);
+    },
+    [cart, cartAdd]
+  );
+
+  const adjustQty = useCallback(
+    (prod, delta) => {
+      const prodId = getProductId(prod);
+      if (delta > 0) {
+        const check = canAddProductQty(prod, cart, delta);
+        if (!check.ok) {
+          toast.error(check.message);
+          return;
+        }
+        cartAdd(prod);
+      } else if (delta < 0) {
+        decrementProductFromCart(prodId);
+      }
+    },
+    [cart, cartAdd, decrementProductFromCart]
+  );
 
   const urlTable = searchParams.get("table");
   const isTakeaway = table === TAKEAWAY_TABLE;
@@ -82,7 +153,9 @@ export default function AdminProductsOrdering() {
     if (!categories || categories.length === 0) return 0;
     return categories.reduce((sum, cat) => {
       const catName = cat.name || cat;
-      const catProducts = filteredProductsBySearch.filter((p) => (p.category?.name || p.category) === catName);
+      const catProducts = filteredProductsBySearch.filter(
+        (p) => getProductCategoryNameFromProduct(p) === catName
+      );
       return sum + catProducts.length;
     }, 0);
   }, [categories, filteredProductsBySearch]);
@@ -202,7 +275,7 @@ export default function AdminProductsOrdering() {
       </header>
 
       {/* Product List Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 pb-32">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32">
         {totalMatches === 0 ? (
           <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -220,28 +293,33 @@ export default function AdminProductsOrdering() {
         ) : (
           categories.map((cat) => {
             const catName = cat.name || cat;
-            const catProducts = filteredProductsBySearch?.filter(p => (p.category?.name || p.category) === catName) || [];
+            const catProducts =
+              filteredProductsBySearch?.filter(
+                (p) => getProductCategoryNameFromProduct(p) === catName
+              ) || [];
             
             if (catProducts.length === 0) return null;
 
             return (
-              <section key={catName} ref={el => sectionRefs.current[catName] = el} className="mb-12">
-              <div className="flex items-center gap-4 mb-6">
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">{catName}</h2>
-                <div className="h-0.5 flex-1 bg-slate-100 rounded-full" />
-                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase">{catProducts.length} Items</span>
+              <section key={catName} ref={(el) => (sectionRefs.current[catName] = el)} className="mb-8 sm:mb-10">
+              <div className="mb-3 flex items-center gap-3 sm:mb-4">
+                <h2 className="text-sm font-black uppercase tracking-tight text-slate-900 sm:text-base">{catName}</h2>
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[9px] font-black uppercase text-zinc-500 sm:text-[10px]">
+                  {catProducts.length}
+                </span>
               </div>
               
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 {catProducts.map((product) => (
-                   <ProductCard 
-                     key={product._id} 
-                     product={product} 
-                     initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id)).reduce((s, i) => s + i.qty, 0)}
-                     onAdd={() => cartAdd(product)}
-                     onRemove={() => decrementProductFromCart(getProductId(product))}
-                     onAddConfigured={(configuredItem) => cartAdd(configuredItem)}
-                   />
+                    <AdminOrderingProductCard
+                      key={getProductId(product)}
+                      product={product}
+                      qty={itemsMap.get(getProductId(product))?.qty || 0}
+                      orderItems={cart}
+                      onAdjustQty={adjustQty}
+                      onOpenCustomise={openCustomise}
+                    />
                 ))}
               </div>
             </section>
@@ -269,6 +347,17 @@ export default function AdminProductsOrdering() {
             </button>
          </div>
       )}
+
+      <SubItemModal
+        product={subItemProduct}
+        isOpen={showSubItemModal}
+        onClose={() => {
+          setShowSubItemModal(false);
+          setSubItemProduct(null);
+        }}
+        onAddToCart={handleConfiguredAdd}
+        {...subItemStockProps}
+      />
     </div>
   );
 }
