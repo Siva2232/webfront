@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export default function WaiterProducts() {
-  const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
+  const { addToCart, decrementProductFromCart, cart = [], table, setTable } = useCart();
 
   const cartAdd = (product) => {
     if (product.isAvailable === false) return;
@@ -240,7 +240,7 @@ export default function WaiterProducts() {
                      product={product} 
                      initialQty={cart.filter(i => (i._id || i.id) === (product._id || product.id)).reduce((s, i) => s + i.qty, 0)}
                      onAdd={() => cartAdd(product)}
-                     onRemove={() => removeFromCart(getProductId(product))}
+                     onRemove={() => decrementProductFromCart(getProductId(product))}
                      onAddConfigured={(configuredItem) => cartAdd(configuredItem)}
                    />
                 ))}

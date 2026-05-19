@@ -30,7 +30,7 @@ import { getProductId } from "../utils/productStockCart";
 import { getProductCategoryNameFromProduct } from "../utils/productCategory";
 
 export default function Menu() {
-  const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
+  const { addToCart, cart = [], table, setTable } = useCart();
 
   const cartAdd = (product, isTakeawayItem) => {
     if (product.isAvailable === false) return;
@@ -38,9 +38,6 @@ export default function Menu() {
     if (result?.ok === false) toast.error(result.message);
   };
 
-  const cartRemove = (product, isTakeawayItem) => {
-    removeFromCart(getProductId(product), null, isTakeawayItem);
-  };
   const { products, orderedCategories, isLoading, ensureProductsLoaded } = useProducts();
   const { banners: activeSlides } = useUI();
   const [searchParams] = useSearchParams();
@@ -554,7 +551,6 @@ export default function Menu() {
                                 )
                                 .reduce((s, i) => s + i.qty, 0)}
                               onAdd={() => cartAdd(product, addTakeawayMode)}
-                              onRemove={() => cartRemove(product, addTakeawayMode)}
                               onAddConfigured={(configuredItem) =>
                                 cartAdd(
                                   { ...configuredItem, isTakeaway: addTakeawayMode },

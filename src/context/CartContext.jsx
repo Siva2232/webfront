@@ -226,6 +226,32 @@ export const CartProvider = ({ children }) => {
     );
   };
 
+  /** Decrease qty by 1 for menu card (−); works for plain items and portion/addon lines (cartKey). */
+  const decrementProductFromCart = (id, isTakeawayLine) => {
+    const pid = String(id);
+    const targetTa = isTakeawayLine === undefined ? false : !!isTakeawayLine;
+
+    setCart((prev) => {
+      let targetIndex = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        const item = prev[i];
+        if (getProductId(item) !== pid) continue;
+        if (!!item.isTakeaway !== targetTa) continue;
+        targetIndex = i;
+        break;
+      }
+      if (targetIndex === -1) return prev;
+
+      const line = prev[targetIndex];
+      if (line.qty > 1) {
+        return prev.map((item, idx) =>
+          idx === targetIndex ? { ...item, qty: item.qty - 1 } : item
+        );
+      }
+      return prev.filter((_, idx) => idx !== targetIndex);
+    });
+  };
+
   const updateCartItem = (cartKey, updateFn) => {
     setCart((prev) =>
       prev.map((item) => {
@@ -273,6 +299,7 @@ export const CartProvider = ({ children }) => {
         updateQuantity,
         updateCartItem,
         removeFromCart,
+        decrementProductFromCart,
         clearCart,
         totalAmount,
         table,

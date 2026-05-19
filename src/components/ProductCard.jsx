@@ -36,7 +36,7 @@ export default function ProductCard({
   isTakeawayMode = false,
 }) {
   const { name, description, price, image, type = "veg" } = product;
-  const { cart } = useCart();
+  const { cart, decrementProductFromCart } = useCart();
 
   const [showSubItem, setShowSubItem] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
@@ -90,9 +90,8 @@ export default function ProductCard({
 
   const handleDecrement = (e) => {
     e.stopPropagation();
-    if (quantity > 0) {
-      onRemove?.(productId);
-    }
+    if (quantity <= 0) return;
+    decrementProductFromCart(productId, isTakeawayMode);
   };
 
   const handleConfiguredAdd = (configuredItem) => {
