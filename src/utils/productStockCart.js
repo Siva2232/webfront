@@ -30,6 +30,10 @@ export function getRemainingStock(product, cart) {
 }
 
 export function canAddProductQty(product, cart, addQty = 1) {
+  if (isProductSoldOut(product)) {
+    return { ok: false, message: "This item is sold out" };
+  }
+
   const limit = getStockLimit(product);
   if (limit === null) return { ok: true };
 

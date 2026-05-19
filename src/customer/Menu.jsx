@@ -27,6 +27,7 @@ import mango from "../assets/images/mango.png";
 import fal from "../assets/images/fal.png";
 import toast from "react-hot-toast";
 import { getProductId } from "../utils/productStockCart";
+import { getProductCategoryNameFromProduct } from "../utils/productCategory";
 
 export default function Menu() {
   const { addToCart, removeFromCart, cart = [], table, setTable } = useCart();
@@ -40,7 +41,7 @@ export default function Menu() {
   const cartRemove = (product, isTakeawayItem) => {
     removeFromCart(getProductId(product), null, isTakeawayItem);
   };
-  const { products, orderedCategories } = useProducts();
+  const { products, orderedCategories, isLoading, ensureProductsLoaded } = useProducts();
   const { banners: activeSlides } = useUI();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -62,6 +63,10 @@ export default function Menu() {
     const _rid = getCurrentRestaurantId();
     return !localStorage.getItem(tenantKey("hasSeenMenuLoader", _rid));
   });
+
+  useEffect(() => {
+    ensureProductsLoaded();
+  }, [ensureProductsLoaded]);
 
   useEffect(() => {
     if (showLoader) {
@@ -132,7 +137,7 @@ export default function Menu() {
       const nameLower = product.name.toLowerCase();
       return nameLower.split(/\s+/).some(word => word.startsWith(trimmedQuery));
     }).slice(0, 8);
-  }, [trimmedQuery]);
+  }, [trimmedQuery, products]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100 selection:text-orange-900">
@@ -503,7 +508,12 @@ export default function Menu() {
 
           {/* Product Grid */}
           <main className="max-w-7xl mx-auto w-full px-4 py-12">
-            {(() => {
+            {isLoading && products.length === 0 ? (
+              <motion.div className="flex flex-col items-center justify-center py-24 gap-4">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-orange-500" />
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading menu…</p>
+              </motion.div>
+            ) : (() => {
               const q = searchQuery.toLowerCase().trim();
               let foundMatch = false;
 
@@ -511,7 +521,7 @@ export default function Menu() {
                 // products should remain visible even when sold out; ProductCard handles the overlay
                 const filtered = products.filter((p) => {
                   const matchesSearch = (p.name?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
-                  const matchesCategory = (p.category || "Other") === cat;
+                  const matchesCategory = getProductCategoryNameFromProduct(p) === cat;
                   let matchesFoodType = true;
                   const pType = (p.type || "").toLowerCase();
                   if (foodTypeFilter === "veg") matchesFoodType = pType === "veg";
@@ -567,14 +577,31 @@ export default function Menu() {
                     <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                       <Filter className="text-slate-300" size={32} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 uppercase">No Dishes Found</h3>
-                    <p className="text-slate-400 text-sm mt-1">Try resetting filters or changing your search.</p>
-                    <button
-                      onClick={() => { setSearchQuery(""); setFoodTypeFilter("all"); }}
-                      className="mt-6 text-xs font-black uppercase text-orange-500 underline"
-                    >
-                      Reset All
-                    </button>
+                    <h3 className="text-xl font-black text-slate-900 uppercase">
+                      {products.length === 0 ? "Menu unavailable" : "No Dishes Found"}
+                    </h3>
+                    <p className="text-slate-400 text-sm mt-1 text-center px-6">
+                      {products.length === 0
+                        ? "Could not load dishes. Check your connection or refresh the page."
+                        : "Try resetting filters or changing your search."}
+                    </p>
+                    {products.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => ensureProductsLoaded()}
+                        className="mt-6 text-xs font-black uppercase text-orange-500 underline"
+                      >
+                        Retry
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setSearchQuery(""); setFoodTypeFilter("all"); }}
+                        className="mt-6 text-xs font-black uppercase text-orange-500 underline"
+                      >
+                        Reset All
+                      </button>
+                    )}
                   </div>
                 );
               }

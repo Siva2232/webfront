@@ -13,16 +13,13 @@ export default function CustomerLayout() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    fetchCustomerPromos();
-    ensureProductsLoaded();
-  }, [fetchCustomerPromos, ensureProductsLoaded]);
-
-  // Keep tenant in sync when customer links include ?restaurantId= (SPA + cold loads).
+  // Load menu data on mount and when venue id appears (refresh on /cart then navigate to /menu).
   useEffect(() => {
     const r = searchParams.get("restaurantId")?.toUpperCase().trim();
     if (r) syncRestaurantCache(r);
-  }, [searchParams]);
+    fetchCustomerPromos();
+    ensureProductsLoaded();
+  }, [searchParams, location.pathname, fetchCustomerPromos, ensureProductsLoaded]);
 
   const restaurantId = getCurrentRestaurantId();
 

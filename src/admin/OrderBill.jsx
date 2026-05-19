@@ -17,6 +17,7 @@ import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
 import { useTheme } from "../context/ThemeContext";
 import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
 import { useUI } from "../context/UIContext";
+import { TAKEAWAY_TABLE } from "../context/CartContext";
 
 /** POS cashier picker: only when 2+ HR staff have POS cashier enabled. 0 = admin-only → print as logged-in user; 1 = print as that cashier */
 function defaultCashierLabelFromSession() {
@@ -54,6 +55,8 @@ export default function OrderBill() {
   const [printModalOrder, setPrintModalOrder] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [dateFilter, setDateFilter] = useState(""); // "" = all
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [takeawayOnly, setTakeawayOnly] = useState(false);
   const [displayLimit] = useState(100);
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
@@ -67,10 +70,32 @@ export default function OrderBill() {
     displayLimit,
   });
 
-  const totalPages = Math.max(1, Math.ceil(uniqueBills.length / PER_PAGE));
+  const displayBills = React.useMemo(() => {
+    let list = uniqueBills;
+    if (takeawayOnly) {
+      list = list.filter(
+        (b) =>
+          b.table === TAKEAWAY_TABLE ||
+          b.table === "TAKEAWAY" ||
+          !b.table ||
+          b.isTakeawayOrder
+      );
+    }
+    const q = customerSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (b) =>
+          String(b.tokenNumber ?? "").includes(q) ||
+          String(b.customerName ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [uniqueBills, takeawayOnly, customerSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(displayBills.length / PER_PAGE));
   const safePage = Math.min(Math.max(1, page), totalPages);
-  const pagedBills = uniqueBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-  useEffect(() => { setPage(1); }, [dateFilter]);
+  const pagedBills = displayBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  useEffect(() => { setPage(1); }, [dateFilter, takeawayOnly, customerSearch]);
 
   /* refresh */
   const handleRefresh = useCallback(() => {
@@ -360,9 +385,30 @@ export default function OrderBill() {
         dateFilter={dateFilter}
         onDateChange={setDateFilter}
         onClearFilter={() => setDateFilter("")}
-        recordCount={uniqueBills.length}
+        recordCount={displayBills.length}
         onRefresh={handleRefresh}
       />
+
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 pt-6 md:px-8">
+        <button
+          type="button"
+          onClick={() => setTakeawayOnly((v) => !v)}
+          className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+            takeawayOnly
+              ? "border-orange-500 bg-orange-500 text-white"
+              : "border-zinc-200 bg-white text-zinc-600"
+          }`}
+        >
+          Takeaway only
+        </button>
+        <input
+          type="search"
+          value={customerSearch}
+          onChange={(e) => setCustomerSearch(e.target.value)}
+          placeholder="Search customer name or token #"
+          className="min-w-[12rem] flex-1 max-w-md rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium outline-none focus:border-zinc-400"
+        />
+      </div>
 
       {/* Bills Grid */}
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
@@ -385,7 +431,7 @@ export default function OrderBill() {
         })}
       </main>
 
-      {uniqueBills.length > PER_PAGE && (
+      {displayBills.length > PER_PAGE && (
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 pb-10 md:px-8">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}

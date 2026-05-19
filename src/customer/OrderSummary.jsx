@@ -15,6 +15,15 @@ import {
   GST_CGST_PCT_LABEL,
   GST_SGST_PCT_LABEL,
 } from "../utils/gstRates";
+import OrderRoundTimer from "../components/OrderRoundTimer";
+import {
+  formatTakeawayCustomerLabel,
+  filterTakeawayOrdersForVisitor,
+  getTakeawayTrackOrderId,
+  orderSessionRef,
+  persistTakeawayTrackOrderId,
+  takeawayCustomerDisplayName,
+} from "../utils/takeawayCustomer";
 import { 
   RotateCcw, 
   Timer, 
@@ -30,9 +39,6 @@ import {
   X,
   Ticket
 } from "lucide-react";
-
-const sessionRefId = (order) =>
-  String(order?.sessionRef || order?._id || order?.id || "");
 
 const orderRoundLabel = (order, index, total) => {
   if (total > 1) return `Round ${total - index}`;
@@ -129,11 +135,17 @@ export default function OrderSummary() {
     return appendRestaurantQuery(path);
   })();
 
-  // Takeaway view: only orders with table === TAKEAWAY_TABLE.
-  // Dine-in view: only orders for that exact table (never mix in takeaway rows).
+  const trackOrderId = getTakeawayTrackOrderId(searchParams);
+
+  const openTakeawayOrders = orders.filter(
+    (o) => o.status !== "Closed" && isTakeawayTableOrder(o)
+  );
+
+  // Takeaway: one shared table id — scope to this browser's order/session only.
+  // Dine-in: filter by physical table number.
   const tableOrders =
     mode === "takeaway"
-      ? orders.filter((o) => o.status !== "Closed" && isTakeawayTableOrder(o))
+      ? filterTakeawayOrdersForVisitor(openTakeawayOrders, orders, trackOrderId)
       : currentTable
         ? orders.filter(
             (o) =>
@@ -143,14 +155,21 @@ export default function OrderSummary() {
           )
         : [];
 
-  // All open rounds for this table (Served stays visible until bill is Closed)
+  // All open rounds for this visit (Served stays visible until bill is Closed)
   const activeOrders = [...tableOrders].sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
   const latestOrder = activeOrders[0] || null;
   const sharedSessionRef = activeOrders.length
-    ? sessionRefId(activeOrders[activeOrders.length - 1])
+    ? orderSessionRef(activeOrders[activeOrders.length - 1])
     : "";
+
+  // Sync track id when server assigns real _id (replacing optimistic / temp ids)
+  useEffect(() => {
+    if (mode !== "takeaway" || !latestOrder) return;
+    const id = latestOrder._id || latestOrder.id;
+    if (id) persistTakeawayTrackOrderId(id);
+  }, [mode, latestOrder?._id, latestOrder?.id]);
 
   useEffect(() => {
     activeOrders.forEach((o) => {
@@ -260,17 +279,17 @@ export default function OrderSummary() {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-indigo-100 bg-indigo-50/80 px-4 py-3 text-center"
+            // className="rounded-xl border border-indigo-100 bg-indigo-50/80 px-4 py-3 text-center"
           >
-            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-500">
-              Table session
-            </p>
-            <p className="mt-1 font-mono text-sm font-bold uppercase tracking-tighter text-indigo-900">
+            {/* <p className="text-[9px] font-black uppercase tracking-[0.25em] text-indigo-500">
+              {mode === "takeaway" ? "Your pickup session" : "Table session"}
+            </p> */}
+            {/* <p className="mt-1 font-mono text-sm font-bold uppercase tracking-tighter text-indigo-900">
               {sharedSessionRef.slice(-10)}
-            </p>
-            <p className="mt-1 text-[10px] font-medium text-indigo-600/90">
-              {activeOrders.length} separate tickets — each round has its own dishes
-            </p>
+            </p> */}
+            {/* <p className="mt-1 text-[10px] font-medium text-indigo-600/90">
+              {activeOrders.length} ticket{activeOrders.length > 1 ? "s" : ""} — add-on rounds for your order only
+            </p> */}
           </motion.div>
         )}
 
@@ -302,7 +321,7 @@ export default function OrderSummary() {
                   {activeOrders.length > 1 ? "SESSION REF" : "ORDER REF"}
                 </span>
                 <p className="break-all font-mono text-sm font-bold uppercase tracking-tighter sm:text-base">
-                  {(activeOrders.length > 1 ? sessionRefId(order) : order._id || order.id || "").slice(-10)}
+                  {(activeOrders.length > 1 ? orderSessionRef(order) : order._id || order.id || "").slice(-10)}
                 </p>
                 {activeOrders.length > 1 && (
                   <p className="mt-1 text-[8px] font-bold uppercase tracking-wider text-indigo-300">
@@ -314,6 +333,7 @@ export default function OrderSummary() {
                   <span className="text-[8px] font-bold uppercase tracking-wider sm:text-[9px]">
                     {format(new Date(order.createdAt), "h:mm a • MMM d")}
                   </span>
+                  <OrderRoundTimer order={order} className="text-[8px] uppercase tracking-wider sm:text-[9px]" />
                 </div>
               </div>
               <div className="shrink-0 text-left sm:text-right">
@@ -327,6 +347,11 @@ export default function OrderSummary() {
                 }`}>
                   {order.table === TAKEAWAY_TABLE ? "Takeaway" : `#${order.table}`}
                 </p>
+                {isTakeawayTableOrder(order) && takeawayCustomerDisplayName(order) && (
+                  <p className="mt-2 max-w-[12rem] truncate text-left text-sm font-bold text-indigo-200 sm:max-w-none sm:text-right sm:text-base">
+                    {takeawayCustomerDisplayName(order)}
+                  </p>
+                )}
                 {(order.paymentMethod === 'online' || order.paymentStatus === 'paid') && (
                   <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-white sm:mt-1.5 sm:px-2.5 sm:text-[8px]">
                     <CheckCircle size={10} /> PAID
@@ -336,8 +361,8 @@ export default function OrderSummary() {
             </div>
 
             {/* Pickup token — takeaway only; stays on card (popup also shown below) */}
-            {isTakeawayTableOrder(latestOrder) &&
-          latestOrder.tokenNumber != null &&
+            {isTakeawayTableOrder(order) &&
+              order.tokenNumber != null &&
               String(order.tokenNumber).trim() !== "" && (
                 <div className="relative z-10 mt-4 border-t border-white/15 pt-3 sm:mt-5 sm:pt-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
@@ -350,12 +375,17 @@ export default function OrderSummary() {
                           Pickup token
                         </p>
                         <p className="text-3xl font-black tabular-nums tracking-tighter text-white sm:text-4xl">
-                          {latestOrder.tokenNumber}
+                          {order.tokenNumber}
                         </p>
+                        {takeawayCustomerDisplayName(order) ? (
+                          <p className="mt-1 truncate text-sm font-bold text-white/95">
+                            {takeawayCustomerDisplayName(order)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <p className="max-w-full text-[8px] font-bold uppercase leading-snug tracking-wide text-indigo-200/90 sm:max-w-[140px] sm:text-right sm:text-[9px]">
-                      Show this at the counter when collecting your order
+                      {formatTakeawayCustomerLabel(order) || "Show this at the counter when collecting your order"}
                     </p>
                   </div>
                 </div>

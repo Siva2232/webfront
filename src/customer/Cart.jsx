@@ -21,6 +21,8 @@ import {
   GST_SGST_PCT_LABEL,
 } from "../utils/gstRates";
 import { useTheme } from "../context/ThemeContext";
+import TakeawayCustomerNameModal from "../components/TakeawayCustomerNameModal";
+import { persistTakeawayTrackOrderId } from "../utils/takeawayCustomer";
 
 // Initialize Stripe with publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -195,6 +197,8 @@ export default function Cart({ hideTable = false }) {
   
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [showTakeawayNameModal, setShowTakeawayNameModal] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState(null);
 
   /**
    * When both checkout paths are enabled, customer must tap one — no default selection.
@@ -238,10 +242,14 @@ export default function Cart({ hideTable = false }) {
   }, [tableParam, mode, setTable]);
 
   useEffect(() => {
-    if (containerRef.current) {
+    const updateDragConstraints = () => {
+      if (!containerRef.current) return;
       const containerWidth = containerRef.current.offsetWidth;
-      setDragConstraints(containerWidth - 64 - 16);
-    }
+      setDragConstraints(Math.max(0, containerWidth - 64 - 16));
+    };
+    updateDragConstraints();
+    window.addEventListener("resize", updateDragConstraints);
+    return () => window.removeEventListener("resize", updateDragConstraints);
   }, [cart]);
 
   const { cgst, sgst, grandTotal } = computeGstFromSubtotal(totalAmount);
@@ -277,7 +285,7 @@ export default function Cart({ hideTable = false }) {
     }
   };
 
-  const placeOrder = async (paymentDetails = null) => {
+  const placeOrder = async (paymentDetails = null, nameOverride = null) => {
     if (!table?.trim() && !isTakeaway) {
       setTableError("Please enter your table number");
       return;
@@ -289,10 +297,9 @@ export default function Cart({ hideTable = false }) {
     playSynthSound('success');
 
     const orderId = generateId("ORD");
-    const _rid = getCurrentRestaurantId();
-    localStorage.setItem(tenantKey("lastOrderId", _rid), orderId);
-
     const mergeId = searchParams.get("mergeId");
+    const trackId = mergeId || orderId;
+    persistTakeawayTrackOrderId(trackId);
 
     const effectiveTable = isTakeaway ? TAKEAWAY_TABLE : table;
     setPlacedDetails({ orderId: mergeId || orderId, table: effectiveTable, total: grandTotal, paymentMethod: paymentDetails ? 'online' : 'cod' });
@@ -316,7 +323,7 @@ export default function Cart({ hideTable = false }) {
       table: effectiveTable,
       orderItems: cartSnapshot, 
       status: "New", 
-      customerName: customerName.trim() || undefined,
+      customerName: (nameOverride ?? customerName).trim() || undefined,
       createdAt: new Date().toISOString(), 
       notes: notes.trim(),
       billDetails: { subtotal: totalAmount, cgst, sgst, grandTotal },
@@ -330,8 +337,7 @@ export default function Cart({ hideTable = false }) {
     // Fire API in background — don't block the UI
     addOrder(details).then(created => {
       const effectiveId = created?._id || orderId;
-      const _rid = getCurrentRestaurantId();
-      localStorage.setItem(tenantKey("lastOrderId", _rid), effectiveId);
+      if (effectiveId) persistTakeawayTrackOrderId(effectiveId);
     }).catch(err => {
       console.error("Order placement error:", err);
     });
@@ -339,11 +345,27 @@ export default function Cart({ hideTable = false }) {
     // Navigate after a brief delay for the success animation
     setTimeout(() => {
       if (effectiveTable === TAKEAWAY_TABLE) {
-        navigate(appendRestaurantQuery(`/order-summary?mode=takeaway`));
+        navigate(
+          appendRestaurantQuery(
+            `/order-summary?mode=takeaway&order=${encodeURIComponent(trackId)}`
+          )
+        );
       } else {
         navigate(appendRestaurantQuery(`/order-summary?table=${effectiveTable}`));
       }
     }, 1200);
+  };
+
+  const proceedAfterTakeawayName = (name) => {
+    setCustomerName(name);
+    setShowTakeawayNameModal(false);
+    const checkout = pendingCheckout;
+    setPendingCheckout(null);
+    if (checkout === "online") {
+      setShowStripeModal(true);
+    } else {
+      placeOrder(null, name);
+    }
   };
 
   const handleSwipeComplete = () => {
@@ -358,13 +380,24 @@ export default function Cart({ hideTable = false }) {
       setIsSwiped(false);
       return;
     }
-    
+
+    if (isTakeaway) {
+      setPendingCheckout(paymentMethod === "online" && showOnlineOption ? "online" : "cod");
+      setShowTakeawayNameModal(true);
+      setIsSwiped(false);
+      return;
+    }
+
     if (paymentMethod === "online" && showOnlineOption) {
       setShowStripeModal(true);
       setIsSwiped(false);
     } else {
       placeOrder();
     }
+  };
+
+  const handleTakeawayNameConfirm = (name) => {
+    proceedAfterTakeawayName(name);
   };
 
   const handlePaymentSuccess = (paymentIntent) => {
@@ -385,9 +418,9 @@ export default function Cart({ hideTable = false }) {
   }, {});
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col font-sans">
+    <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#FDFDFD] flex flex-col font-sans">
       
-      <nav className="top-0 z-[60] bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-4">
+      <nav className="sticky top-0 z-[60] shrink-0 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex min-w-0 flex-1 justify-start">
             <span className="inline-flex h-9 w-9 shrink-0" aria-hidden />
@@ -417,7 +450,7 @@ export default function Cart({ hideTable = false }) {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pt-8 pb-72">
+      <main className="flex-1 min-w-0 max-w-3xl mx-auto w-full px-4 sm:px-6 pt-6 sm:pt-8 pb-[max(15rem,calc(env(safe-area-inset-bottom,0px)+13.5rem))] md:pb-36">
         <AnimatePresence mode="wait">
           {showSuccess ? (
             <SuccessView key="success" details={placedDetails} navigate={navigate} table={table} />
@@ -428,24 +461,21 @@ export default function Cart({ hideTable = false }) {
               
               {/* Table selection */}
               {!isTakeaway ? (
-                <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 text-white shadow-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 shrink-0 bg-white/10 rounded-2xl flex items-center justify-center">
                         <UtensilsCrossed size={20} className="text-orange-400" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
                           Serving At
                         </p>
-                        {/* <p className="text-lg font-black uppercase">
-                          {displayLocation || '??'}
-                        </p> */}
                       </div>
                     </div>
 
-                    <div className="relative flex flex-col items-end">
-                   <p className={`w-20 bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-lg outline-none border-2 transition-all ${
+                    <div className="relative flex shrink-0 flex-col items-end">
+                   <p className={`min-w-[4.5rem] bg-white/10 px-4 py-2.5 rounded-xl text-center font-black text-base sm:text-lg outline-none border-2 transition-all ${
                         tableError
                           ? "border-rose-500 focus:border-rose-500"
                           : "border-white/20 focus:border-orange-500"
@@ -477,7 +507,7 @@ export default function Cart({ hideTable = false }) {
                   )}
                 </div>
               ) : (
-                <div className="bg-slate-900 rounded-[2.5rem] p-6 text-white shadow-xl text-center font-black">
+                <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 text-white shadow-xl text-center font-black text-sm sm:text-base">
                   Takeaway Order
                 </div>
               )}
@@ -487,11 +517,11 @@ export default function Cart({ hideTable = false }) {
                 {Object.entries(groupedItems).map(([portion, items]) => (
                   <div key={portion} className="space-y-4">
                     {/* Portion Group Header - Styled like KitchenBill batch/header */}
-                    <div className="flex items-center gap-3 px-1">
+                    <div className="flex items-center gap-2 px-1 sm:gap-3">
                       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                      <div className="bg-slate-900 text-white px-5 py-2 rounded-full shadow-lg border border-slate-800 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
-                        <span className="font-black text-[10px] uppercase tracking-[0.2em]">
+                      <div className="max-w-[min(100%,14rem)] bg-slate-900 text-white px-3 py-2 sm:px-5 rounded-full shadow-lg border border-slate-800 flex items-center gap-2 min-w-0">
+                        <div className="w-1.5 h-1.5 shrink-0 bg-orange-500 rounded-full animate-pulse" />
+                        <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] truncate">
                           {portion} Portion Group
                         </span>
                       </div>
@@ -508,13 +538,13 @@ export default function Cart({ hideTable = false }) {
                           <motion.div 
                             layout 
                             key={`${item.cartKey || item.id || item._id}-${item.isTakeaway ? 'ta' : 'di'}`} 
-                            className={`relative overflow-hidden bg-white p-5 rounded-[2.5rem] border shadow-sm transition-all hover:shadow-md ${
+                            className={`relative bg-white p-4 sm:p-5 rounded-[1.75rem] sm:rounded-[2.5rem] border shadow-sm transition-all hover:shadow-md ${
                               item.isTakeaway ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100'
                             }`}
                           >
-                            <div className="flex gap-5">
+                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:gap-5">
                               {/* Left: Image with Badge */}
-                              <div className="relative w-24 h-24 shrink-0">
+                              <div className="relative mx-auto h-20 w-20 shrink-0 sm:mx-0 sm:h-24 sm:w-24">
                                 <img src={item.image} className="w-full h-full rounded-[2rem] object-cover shadow-sm bg-slate-50" alt="" />
                                 {item.isTakeaway && (
                                   <div className="absolute -top-2 -right-2 bg-orange-500 text-white p-2 rounded-full shadow-lg border-4 border-white">
@@ -524,10 +554,10 @@ export default function Cart({ hideTable = false }) {
                               </div>
 
                               {/* Right: Info & Logic */}
-                              <div className="flex-1 flex flex-col">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <h3 className="font-black text-slate-900 text-lg uppercase tracking-tight leading-none mb-1">
+                              <div className="flex min-w-0 flex-1 flex-col">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <h3 className="font-black text-slate-900 text-base sm:text-lg uppercase tracking-tight leading-snug mb-1 break-words">
                                       {item.name}
                                     </h3>
                                     <div className="flex flex-wrap gap-2 items-center">
@@ -559,8 +589,8 @@ export default function Cart({ hideTable = false }) {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-black text-slate-900 text-2xl tracking-tighter italic">
+                                  <div className="shrink-0 text-left sm:text-right">
+                                    <p className="font-black text-slate-900 text-xl sm:text-2xl tracking-tighter italic tabular-nums">
                                       ₹{(item.price * item.qty).toLocaleString()}
                                     </p>
                                   </div>
@@ -656,7 +686,7 @@ export default function Cart({ hideTable = false }) {
                 ))}
               </div>
 
-              {/* Customer Name */}
+              {!isTakeaway && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-2 text-slate-400">
                   <UtensilsCrossed size={14} />
@@ -670,6 +700,15 @@ export default function Cart({ hideTable = false }) {
                   className="w-full bg-white border border-slate-100 shadow-sm rounded-[2rem] px-6 py-4 text-sm outline-none focus:border-orange-500 transition-colors"
                 />
               </div>
+              )}
+              {isTakeaway && (
+                <div className="rounded-2xl border border-orange-100 bg-orange-50/80 px-5 py-4 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">Takeaway pickup</p>
+                  <p className="mt-1 text-xs font-medium text-orange-800/90">
+                    Swipe to order — we'll ask for your name to match your token at the counter.
+                  </p>
+                </div>
+              )}
 
               {/* Kitchen Notes */}
               <div className="space-y-3">
@@ -714,7 +753,7 @@ export default function Cart({ hideTable = false }) {
                 </div>
                 <div
                   className={`grid gap-3 ${
-                    showPayLaterOption && showOnlineOption ? "grid-cols-2" : "grid-cols-1"
+                    showPayLaterOption && showOnlineOption ? "grid-cols-1 min-[380px]:grid-cols-2" : "grid-cols-1"
                   }`}
                 >
                   {showPayLaterOption && (
@@ -775,11 +814,11 @@ export default function Cart({ hideTable = false }) {
       </main>
 
       {!showSuccess && cart.length > 0 && (
-        <div className="fixed bottom-20 sm:bottom-0 inset-x-0 p-6 z-[100] bg-gradient-to-t from-white via-white to-transparent">
-          <div className="max-w-md mx-auto">
+        <div className="fixed inset-x-0 z-[100] bg-gradient-to-t from-white via-white to-transparent px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] bottom-[calc(4.65rem+env(safe-area-inset-bottom,0px))] md:bottom-0 md:px-6 md:pt-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+          <div className="max-w-md mx-auto w-full min-w-0">
             <div 
               ref={containerRef}
-              className={`relative h-20 p-2 rounded-[2.5rem] flex items-center transition-all duration-500 shadow-2xl overflow-hidden ${
+              className={`relative h-[4.5rem] sm:h-20 p-1.5 sm:p-2 rounded-[2rem] sm:rounded-[2.5rem] flex items-center transition-all duration-500 shadow-2xl overflow-hidden ${
                 checkoutSwipeReady
                   ? paymentMethod === "online"
                     ? "bg-blue-600"
@@ -789,9 +828,9 @@ export default function Cart({ hideTable = false }) {
                     : "bg-slate-100 grayscale pointer-events-none"
               }`}
             >
-              <motion.div style={{ opacity: textOpacity }} className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <motion.div style={{ opacity: textOpacity }} className="absolute inset-0 flex items-center justify-center pointer-events-none px-14">
                 <p
-                  className={`text-[11px] font-black uppercase tracking-[0.4em] ${
+                  className={`text-center text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] sm:tracking-[0.35em] leading-tight ${
                     checkoutSwipeReady ? "text-white" : "text-slate-600"
                   }`}
                 >
@@ -819,7 +858,7 @@ export default function Cart({ hideTable = false }) {
                     setIsSwiped(false);
                   }
                 }}
-                className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
+                className={`relative z-10 w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-full flex items-center justify-center shadow-lg ${
                   checkoutSwipeReady ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed opacity-60"
                 } ${
                   paymentMethod === "online" ? "bg-emerald-500" : "bg-orange-500"
@@ -842,14 +881,14 @@ export default function Cart({ hideTable = false }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
             onClick={() => setShowClearCartModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[min(90dvh,32rem)] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
@@ -875,6 +914,17 @@ export default function Cart({ hideTable = false }) {
         )}
       </AnimatePresence>
 
+      <TakeawayCustomerNameModal
+        open={showTakeawayNameModal}
+        initialName={customerName}
+        onConfirm={handleTakeawayNameConfirm}
+        onCancel={() => {
+          setShowTakeawayNameModal(false);
+          setPendingCheckout(null);
+          setIsSwiped(false);
+        }}
+      />
+
       {/* Stripe Payment Modal */}
       <AnimatePresence>
         {showStripeModal && (
@@ -882,14 +932,14 @@ export default function Cart({ hideTable = false }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
             onClick={() => setShowStripeModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl"
+              className="bg-white rounded-[2rem] p-5 sm:p-6 w-full max-w-md max-h-[min(92dvh,40rem)] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
@@ -965,7 +1015,12 @@ const SuccessView = ({ details, navigate, table }) => (
         <button 
           onClick={() => {
             if (details.table === TAKEAWAY_TABLE) {
-              navigate(appendRestaurantQuery(`/order-summary?mode=takeaway`));
+              const tid = details.orderId || "";
+              navigate(
+                appendRestaurantQuery(
+                  `/order-summary?mode=takeaway${tid ? `&order=${encodeURIComponent(tid)}` : ""}`
+                )
+              );
             } else {
               navigate(appendRestaurantQuery(`/order-summary?table=${details.table}`));
             }

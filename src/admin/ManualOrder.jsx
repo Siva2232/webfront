@@ -11,6 +11,14 @@ import ProductSelection from "./manualOrder/components/ProductSelection";
 import ExistingOrderPicker from "./manualOrder/components/ExistingOrderPicker";
 import OrderConfirmModal from "./manualOrder/components/OrderConfirmModal";
 import StickyPageHeader from "./components/StickyPageHeader";
+import {
+  canAddProductQty,
+  countProductQtyInCart,
+  getProductId,
+  getRemainingStock,
+  getStockLimit,
+  isProductSoldOut,
+} from "../utils/productStockCart";
 
 export default function ManualOrder() {
   const { products = [] } = useProducts();
@@ -39,6 +47,16 @@ export default function ManualOrder() {
 
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
+
+  const subItemStockProps = useMemo(() => {
+    if (!subItemProduct) return {};
+    const pid = getProductId(subItemProduct);
+    return {
+      maxQty: getRemainingStock(subItemProduct, items) ?? undefined,
+      stockLimit: getStockLimit(subItemProduct),
+      cartQty: countProductQtyInCart(items, pid),
+    };
+  }, [subItemProduct, items]);
 
   // Fetch orders on mount for "Add More Items" functionality
   useEffect(() => {
@@ -125,6 +143,13 @@ export default function ManualOrder() {
   const adjustQty = useCallback((prod, delta) => {
     const prodId = prod._id || prod.id;
     setItems((prev) => {
+      if (delta > 0) {
+        const check = canAddProductQty(prod, prev, delta);
+        if (!check.ok) {
+          toast.error(check.message);
+          return prev;
+        }
+      }
       const idx = prev.findIndex((i) => (i._id || i.id) === prodId);
       if (idx === -1) {
         if (delta <= 0) return prev;
@@ -153,13 +178,28 @@ export default function ManualOrder() {
 
   // Open SubItem customisation modal
   const openCustomise = useCallback((product) => {
+    if (isProductSoldOut(product)) {
+      toast.error("This item is sold out");
+      return;
+    }
+    const check = canAddProductQty(product, items, 1);
+    if (!check.ok) {
+      toast.error(check.message);
+      return;
+    }
     setSubItemProduct(product);
     setShowSubItemModal(true);
-  }, []);
+  }, [items]);
 
   // Handle configured item from SubItem modal
   const handleConfiguredAdd = useCallback((configuredItem) => {
+    const addQty = configuredItem.qty || 1;
     setItems((prev) => {
+      const check = canAddProductQty(configuredItem, prev, addQty);
+      if (!check.ok) {
+        toast.error(check.message);
+        return prev;
+      }
       const cartKey = configuredItem.cartKey;
       if (cartKey) {
         const idx = prev.findIndex((i) => i.cartKey === cartKey);
@@ -184,6 +224,10 @@ export default function ManualOrder() {
     }
     if (!isAddMoreMode && isDineIn && !dineInTable.trim()) {
       toast.error("Please enter a table number for dine-in.", { icon: <AlertCircle size={18} /> });
+      return false;
+    }
+    if (!isAddMoreMode && isTakeaway && !isDelivery && !customerName.trim()) {
+      toast.error("Customer name is required for takeaway orders.", { icon: <AlertCircle size={18} /> });
       return false;
     }
     if (items.length === 0) {
@@ -311,6 +355,7 @@ export default function ManualOrder() {
           <ProductSelection
             filteredProducts={filteredProducts}
             itemsMap={itemsMap}
+            orderItems={items}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             onAdjustQty={adjustQty}
@@ -376,6 +421,20 @@ export default function ManualOrder() {
               )}
 
             </section>
+            )}
+
+            {isTakeaway && !isDelivery && (
+              <section className="animate-in fade-in slide-in-from-top-2 space-y-4 rounded-2xl border border-orange-200 bg-orange-50/50 p-4 shadow-sm sm:p-5">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-orange-800">Takeaway customer</h2>
+                <p className="text-xs text-orange-700/90">Name appears on token, kitchen bill, and order bill.</p>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Customer name (required)"
+                  className="w-full min-w-0 rounded-xl border-2 border-orange-200 bg-white p-3 text-sm font-bold outline-none focus:border-orange-500"
+                />
+              </section>
             )}
 
             {isDelivery && (
@@ -481,6 +540,7 @@ export default function ManualOrder() {
         isOpen={showSubItemModal}
         onClose={() => { setShowSubItemModal(false); setSubItemProduct(null); }}
         onAddToCart={handleConfiguredAdd}
+        {...subItemStockProps}
       />
     </div>
   );

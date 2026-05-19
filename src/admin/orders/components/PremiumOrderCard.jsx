@@ -17,6 +17,7 @@ import {
   computeGstFromSubtotal,
   GST_TOTAL_PCT_LABEL,
 } from "../../../utils/gstRates";
+import { getOrderRoundTiming } from "../../utils/tableOrderTime";
 
 export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const [timeAgo, setTimeAgo] = useState("");
@@ -45,20 +46,22 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
 
   useEffect(() => {
     const formatElapsed = () => {
-      const diffMs = Date.now() - new Date(order.createdAt).getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      const hours = Math.floor(diffMins / 60);
-      if (hours < 24) return `${hours} hr ago`;
-      const days = Math.floor(hours / 24);
-      return days === 1 ? "1 day ago" : `${days} days ago`;
+      const timing = getOrderRoundTiming(order, Date.now());
+      if (!timing) return "—";
+      if (timing.mode === "served") {
+        return `Served in ${timing.durationLabel}`;
+      }
+      const label = timing.durationLabel;
+      if (label === "—") return "Just now";
+      return `${label} · live`;
     };
     const update = () => setTimeAgo(formatElapsed());
     update();
-    const interval = setInterval(update, 30000);
+    const isLive = !isCompleted && getOrderRoundTiming(order)?.mode === "running";
+    const intervalMs = isLive ? 1000 : 30000;
+    const interval = setInterval(update, intervalMs);
     return () => clearInterval(interval);
-  }, [order.createdAt]);
+  }, [order, order.createdAt, order.status, order.updatedAt, isCompleted]);
 
   return (
     <div

@@ -8,6 +8,7 @@ import {
   getReceiptHeaderBlock,
   receiptPad as pad,
   formatManifestItems,
+  formatTakeawayReceiptLines,
 } from "./receiptPrintCore";
 import { GST_TOTAL_PCT_LABEL } from "../../utils/gstRates";
 
@@ -44,12 +45,8 @@ ${pad(
     isTakeawayOrder
       ? "TAKEAWAY"
       : "TBL-" + order.table
-  )}${
-    isTakeawayOrder && order.tokenNumber
-      ? `\n${pad("Token No", "#" + order.tokenNumber)}`
-      : ""
-  }
-${pad(
+  )}
+${formatTakeawayReceiptLines(order, pad)}${pad(
     "Placed At",
     format(new Date(order.createdAt || order.billedAt), "dd/MM/yyyy • hh:mm a")
   )}

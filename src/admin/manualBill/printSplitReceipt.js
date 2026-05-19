@@ -1,12 +1,13 @@
 import { format } from "date-fns";
-import { TAKEAWAY_TABLE } from "../../context/CartContext";
 import { escapeReceiptHtml } from "../orderBill/receiptHeaderSettings";
 import {
   RECEIPT_PRINT_CSS,
   getReceiptHeaderBlock,
   receiptPad as pad,
   formatManifestItems,
+  formatTakeawayReceiptLines,
 } from "../orderBill/receiptPrintCore";
+import { isTakeawayTableOrder } from "../../utils/takeawayCustomer";
 import { GST_TOTAL_RATE, GST_TOTAL_PCT_LABEL } from "../../utils/gstRates";
 
 export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) => {
@@ -30,8 +31,8 @@ export const printSplitReceipt = ({ order, items, cashierName = "N/A", toast }) 
 <div class="line"></div>
 
 ${pad("Order Ref", "#" + (order._id || "").slice(-6))}
-${pad("Location", order.table === TAKEAWAY_TABLE ? "TAKEAWAY" : "TBL-" + order.table)}
-${pad(
+${pad("Location", isTakeawayTableOrder(order) ? "TAKEAWAY" : "TBL-" + order.table)}
+${formatTakeawayReceiptLines(order, pad)}${pad(
     "Placed At",
     format(new Date(order.createdAt || order.billedAt || Date.now()), "dd/MM/yyyy • hh:mm a")
   )}

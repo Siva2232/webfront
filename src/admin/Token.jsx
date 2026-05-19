@@ -400,6 +400,15 @@ function TokenCard({ token, onClose }) {
             <p className={`text-5xl font-black tracking-tighter ${isClosed ? "text-slate-400" : "text-slate-900"}`}>
               #{token.tokenNumber}
             </p>
+            {token.customerName?.trim() && (
+              <p
+                className={`mt-1 max-w-[10rem] truncate text-sm font-bold ${
+                  isClosed ? "text-slate-500" : "text-slate-800"
+                }`}
+              >
+                {token.customerName.trim()}
+              </p>
+            )}
           </div>
           <div className="text-right">
             <StatusBadge status={token.status} />

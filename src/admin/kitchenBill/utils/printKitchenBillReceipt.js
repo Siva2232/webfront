@@ -6,6 +6,7 @@ import {
   getKitchenReceiptHeaderBlock,
   receiptPad as pad,
   formatKitchenManifestItems,
+  formatTakeawayReceiptLines,
 } from "../../orderBill/receiptPrintCore";
 
 export const printKitchenBillReceipt = ({ kb }) => {
@@ -30,11 +31,7 @@ export const printKitchenBillReceipt = ({ kb }) => {
 
 ${pad("Order Ref", "#" + (kb.orderRef || kb._id || "").toString().slice(-8))}
 ${pad("Table", isTakeawayOrder(kb) ? "TAKEAWAY" : "TBL-" + kb.table)}
-${
-  isTakeawayOrder(kb) && kb.tokenNumber
-    ? pad("Token No", "#" + kb.tokenNumber) + "\n"
-    : ""
-}${pad("Placed At", format(billTimestamp, "dd/MM/yyyy • hh:mm a"))}
+${formatTakeawayReceiptLines(kb, pad)}${pad("Placed At", format(billTimestamp, "dd/MM/yyyy • hh:mm a"))}
 
 <div class="line"></div>
 <div class="bold">Itemized Manifest</div>

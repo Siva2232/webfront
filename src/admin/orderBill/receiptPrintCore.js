@@ -1,4 +1,8 @@
 import { getReceiptHeader, escapeReceiptHtml } from "./receiptHeaderSettings";
+import {
+  isTakeawayTableOrder,
+  takeawayCustomerDisplayName,
+} from "../../utils/takeawayCustomer";
 
 /**
  * Single source of truth for 80mm thermal print layout (matches customer bill receipt).
@@ -69,6 +73,22 @@ export function getKitchenReceiptHeaderBlock() {
 export function receiptPad(l, r, width = 32) {
   const sp = width - String(l).length - String(r).length;
   return String(l) + " ".repeat(sp > 0 ? sp : 1) + String(r);
+}
+
+/** Takeaway-only: Customer + Token lines for thermal receipts (newline-terminated, or ""). */
+export function formatTakeawayReceiptLines(order, padFn = receiptPad) {
+  if (!isTakeawayTableOrder(order)) return "";
+
+  const lines = [];
+  const name = takeawayCustomerDisplayName(order);
+  if (name) {
+    lines.push(padFn("Customer", escapeReceiptHtml(name)));
+  }
+  if (order?.tokenNumber != null && String(order.tokenNumber).trim() !== "") {
+    lines.push(padFn("Token No", "#" + order.tokenNumber));
+  }
+
+  return lines.length ? `${lines.join("\n")}\n` : "";
 }
 
 /** Same column layout as main receipt: 18 + 4 + 10 monospace columns */

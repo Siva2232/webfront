@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from "react";
 import API from "../api/axios";
 import { io } from "socket.io-client";
-import { syncRestaurantCache, getRestaurantIdForTenantData, isCustomerPublicMenuPath, getCustomerVenueRestaurantId, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { syncRestaurantCache, getRestaurantIdForTenantData, getCurrentRestaurantId, isCustomerPublicMenuPath, tenantKey, tenantGet, tenantSet } from "../utils/tenantCache";
+import { getProductCategoryNameFromProduct } from "../utils/productCategory";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 
 // the socket URL should match the backend deployment; use env var if available
@@ -26,9 +27,15 @@ export const ProductProvider = ({ children }) => {
   // Track the rid at mount so we can detect switches without a hard reload
   const mountedRid = useRef(currentRid);
 
-  // Hydrate from namespaced cache for this tenant (public menu: URL venue only).
+  const hasRestaurantContext = () => {
+    if (typeof window === "undefined") return true;
+    if (!isCustomerPublicMenuPath()) return true;
+    return Boolean(getCurrentRestaurantId());
+  };
+
+  // Hydrate from namespaced cache for this tenant (URL or persisted restaurantId).
   const [products, setProducts] = useState(() => {
-    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return [];
+    if (!hasRestaurantContext()) return [];
     try {
       const stored = tenantGet("products", currentRid);
       if (Array.isArray(stored) && stored.length > 0) return stored;
@@ -36,7 +43,7 @@ export const ProductProvider = ({ children }) => {
     return [];
   });
   const [categories, setCategories] = useState(() => {
-    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return [];
+    if (!hasRestaurantContext()) return [];
     try {
       const stored = tenantGet("categories", currentRid);
       if (Array.isArray(stored) && stored.length > 0) return stored;
@@ -45,7 +52,7 @@ export const ProductProvider = ({ children }) => {
   });
   const [subitems, setSubitems] = useState([]);
   const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return false;
+    if (typeof window !== "undefined" && isCustomerPublicMenuPath() && !getCurrentRestaurantId()) return false;
     try {
       const stored = tenantGet("products", currentRid);
       return !(Array.isArray(stored) && stored.length > 0);
@@ -98,7 +105,7 @@ export const ProductProvider = ({ children }) => {
     if (fetchProductsDedupeRef.current) return fetchProductsDedupeRef.current;
 
     const run = async () => {
-      if (isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) {
+      if (isCustomerPublicMenuPath() && !getCurrentRestaurantId()) {
         setIsLoading(false);
         _fetchProductsInFlight.current = false;
         return;
@@ -196,7 +203,7 @@ export const ProductProvider = ({ children }) => {
 
   // Force-fresh products fetch (bypasses server cache) — used after socket events
   const fetchProductsFresh = async () => {
-    if (isCustomerPublicMenuPath() && !getCustomerVenueRestaurantId()) return;
+    if (isCustomerPublicMenuPath() && !getCurrentRestaurantId()) return;
     try {
       const [subitemsRes, productsRes] = await Promise.allSettled([
         API.get("/sub-items", { skipCoalesce: true }),
@@ -329,9 +336,8 @@ export const ProductProvider = ({ children }) => {
   const orderedCategories = useMemo(() => {
     const preferredOrder = ["Starters", "Main Courses", "Desserts", "Beverages", "Others"];
     // Normalize to name strings regardless of whether entries are objects or strings
-    const fromDb = categories.map(c => (typeof c === 'string' ? c : c.name)).filter(Boolean);
-    // Derive any additional categories directly from the products list
-    const fromProducts = products.map(p => p.category).filter(Boolean);
+    const fromDb = categories.map(c => (typeof c === "string" ? c : c.name)).filter(Boolean);
+    const fromProducts = products.map((p) => getProductCategoryNameFromProduct(p)).filter(Boolean);
     const unique = [...new Set([...fromDb, ...fromProducts])];
     unique.sort((a, b) => {
       const ia = preferredOrder.indexOf(a);

@@ -1,5 +1,5 @@
 import React from "react";
-import { Calendar, ChefHat, RefreshCw, Receipt } from "lucide-react";
+import { Calendar, ChefHat, RefreshCw, Receipt, Search } from "lucide-react";
 import StickyPageHeader from "../../components/StickyPageHeader";
 
 export function KitchenBillHeader({
@@ -9,6 +9,10 @@ export function KitchenBillHeader({
   onClearFilter,
   recordCount,
   onRefresh,
+  customerSearch = "",
+  onCustomerSearchChange,
+  takeawayOnly = false,
+  onTakeawayOnlyChange,
 }) {
   return (
     <StickyPageHeader
@@ -33,6 +37,20 @@ export function KitchenBillHeader({
           </div>
 
           <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 focus-within:ring-2 focus-within:ring-zinc-900/10">
+
+          {onCustomerSearchChange && (
+            <div className="flex min-w-[10rem] max-w-xs flex-1 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 focus-within:ring-2 focus-within:ring-zinc-900/10">
+              <Search size={14} className="ml-1 shrink-0 text-zinc-500" />
+              <input
+                type="search"
+                value={customerSearch}
+                onChange={(e) => onCustomerSearchChange(e.target.value)}
+                placeholder="Name or token #"
+                className="min-w-0 flex-1 bg-transparent text-[10px] font-bold text-zinc-800 outline-none"
+              />
+            </div>
+          )}
+
             <Calendar size={14} className="ml-1 shrink-0 text-zinc-500" />
             <input
               type="date"

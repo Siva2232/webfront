@@ -3,6 +3,11 @@ import { Calendar, ChefHat, MessageSquare, Plus, Printer, Package } from "lucide
 import { format } from "date-fns";
 import { DELIVERY_TABLE } from "../../../context/CartContext";
 import { isTakeawayOrder } from "../utils/isTakeawayOrder";
+import OrderRoundTimer from "../../../components/OrderRoundTimer";
+import {
+  formatTakeawayCustomerLabel,
+  takeawayCustomerDisplayName,
+} from "../../../utils/takeawayCustomer";
 
 export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp, onPrint }) {
   const isServed = kb.status === "Served";
@@ -25,6 +30,26 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
             </div>
           </div>
           <h2 className="font-bold text-lg tracking-tight">Kitchen Bill</h2>
+
+          {isTakeawayOrder(kb) && (kb.tokenNumber != null || takeawayCustomerDisplayName(kb)) && (
+            <div className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-left">
+              {takeawayCustomerDisplayName(kb) && (
+                <p className="truncate text-sm font-black text-orange-950">
+                  {takeawayCustomerDisplayName(kb)}
+                </p>
+              )}
+              {kb.tokenNumber != null && (
+                <p className="text-lg font-black tabular-nums text-orange-800">
+                  Token #{kb.tokenNumber}
+                </p>
+              )}
+              {formatTakeawayCustomerLabel(kb) && (
+                <p className="text-[9px] font-bold uppercase tracking-wider text-orange-600/90">
+                  {formatTakeawayCustomerLabel(kb)}
+                </p>
+              )}
+            </div>
+          )}
 
           {kb.batchNumber > 1 ? (
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-800 px-3 py-0.5 text-[10px] font-bold text-white">
@@ -57,9 +82,19 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
         </div>
 
         <div className="p-3 flex justify-between items-center border-b text-sm">
-          <div className="flex items-center gap-2 text-slate-500">
-            <Calendar size={15} />
-            <span>{format(billTimestamp, "hh:mm a")}</span>
+          <div className="flex flex-col gap-0.5 text-slate-500">
+            <div className="flex items-center gap-2">
+              <Calendar size={15} />
+              <span>{format(billTimestamp, "hh:mm a")}</span>
+            </div>
+            <OrderRoundTimer
+              order={{
+                createdAt: kb.createdAt,
+                updatedAt: kb.updatedAt,
+                status: kb.status,
+              }}
+              className="block text-[10px] text-slate-600"
+            />
           </div>
           <span className={`px-3 py-1 text-[10px] font-bold uppercase rounded-full ${colors.text} ${colors.bg} border ${colors.border}`}>
             {kb.status}
@@ -79,7 +114,7 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-2">
-                    <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                       <p className="font-medium leading-tight">{item.name}</p>
                       {item.isTakeaway && !isTakeawayOrder(kb) && (
                         <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest">

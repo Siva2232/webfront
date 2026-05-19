@@ -64,8 +64,62 @@ const urgencyStyles = {
   },
 };
 
+function orderStartMs(order) {
+  return new Date(order?.createdAt).getTime();
+}
+
+function orderServedEndMs(order) {
+  return new Date(order?.updatedAt || order?.createdAt).getTime();
+}
+
 /**
- * Table session timing for floor plan (earliest open order → now or served stop).
+ * Per-ticket timing: runs from order createdAt; freezes when Served/Paid.
+ */
+export function getOrderRoundTiming(order, now = Date.now()) {
+  if (!order) return null;
+  const status = normalizeStatus(order.status);
+  const sessionStart = orderStartMs(order);
+  if (!Number.isFinite(sessionStart)) return null;
+
+  if (KITCHEN_ACTIVE.has(status)) {
+    const elapsedMs = Math.max(0, now - sessionStart);
+    const urgency = serviceLagLevel(elapsedMs);
+    return {
+      mode: "running",
+      sessionStart,
+      elapsedMs,
+      orderTimeLabel: formatOrderClockTime(sessionStart),
+      durationLabel: formatOrderDuration(elapsedMs),
+      statusLine: "Live · in kitchen",
+      urgency,
+      ...urgencyStyles[urgency],
+    };
+  }
+
+  if (SERVED_LIKE.has(status)) {
+    const sessionEnd = orderServedEndMs(order);
+    const elapsedMs = Math.max(0, sessionEnd - sessionStart);
+    const urgency = serviceLagLevel(elapsedMs);
+    return {
+      mode: "served",
+      sessionStart,
+      sessionEnd,
+      elapsedMs,
+      orderTimeLabel: formatOrderClockTime(sessionStart),
+      durationLabel: formatOrderDuration(elapsedMs),
+      statusLine: "Served · time stopped",
+      urgency,
+      ...urgencyStyles[urgency],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Table session timing for floor plan.
+ * Running timer uses only kitchen-active rounds (resets after prior rounds are served).
+ * When all rounds are served, timer stops at last served time.
  * @returns {null | {
  *   mode: 'running' | 'served',
  *   sessionStart: number,
@@ -78,46 +132,56 @@ const urgencyStyles = {
  *   textClass: string,
  *   bgClass: string,
  *   roundCount: number,
+ *   activeRoundCount?: number,
  * }}
  */
 export function getTableSessionTiming(tableId, orders, now = Date.now()) {
   const tableOrders = getOrdersForTable(orders, tableId);
   if (!tableOrders.length) return null;
 
-  const startTimes = tableOrders
-    .map((o) => new Date(o.createdAt).getTime())
-    .filter((t) => Number.isFinite(t));
-  if (!startTimes.length) return null;
-
-  const sessionStart = Math.min(...startTimes);
   const roundCount = tableOrders.length;
-
   const active = tableOrders.filter((o) =>
     KITCHEN_ACTIVE.has(normalizeStatus(o.status))
   );
+  const servedOrders = tableOrders.filter((o) =>
+    SERVED_LIKE.has(normalizeStatus(o.status))
+  );
 
   if (active.length > 0) {
+    const activeStarts = active
+      .map(orderStartMs)
+      .filter((t) => Number.isFinite(t));
+    if (!activeStarts.length) return null;
+
+    const sessionStart = Math.min(...activeStarts);
     const elapsedMs = now - sessionStart;
     const urgency = serviceLagLevel(elapsedMs);
+    const hasPriorServed = servedOrders.length > 0;
     return {
       mode: "running",
       sessionStart,
       elapsedMs,
       orderTimeLabel: formatOrderClockTime(sessionStart),
       durationLabel: formatOrderDuration(elapsedMs),
-      statusLine: "Live · order running",
+      statusLine: hasPriorServed
+        ? "Live · new round"
+        : "Live · order running",
       urgency,
       ...urgencyStyles[urgency],
       roundCount,
+      activeRoundCount: active.length,
     };
   }
 
-  const servedOrders = tableOrders.filter((o) =>
-    SERVED_LIKE.has(normalizeStatus(o.status))
-  );
   if (servedOrders.length > 0) {
+    const startTimes = servedOrders
+      .map(orderStartMs)
+      .filter((t) => Number.isFinite(t));
+    if (!startTimes.length) return null;
+
+    const sessionStart = Math.min(...startTimes);
     const endTimes = servedOrders
-      .map((o) => new Date(o.updatedAt || o.createdAt).getTime())
+      .map(orderServedEndMs)
       .filter((t) => Number.isFinite(t));
     const sessionEnd = endTimes.length ? Math.max(...endTimes) : now;
     const elapsedMs = Math.max(0, sessionEnd - sessionStart);

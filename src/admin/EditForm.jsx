@@ -2,9 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import API from "../api/axios";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Upload, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Upload, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { compressImage } from "./products/utils/compressImage";
+import StockTrackingFields from "./products/components/StockTrackingFields";
+import {
+  buildStockApiPayload,
+  defaultStockFormFields,
+  validateStockForm,
+} from "./products/utils/productStockForm";
 
 export default function EditForm() {
   const { id } = useParams(); // Gets the ID from the URL
@@ -40,6 +46,7 @@ export default function EditForm() {
     hasPortions: false,
     portions: [],
     addonGroups: [],
+    ...defaultStockFormFields(),
   });
 
   // 1. If we are editing, find the product and fill the form
@@ -55,6 +62,11 @@ export default function EditForm() {
           hasPortions: existingProduct.hasPortions || false,
           portions: existingProduct.portions || [],
           addonGroups: existingProduct.addonGroups || [],
+          trackStock: Boolean(existingProduct.trackStock),
+          stock: existingProduct.trackStock
+            ? String(existingProduct.stock ?? "")
+            : "",
+          isAvailable: existingProduct.isAvailable !== false,
         });
       }
     }
@@ -150,6 +162,7 @@ export default function EditForm() {
     setCollapsedGroups(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -218,13 +231,25 @@ export default function EditForm() {
           .map(a => ({ name: a.name.trim(), price: Number(a.price) || 0 })),
       }));
 
+    const stockError = validateStockForm(formData);
+    if (stockError) {
+      toast.error(stockError);
+      return;
+    }
+
     const formattedData = {
       ...formData,
       price: parseFloat(formData.price),
       portions: cleanPortions,
       addonGroups: cleanAddonGroups,
+      ...buildStockApiPayload({
+        trackStock: formData.trackStock,
+        stock: formData.stock,
+        isAvailable: formData.isAvailable !== false,
+      }),
     };
 
+    setIsSaving(true);
     try {
       if (isEditMode) {
         await updateProduct(id, formattedData);
@@ -238,6 +263,8 @@ export default function EditForm() {
       console.error(err);
       const message = err.response?.data?.message || "Failed to save product";
       toast.error(message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -326,7 +353,7 @@ export default function EditForm() {
                   </div>
                 ) : formData.image ? (
                   <p className="text-sm font-black uppercase tracking-widest text-emerald-600">
-                    Image ready — tap to replace
+                    tap to replace new one
                   </p>
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -388,6 +415,12 @@ export default function EditForm() {
                   ))}
                 </div>
             </div>
+
+            <StockTrackingFields
+              trackStock={Boolean(formData.trackStock)}
+              stock={formData.stock ?? ""}
+              onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+            />
 
             {/* ============ PORTIONS SECTION ============ */}
             <div className="border-t border-slate-100 pt-6 space-y-4">
@@ -594,9 +627,17 @@ export default function EditForm() {
 
             <button 
               type="submit"
-              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-blue-600 transition-all shadow-lg active:scale-95 mt-4"
+              disabled={isSaving || isCompressing}
+              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] hover:bg-blue-600 transition-all shadow-lg active:scale-95 mt-4 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-slate-900 flex items-center justify-center gap-2"
             >
-              {isEditMode ? "Save Changes" : "Create Product"}
+              {isSaving ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" aria-hidden />
+                  <span>{isEditMode ? "Saving…" : "Creating…"}</span>
+                </>
+              ) : (
+                isEditMode ? "Save Changes" : "Create Product"
+              )}
             </button>
           </form>
         </div>

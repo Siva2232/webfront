@@ -6,11 +6,14 @@ import KitchenBillEmptyState from "./kitchenBill/components/KitchenBillEmptyStat
 import KitchenBillCard from "./kitchenBill/components/KitchenBillCard";
 import { statusColors } from "./kitchenBill/utils/statusColors";
 import { printKitchenBillReceipt } from "./kitchenBill/utils/printKitchenBillReceipt";
+import { isTakeawayOrder } from "./kitchenBill/utils/isTakeawayOrder";
 
 export default function KitchenBill({ embedded = false }) {
   const { kitchenBills, fetchActiveKitchenBills, updateKitchenBillStatus, isLoading } = useOrders();
   const navigate = useNavigate();
   const [dateFilter, setDateFilter] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [takeawayOnly, setTakeawayOnly] = useState(false);
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
@@ -28,18 +31,32 @@ export default function KitchenBill({ embedded = false }) {
   });
 
   const filteredBills = useMemo(() => {
-    if (!dateFilter) return sortedBills;
-    return sortedBills.filter((kb) => {
-      const d = kb.createdAt ? new Date(kb.createdAt) : null;
-      if (!d || Number.isNaN(d.getTime())) return false;
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}` === dateFilter;
-    });
-  }, [sortedBills, dateFilter]);
+    let list = sortedBills;
+    if (takeawayOnly) {
+      list = list.filter((kb) => isTakeawayOrder(kb));
+    }
+    if (dateFilter) {
+      list = list.filter((kb) => {
+        const d = kb.createdAt ? new Date(kb.createdAt) : null;
+        if (!d || Number.isNaN(d.getTime())) return false;
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}` === dateFilter;
+      });
+    }
+    const q = customerSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (kb) =>
+          String(kb.tokenNumber ?? "").includes(q) ||
+          String(kb.customerName ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [sortedBills, dateFilter, takeawayOnly, customerSearch]);
 
-  useEffect(() => { setPage(1); }, [dateFilter]);
+  useEffect(() => { setPage(1); }, [dateFilter, takeawayOnly, customerSearch]);
   const totalPages = Math.max(1, Math.ceil(filteredBills.length / PER_PAGE));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const pagedBills = filteredBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
@@ -70,7 +87,29 @@ export default function KitchenBill({ embedded = false }) {
           onDateChange={setDateFilter}
           onClearFilter={() => setDateFilter("")}
           onRefresh={fetchActiveKitchenBills}
+          customerSearch={customerSearch}
+          onCustomerSearchChange={setCustomerSearch}
+          takeawayOnly={takeawayOnly}
+          onTakeawayOnlyChange={setTakeawayOnly}
         />
+      )}
+
+      {!embedded && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 md:px-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTakeawayOnly((v) => !v)}
+              className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+                takeawayOnly
+                  ? "border-orange-500 bg-orange-500 text-white"
+                  : "border-zinc-200 bg-white text-zinc-600"
+              }`}
+            >
+              Takeaway only
+            </button>
+          </div>
+        </div>
       )}
 
       {(!filteredBills || filteredBills.length === 0) && !embedded ? (

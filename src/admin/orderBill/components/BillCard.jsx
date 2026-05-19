@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { TAKEAWAY_TABLE, DELIVERY_TABLE } from "../../../context/CartContext";
+import { takeawayCustomerDisplayName } from "../../../utils/takeawayCustomer";
 import { computeBillStats } from "../billUtils";
 
 export const BillCard = React.memo(function BillCard({
@@ -97,9 +98,18 @@ export const BillCard = React.memo(function BillCard({
               )}
             </div>
 
-            {isTA && order.tokenNumber && (
-              <div className="rounded-xl bg-zinc-900 px-3 py-1 text-xs font-bold text-white">
-                Token #{order.tokenNumber}
+            {isTA && (order.tokenNumber != null || takeawayCustomerDisplayName(order)) && (
+              <div className="max-w-[55%] shrink-0 text-right">
+                {takeawayCustomerDisplayName(order) && (
+                  <p className="truncate text-sm font-bold text-zinc-900">
+                    {takeawayCustomerDisplayName(order)}
+                  </p>
+                )}
+                {order.tokenNumber != null && (
+                  <div className="mt-1 inline-block rounded-xl bg-zinc-900 px-3 py-1 text-xs font-bold text-white">
+                    Token #{order.tokenNumber}
+                  </div>
+                )}
               </div>
             )}
           </div>

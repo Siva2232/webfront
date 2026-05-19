@@ -5,6 +5,7 @@ import ProductCard from "./ProductCard";
 export default function ProductSelection({
   filteredProducts,
   itemsMap,
+  orderItems = [],
   searchQuery,
   onSearchQueryChange,
   onAdjustQty,
@@ -46,6 +47,7 @@ export default function ProductSelection({
               key={prodId}
               product={p}
               qty={currentQty}
+              orderItems={orderItems}
               isTakeawayItem={isTakeawayItem}
               onAdjustQty={onAdjustQty}
               onToggleTakeaway={onToggleTakeaway}
