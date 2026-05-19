@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import API from "../api/axios";
 import { getCurrentRestaurantId, syncRestaurantCache } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
+import { getRestaurantFeatures } from "../api/restaurantApi";
 import {
   DEFAULT_RECEIPT_HEADER,
   saveReceiptHeader,
@@ -92,20 +93,13 @@ function persistBranding(restaurantId, data) {
   try { sessionStorage.setItem(`restaurantBranding_${rid}`, serialised); } catch (_) {}
 }
 
-/** Merged feature flags from last persisted branding (instant sidebar; API still refreshes). */
-function getInitialFeaturesFromStorage() {
-  const rid = typeof localStorage !== "undefined" ? localStorage.getItem("restaurantId") : null;
-  if (!rid) return DEFAULT_FEATURES;
-  const cached = loadCachedBranding(rid);
-  if (!cached?.features || typeof cached.features !== "object") return DEFAULT_FEATURES;
-  return { ...DEFAULT_FEATURES, ...cached.features };
-}
-
-/** True when we have saved branding for this tenant — sidebar can trust cached feature flags. */
-function hasCachedBrandingSnapshot() {
-  const rid = typeof localStorage !== "undefined" ? localStorage.getItem("restaurantId") : null;
-  if (!rid) return false;
-  return loadCachedBranding(rid) != null;
+function hasAuthTokenForFeatures() {
+  try {
+    if (isSuperAdminSession()) return false;
+    return Boolean(localStorage.getItem("token") || localStorage.getItem("hrToken"));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -150,12 +144,9 @@ export const ThemeProvider = ({ children }) => {
    * Feature flags: hydrate from persisted branding so the admin sidebar matches the last known
    * server state on first paint (no 2–3s “missing links”). loadBranding() always refreshes from API.
    */
-  const [features, setFeatures] = useState(getInitialFeaturesFromStorage);
-  /**
-   * True if we have a cached branding snapshot OR the first loadBranding() has finished.
-   * When false and there is no cache, AdminLayout shows gated modules until the fetch completes.
-   */
-  const [featuresReady, setFeaturesReady] = useState(hasCachedBrandingSnapshot);
+  const [features, setFeatures] = useState(DEFAULT_FEATURES);
+  /** False until the first authoritative features fetch completes (avoids stale sidebar modules). */
+  const [featuresReady, setFeaturesReady] = useState(false);
   const [loading, setLoading] = useState(false);
 
   /** Concurrent loadBranding(restaurantId) calls (login + ThemeProvider mount, tab focus overlap) share one HTTP request. */
@@ -178,24 +169,38 @@ export const ThemeProvider = ({ children }) => {
 
     const run = async () => {
       setLoading(true);
-      // Apply cached VISUAL branding instantly (name/colours) — prevents first-paint flash.
+      setFeaturesReady(false);
+      // Cached colours/name only — never trust cached module flags (Super Admin may have changed them).
       const immediate = loadCachedBranding(restaurantId);
       if (immediate) {
         setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
-        setFeatures({ ...DEFAULT_FEATURES, ...immediate.features });
-        setFeaturesReady(true);
         applyThemeToDom(immediate);
       }
       try {
-        // Single call — branding endpoint returns all 13 feature flags when the
-        // request carries a valid auth token (admin/kitchen/waiter panels).
-        // Customer requests get public flags (qr menu, reservations, checkout options).
-        const { data } = await API.get(`/restaurants/${restaurantId}/branding`);
+        const rid = String(restaurantId).toUpperCase().trim();
+        const useFeaturesApi = hasAuthTokenForFeatures();
+
+        const brandingReq = API.get(`/restaurants/${rid}/branding`, {
+          params: { _t: Date.now() },
+          skipCoalesce: true,
+        });
+        const featuresReq = useFeaturesApi
+          ? getRestaurantFeatures(rid).catch(() => null)
+          : Promise.resolve(null);
+
+        const [{ data }, featuresRes] = await Promise.all([brandingReq, featuresReq]);
         const merged = mergeBrandingPayload(data);
+
+        let nextFeatures = { ...DEFAULT_FEATURES, ...merged.features };
+        if (featuresRes?.data && typeof featuresRes.data === "object") {
+          nextFeatures = { ...DEFAULT_FEATURES, ...featuresRes.data };
+          merged.features = nextFeatures;
+        }
 
         setBranding(merged);
         applyThemeToDom(merged);
         persistBranding(restaurantId, merged);
+        setFeatures(nextFeatures);
 
         if (merged.receiptHeader && typeof merged.receiptHeader === "object") {
           saveReceiptHeader(restaurantId, {
@@ -203,9 +208,6 @@ export const ThemeProvider = ({ children }) => {
             ...merged.receiptHeader,
           });
         }
-
-        // features state is always set from the fresh API response — never from cache.
-        setFeatures({ ...DEFAULT_FEATURES, ...merged.features });
       } catch (err) {
         console.warn("[ThemeContext] Could not load branding:", err.message);
       } finally {
@@ -244,16 +246,22 @@ export const ThemeProvider = ({ children }) => {
     if (restaurantId) loadBranding(restaurantId);
   }, [location.pathname, location.search, loadBranding]);
 
-  /** Re-fetch when the tab regains focus so feature changes by Super Admin are picked up. */
+  /** Re-fetch when the tab/window regains focus so Super Admin module changes apply without re-login. */
   useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState !== "visible") return;
+    const refresh = () => {
       if (isSuperAdminSession()) return;
       const rid = localStorage.getItem("restaurantId");
       if (rid) loadBranding(rid);
     };
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
     document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", refresh);
+    };
   }, [loadBranding]);
 
   return (

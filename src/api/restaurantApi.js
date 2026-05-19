@@ -5,7 +5,7 @@ export const getRestaurantBranding = (restaurantId) =>
   API.get(`/restaurants/${restaurantId}/branding`);
 
 export const getRestaurantFeatures = (restaurantId) =>
-  API.get(`/restaurants/${restaurantId}/features`);
+  API.get(`/restaurants/${restaurantId}/features`, { skipCoalesce: true });
 
 // ── Super Admin ────────────────────────────────────────────────────────────
 export const getRestaurants      = ()          => API.get("/restaurants");

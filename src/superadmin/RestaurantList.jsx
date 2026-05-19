@@ -3,6 +3,7 @@ import {
   getRestaurants, createRestaurant, updateBranding,
   updateFeatures, assignPlan, updateRestaurant, deleteRestaurant, getPlans, renewSubscription,
 } from "../api/restaurantApi";
+import { clearRestaurantBrandingCache } from "../utils/tenantCache";
 import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 import {
@@ -131,12 +132,8 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
       if (initial) {
         const pid = String(initial.subscriptionPlan?._id || initial.subscriptionPlan || "");
         const planDoc = plans.find((p) => String(p._id) === pid);
+        // Show saved tenant overrides — do not overlay plan here (plan wins in old branding API and hid edits).
         const mergedFeatures = { ...BLANK_FORM.features, ...(initial.features || {}) };
-        if (planDoc?.features) {
-          for (const k of Object.keys(planDoc.features)) {
-            if (typeof planDoc.features[k] === "boolean") mergedFeatures[k] = planDoc.features[k];
-          }
-        }
         setForm({
           ...BLANK_FORM,
           ...initial,
@@ -208,9 +205,21 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
     }
   };
 
+  const buildFeatureSnapshot = () => {
+    const snapshot = {};
+    for (const { key } of FEATURE_KEYS) {
+      snapshot[key] = !!form.features[key];
+    }
+    if (form.features.inventory !== undefined) {
+      snapshot.inventory = !!form.features.inventory;
+    }
+    return snapshot;
+  };
+
   const handleSave = async () => {
     if (!form.name) return toast.error("Restaurant name is required");
     setSaving(true);
+    const featureSnapshot = buildFeatureSnapshot();
     try {
       if (isEdit) {
         await updateBranding(initial.restaurantId, {
@@ -228,14 +237,19 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           subscriptionStatus: form.subscriptionStatus,
         });
         const selectedPlanId = String(form.subscriptionPlan || "").trim();
-        // Re-merge from the current plan document (no extra billing) when status is active;
-        // backend leaves expiry unchanged for same-plan + future-expiry tenants.
-        if (selectedPlanId && form.subscriptionStatus === "active") {
-          await assignPlan(initial.restaurantId, { planId: form.subscriptionPlan });
+        const initialPlanId = String(
+          initial.subscriptionPlan?._id || initial.subscriptionPlan || ""
+        ).trim();
+        // Only re-assign when the plan changed — avoids plan merge re-enabling modules before save.
+        if (
+          selectedPlanId &&
+          form.subscriptionStatus === "active" &&
+          selectedPlanId !== initialPlanId
+        ) {
+          await assignPlan(initial.restaurantId, { planId: selectedPlanId });
         }
-        // Must run after assignPlan: plan assignment turns on plan-included modules;
-        // Module Access toggles are the final source of truth for this save.
-        await updateFeatures(initial.restaurantId, form.features);
+        await updateFeatures(initial.restaurantId, featureSnapshot);
+        clearRestaurantBrandingCache(initial.restaurantId);
         toast.success("Restaurant updated");
       } else {
         // Prepare data for creation: ensure sidebar colors are included
@@ -245,8 +259,11 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
           sidebarTextColor: form.sidebarTextColor
         };
         const { data } = await createRestaurant(createData);
-        // After create, server may merge plan features; re-apply drawer toggles (same order as edit: plan → features).
-        await updateFeatures(data.restaurantId, form.features);
+        const newRid = data.restaurantId || data.restaurant?.restaurantId;
+        if (!newRid) throw new Error("Restaurant created but no restaurantId returned");
+        // createRestaurant may merge plan modules; Module Access snapshot is final.
+        await updateFeatures(newRid, featureSnapshot);
+        clearRestaurantBrandingCache(newRid);
         if (data.ownerCreated) {
           toast.success(`Restaurant created!\nOwner login: ${data.ownerEmail}`, { duration: 6000 });
         } else {

@@ -7,7 +7,6 @@ import {
   ReceiptText, ArrowRight, MessageSquare, UtensilsCrossed, Plus 
 } from "lucide-react";
 import { format } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminOrderSummary() {
   const { orders, fetchOrders, fetchTableOrders } = useOrders();
@@ -51,8 +50,8 @@ export default function AdminOrderSummary() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <nav className="sticky top-0 z-60 bg-white border-b border-slate-100 px-6 py-4">
+    <div className="flex min-h-full min-w-0 flex-col bg-slate-50 font-sans">
+      <nav className="sticky top-0 z-30 shrink-0 border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button onClick={() => navigate("/admin/tables")} className="p-2 -ml-2 hover:bg-slate-100 rounded-full">
             <ChevronLeft size={24} />
@@ -67,7 +66,7 @@ export default function AdminOrderSummary() {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pt-8 pb-32">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-4 sm:px-6 sm:pt-8">
         {currentOrders.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm px-10">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
@@ -75,11 +74,12 @@ export default function AdminOrderSummary() {
             </div>
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">No Active Orders</h3>
             <p className="text-slate-400 text-sm mt-1 mb-6">Start taking orders for Table {tableId} by choosing items from the menu.</p>
-            <button 
-                onClick={() => navigate(`/admin/products-ordering?table=${tableId}`)}
-                className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all w-full md:w-auto"
+            <button
+              type="button"
+              onClick={() => navigate(`/admin/products-ordering?table=${tableId}`)}
+              className="mx-auto block w-full max-w-xs bg-slate-900 text-white px-8 py-3 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all sm:w-auto"
             >
-                Open Menu
+              Open Menu
             </button>
           </div>
         ) : (
@@ -138,24 +138,31 @@ export default function AdminOrderSummary() {
         )}
       </main>
 
-       {currentOrders.length > 0 && (
-         <div className="fixed bottom-6 inset-x-0 px-6 max-w-3xl mx-auto flex gap-4 z-50">
-            <button 
+      {currentOrders.length > 0 && (
+        <footer className="sticky bottom-0 z-40 shrink-0 border-t border-slate-100 bg-white/95 backdrop-blur-md">
+          <div className="mx-auto w-full max-w-3xl px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+            <div className="mx-auto grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
                 onClick={() => navigate(`/admin/products-ordering?table=${tableId}`)}
-                className="flex-1 bg-slate-900 text-white h-16 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex items-center justify-center gap-3 hover:scale-[0.98] transition-transform active:scale-95"
-            >
-                <Plus size={18} strokeWidth={3} />
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.15em] text-white shadow-xl transition-all hover:bg-indigo-600 active:scale-[0.98] sm:tracking-[0.2em]"
+              >
+                <Plus size={18} strokeWidth={3} aria-hidden />
                 Add More Items
-            </button>
-            <button 
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate(`/admin/bill?table=${tableId}`)}
-                className="w-16 h-16 bg-white border border-slate-100 rounded-3xl flex items-center justify-center shadow-lg hover:bg-slate-50 transition-colors"
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 text-xs font-black uppercase tracking-[0.15em] text-indigo-600 shadow-lg transition-all hover:bg-slate-50 active:scale-[0.98]"
                 title="Settle Bill"
-            >
-                <ReceiptText size={22} className="text-indigo-600" />
-            </button>
-         </div>
-       )}
+              >
+                <ReceiptText size={20} strokeWidth={2.5} aria-hidden />
+                View Bill
+              </button>
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

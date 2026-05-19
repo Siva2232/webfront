@@ -166,7 +166,7 @@ export default function AdminProductsOrdering() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="flex min-h-full min-w-0 flex-col bg-slate-50 font-sans">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col gap-3">
@@ -275,7 +275,7 @@ export default function AdminProductsOrdering() {
       </header>
 
       {/* Product List Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-5 pb-28 sm:px-6 sm:py-6 sm:pb-32">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 pb-4 sm:px-6 sm:py-6">
         {totalMatches === 0 ? (
           <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -327,25 +327,27 @@ export default function AdminProductsOrdering() {
         }))}
       </main>
 
-      {/* Fixed bottom checkout indicator */}
       {totalItems > 0 && (
-         <div className="fixed bottom-6 inset-x-0 px-6 z-50">
-            <button 
-                onClick={() => navigate("/admin/cart")}
-                className="max-w-md mx-auto w-full bg-slate-900 text-white h-16 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex items-center justify-between px-8 hover:scale-[0.98] transition-transform active:scale-95"
+        <footer className="sticky bottom-0 z-40 shrink-0 border-t border-slate-100 bg-white/95 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-7xl justify-center px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/cart")}
+              className="flex h-14 w-full max-w-md items-center justify-between rounded-2xl bg-slate-900 px-6 text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all hover:bg-indigo-600 active:scale-[0.98] sm:px-8"
             >
-                <div className="flex items-center gap-4">
-                    <span className="bg-indigo-500 w-8 h-8 rounded-xl flex items-center justify-center text-[10px] shadow-lg border-2 border-slate-900/30">
-                        {totalItems}
-                    </span>
-                    Review Order
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-[10px] font-black tracking-widest mr-2 uppercase">Proceed</span>
-                    <ArrowRight size={20} strokeWidth={3} />
-                </div>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border-2 border-slate-900/30 bg-indigo-500 text-[10px] shadow-lg">
+                  {totalItems}
+                </span>
+                Review Order
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Proceed</span>
+                <ArrowRight size={20} strokeWidth={3} aria-hidden />
+              </div>
             </button>
-         </div>
+          </div>
+        </footer>
       )}
 
       <SubItemModal

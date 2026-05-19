@@ -128,6 +128,16 @@ export function syncRestaurantCache(newId) {
   localStorage.setItem('restaurantId', newId);
 }
 
+/** Drop persisted branding (incl. stale module flags) after Super Admin saves tenant settings. */
+export function clearRestaurantBrandingCache(restaurantId) {
+  const rid = String(restaurantId || '').toUpperCase().trim();
+  if (!rid) return;
+  try {
+    localStorage.removeItem(`restaurantBranding_${rid}`);
+    sessionStorage.removeItem(`restaurantBranding_${rid}`);
+  } catch (_) {}
+}
+
 /**
  * Ensures `restaurantId` is on the query string for customer routes (SPA navigations
  * often dropped it; APIs and tenant cache need it).

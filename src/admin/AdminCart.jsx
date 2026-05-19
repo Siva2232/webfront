@@ -107,9 +107,9 @@ export default function AdminCart() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-28">
-      <nav className="sticky top-0 z-60 bg-white border-b border-slate-100 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="flex min-h-full min-w-0 flex-col bg-slate-50 font-sans">
+      <nav className="sticky top-0 z-30 shrink-0 border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -127,7 +127,7 @@ export default function AdminCart() {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pt-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-4 sm:px-6 sm:pt-8">
         {cart.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag size={64} className="mx-auto text-slate-200 mb-4" />
@@ -224,26 +224,28 @@ export default function AdminCart() {
       </main>
 
       {cart.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-100 bg-white/95 backdrop-blur-md p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={placeOrder}
-            disabled={isPlacing || !canPlaceOrder}
-            className="mx-auto flex h-14 w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-slate-900 text-sm font-black uppercase tracking-widest text-white shadow-xl transition-all hover:bg-indigo-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isPlacing ? (
-              <>
-                <Loader2 size={20} className="animate-spin" aria-hidden />
-                Placing order…
-              </>
-            ) : (
-              <>
-                Place order · ₹{grandTotal.toLocaleString()}
-                <ArrowRight size={18} strokeWidth={3} aria-hidden />
-              </>
-            )}
-          </button>
-        </div>
+        <footer className="sticky bottom-0 z-40 shrink-0 border-t border-slate-100 bg-white/95 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-3xl justify-center px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+            <button
+              type="button"
+              onClick={placeOrder}
+              disabled={isPlacing || !canPlaceOrder}
+              className="flex h-14 w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-slate-900 text-sm font-black uppercase tracking-widest text-white shadow-xl transition-all hover:bg-indigo-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPlacing ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" aria-hidden />
+                  Placing order…
+                </>
+              ) : (
+                <>
+                  Place order · ₹{grandTotal.toLocaleString()}
+                  <ArrowRight size={18} strokeWidth={3} aria-hidden />
+                </>
+              )}
+            </button>
+          </div>
+        </footer>
       )}
     </div>
   );
