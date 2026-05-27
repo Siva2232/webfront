@@ -125,7 +125,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4 overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-3 py-10 overflow-x-hidden relative sm:px-4 sm:py-0 sm:overflow-hidden">
       {/* --- Abstract Background Decor --- */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
         <motion.div 
@@ -153,21 +153,21 @@ export default function Login() {
           <Coffee size={48} strokeWidth={1} />
         </div>
 
-        <div className="relative rounded-[3rem] bg-white border border-slate-100 shadow-[0_30px_100px_rgba(0,0,0,0.08)] p-8 md:p-12">
+        <div className="relative rounded-[2.25rem] sm:rounded-[3rem] bg-white border border-slate-100 shadow-[0_30px_100px_rgba(0,0,0,0.08)] p-6 sm:p-8 md:p-12">
           
           {/* Header */}
-          <div className="text-center space-y-4 mb-10">
+          <div className="text-center space-y-3 sm:space-y-4 mb-8 sm:mb-10">
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
-              <div className="relative mx-auto h-16 w-16 rounded-[1.5rem] bg-slate-900 flex items-center justify-center shadow-2xl">
-                <ShieldCheck className="text-white" size={30} />
+              <div className="relative mx-auto h-14 w-14 sm:h-16 sm:w-16 rounded-[1.25rem] sm:rounded-[1.5rem] bg-slate-900 flex items-center justify-center shadow-2xl">
+                <ShieldCheck className="text-white" size={28} />
               </div>
             </div>
             <div className="space-y-1">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter">
                 System <span className="text-slate-400">Login</span>
               </h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.24em] sm:tracking-[0.3em] text-indigo-600">
                 Enterprise Resource Gateway
               </p>
               <p className="text-[9px] text-slate-500">
@@ -186,7 +186,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@demo.com"
-                  className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 pl-14 pr-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all"
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 pl-14 pr-5 py-3.5 sm:pr-6 sm:py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all"
                   required
                 />
               </div>
@@ -201,7 +201,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 pl-14 pr-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all"
+                  className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 pl-14 pr-5 py-3.5 sm:pr-6 sm:py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-200 transition-all"
                   required
                 />
               </div>
@@ -224,7 +224,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full overflow-hidden rounded-2xl bg-slate-900 py-4 font-black text-white shadow-xl shadow-slate-200 transition-all hover:bg-indigo-600 hover:shadow-indigo-200 active:scale-95 disabled:opacity-70"
+              className="group relative w-full overflow-hidden rounded-2xl bg-slate-900 py-3.5 sm:py-4 font-black text-white shadow-xl shadow-slate-200 transition-all hover:bg-indigo-600 hover:shadow-indigo-200 active:scale-95 disabled:opacity-70"
             >
               <div className="relative z-10 flex items-center justify-center gap-3">
                 {isLoading ? (
