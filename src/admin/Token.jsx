@@ -206,7 +206,7 @@ export default function Token() {
         subtitle="Real-time takeaway tracking"
         onBack={() => navigate(-1)}
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
                 <Ticket size={16} className="text-zinc-700" />
@@ -225,7 +225,7 @@ export default function Token() {
               type="button"
               onClick={fetchTokens}
               disabled={isFetching}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
               title="Refresh"
             >
               <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
@@ -236,7 +236,7 @@ export default function Token() {
               type="button"
               onClick={handleReset}
               disabled={isResetting}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 sm:w-auto"
             >
               {isResetting ? (
                 <Loader2 className="animate-spin" size={14} />
@@ -252,11 +252,11 @@ export default function Token() {
                 Live
               </span>
             </div>
-          </>
+          </div>
         }
       />
 
-      <main className="mx-auto max-w-5xl p-6">
+      <main className="mx-auto max-w-5xl px-3 py-4 sm:p-6">
         {/* Stats Grid */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total Active" value={activeCount} color="zinc" icon={Ticket} />
@@ -273,7 +273,7 @@ export default function Token() {
             placeholder="Search by token number or customer name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border border-zinc-200 bg-white py-4 pl-12 pr-6 font-medium shadow-sm shadow-zinc-900/5 outline-none transition-all focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10"
+            className="w-full rounded-2xl border border-zinc-200 bg-white py-3.5 pl-12 pr-4 font-medium shadow-sm shadow-zinc-900/5 outline-none transition-all focus:border-zinc-400 focus:ring-2 focus:ring-zinc-900/10 sm:py-4 sm:pr-6"
           />
         </div>
 
@@ -310,7 +310,7 @@ export default function Token() {
         )}
 
         {filteredTokens.length >= PER_PAGE && (
-          <div className="mt-10 flex items-center justify-between">
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}

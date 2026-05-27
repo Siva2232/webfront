@@ -18,7 +18,7 @@ export default function ModernKPICard({ label, val, icon: Icon, color, trend, is
 
   return (
     <div
-      className={`bg-white p-6 rounded-3xl border border-slate-100 shadow-lg ${meta.shadow} hover:shadow-xl hover:translate-y-[-2px] transition-all duration-300 relative overflow-hidden group`}
+      className={`bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-lg ${meta.shadow} hover:shadow-xl hover:translate-y-[-2px] transition-all duration-300 relative overflow-hidden group`}
     >
       <div className="flex justify-between items-start mb-5">
         <div className={`p-3 ${meta.bg} ${meta.text} rounded-xl group-hover:scale-110 transition-transform duration-500`}>
@@ -39,7 +39,7 @@ export default function ModernKPICard({ label, val, icon: Icon, color, trend, is
       </div>
       <div>
         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
-        <h2 className={`text-2xl font-black ${isProfit === false ? "text-rose-600" : "text-slate-900"} tracking-tight`}>
+        <h2 className={`text-xl sm:text-2xl font-black ${isProfit === false ? "text-rose-600" : "text-slate-900"} tracking-tight`}>
           ₹{(val || 0).toLocaleString()}
         </h2>
       </div>

@@ -25,8 +25,8 @@ export default function TransactionCard({ tx, idx, typeStyles }) {
       <div className="absolute -left-[2.75rem] top-8 w-3 h-3 rounded-full bg-white border-[3px] border-indigo-500 hidden xl:flex items-center justify-center outline outline-4 outline-slate-50/50 group-hover:scale-125 transition-transform duration-500" />
 
       <div className="bg-white rounded-3xl border border-slate-100/80 shadow-md hover:shadow-xl hover:border-indigo-100 transition-all duration-700 group-hover:-translate-y-0.5 overflow-hidden">
-        <div className="p-6 lg:p-8">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="relative shrink-0">
                 <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:rotate-3 transition-all duration-500">
@@ -68,7 +68,7 @@ export default function TransactionCard({ tx, idx, typeStyles }) {
             <div className="flex items-center xl:flex-col xl:items-end gap-4 xl:gap-1">
               <div className="flex flex-col xl:items-end">
                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Transaction Face Value</span>
-                <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-700 transition-colors">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-700 transition-colors">
                   <span className="text-lg align-top mr-0.5 font-medium opacity-30 tracking-normal">₹</span>
                   {debitTotal.toLocaleString()}
                 </div>

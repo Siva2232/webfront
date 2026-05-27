@@ -99,8 +99,8 @@ export default function AccLedgers() {
         title="Ledgers"
         subtitle="Chart of accounts"
         rightAddon={
-          <>
-            <div className="relative min-w-[220px]">
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center">
+            <div className="relative w-full lg:min-w-[220px] lg:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input
                 type="text"
@@ -113,7 +113,7 @@ export default function AccLedgers() {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm outline-none hover:bg-zinc-50"
+              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-semibold text-zinc-800 shadow-sm outline-none hover:bg-zinc-50 lg:w-auto"
             >
               <option value="all">All</option>
               <option value="asset">Assets</option>
@@ -121,11 +121,12 @@ export default function AccLedgers() {
               <option value="expense">Expenses</option>
               <option value="liability">Liabilities</option>
             </select>
+            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
             <button
               type="button"
               onClick={fetchLedgers}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
@@ -133,19 +134,20 @@ export default function AccLedgers() {
             <button
               type="button"
               onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 sm:w-auto"
             >
               <Plus size={14} />
               New ledger
             </button>
-          </>
+            </div>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 sm:py-8 md:px-8">
 
       {/* SUMMARY STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4 mb-6 md:mb-8">
          <StatsCard label="Total Ledgers" count={ledgers.length} icon={Hash} color="slate" />
          <StatsCard label="Revenue Heads" count={ledgers.filter(l => l.type === 'income').length} icon={TrendingUp} color="indigo" />
          <StatsCard label="Asset Nodes" count={ledgers.filter(l => l.type === 'asset').length} icon={Wallet} color="emerald" />
@@ -213,7 +215,7 @@ export default function AccLedgers() {
       {/* CREATE MODAL */}
       <AnimatePresence>
         {showAdd && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-end justify-center p-3 sm:items-center sm:p-4">
             <motion.div 
                initial={{ opacity: 0 }}
                animate={{ opacity: 1 }}
@@ -225,7 +227,7 @@ export default function AccLedgers() {
                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                animate={{ opacity: 1, scale: 1, y: 0 }}
                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-               className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl relative overflow-hidden"
+               className="bg-white rounded-3xl w-full max-w-lg max-h-[min(92vh,36rem)] overflow-y-auto p-5 sm:p-8 shadow-2xl relative"
             >
                <div className="flex justify-between items-center mb-6">
                   <div>

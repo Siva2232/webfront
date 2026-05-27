@@ -105,7 +105,7 @@ export default function OfferModal({ offerData }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 pointer-events-none">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -131,7 +131,7 @@ export default function OfferModal({ offerData }) {
             }
             exit={{ scale: 0.88, opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 28 }}
-            className="relative w-full max-w-[340px] aspect-[10/14] bg-black overflow-hidden rounded-3xl shadow-2xl border border-white/10 pointer-events-auto"
+            className="relative w-full max-w-[92vw] sm:max-w-[340px] aspect-[10/14] max-h-[85vh] bg-black overflow-hidden rounded-3xl shadow-2xl border border-white/10 pointer-events-auto"
           >
             {/* Progress Bars */}
             <div className="absolute top-5 inset-x-6 z-50 flex gap-1.5">
@@ -187,7 +187,7 @@ export default function OfferModal({ offerData }) {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
 
-                <div className="absolute bottom-8 inset-x-6 z-50">
+                <div className="absolute bottom-6 inset-x-5 z-50 sm:bottom-8 sm:inset-x-6">
                   <div className="space-y-3">
                     <div className="inline-flex items-center gap-1.5 bg-white text-black px-3 py-1 rounded-full">
                       <Sparkles size={12} className="fill-black" />
@@ -195,7 +195,7 @@ export default function OfferModal({ offerData }) {
                         {current.tag || "Special Offer"}
                       </span>
                     </div>
-                    <h2 className="text-white text-3xl font-black uppercase italic leading-none tracking-tighter">
+                    <h2 className="text-white text-2xl sm:text-3xl font-black uppercase italic leading-none tracking-tighter">
                       {current.title}
                     </h2>
                     <p className="text-white/90 text-sm font-medium leading-relaxed">
@@ -203,7 +203,7 @@ export default function OfferModal({ offerData }) {
                     </p>
                     <button
                       onClick={closeOffer}
-                      className="w-full mt-5 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+                      className="w-full mt-4 py-3.5 sm:mt-5 sm:py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
                     >
                       Got It <ArrowRight size={18} strokeWidth={3} />
                     </button>
@@ -214,7 +214,7 @@ export default function OfferModal({ offerData }) {
 
             <button
               onClick={closeOffer}
-              className="absolute top-5 right-5 z-60 p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all"
+              className="absolute top-4 right-4 z-60 p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-all sm:top-5 sm:right-5"
             >
               <X size={18} />
             </button>

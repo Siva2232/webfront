@@ -162,37 +162,37 @@ export default function ManualBill() {
             type="button"
             onClick={fetchBills}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
           >
             {isLoading ? "Syncing" : "Refresh"}
           </button>
         }
       />
 
-      <div className="mx-auto max-w-3xl space-y-10 px-4 pb-10 pt-10 sm:px-10">
+      <div className="mx-auto max-w-3xl space-y-6 px-3 pb-10 pt-6 sm:space-y-10 sm:px-10 sm:pt-10">
 
         {/* Search Bar */}
-        <div className="flex items-center rounded-[2rem] border border-zinc-200 bg-white p-2 shadow-sm shadow-zinc-900/5">
-          <div className="flex flex-1 items-center gap-3 px-5 sm:px-6">
-            <Search size={20} className="shrink-0 text-zinc-400" />
+        <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm shadow-zinc-900/5 sm:flex-row sm:items-center sm:rounded-[2rem]">
+          <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 sm:gap-3 sm:px-5 sm:py-0 lg:px-6">
+            <Search size={18} className="shrink-0 text-zinc-400 sm:h-5 sm:w-5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter order reference # (e.g. aec38903f7)"
-              className="flex-1 bg-transparent text-base outline-none placeholder:text-zinc-400 sm:text-lg"
+              placeholder="Order ref # (e.g. aec38903)"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400 sm:text-base lg:text-lg"
             />
             {searchQuery && (
               <button onClick={handleClearSearch} className="shrink-0 text-zinc-400 transition-colors hover:text-zinc-600">
-                <X size={20} />
+                <X size={18} className="sm:h-5 sm:w-5" />
               </button>
             )}
           </div>
           <button
             onClick={handleSearch}
             disabled={isLoading}
-            className="rounded-[1.75rem] bg-zinc-900 px-8 py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:bg-zinc-800 disabled:opacity-50 sm:px-10"
+            className="w-full shrink-0 rounded-xl bg-zinc-900 px-6 py-3.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-zinc-800 disabled:opacity-50 sm:w-auto sm:rounded-[1.75rem] sm:px-8 sm:py-4 sm:text-sm lg:px-10"
           >
             Search
           </button>
@@ -200,14 +200,14 @@ export default function ManualBill() {
 
         {/* Content Area */}
         {!searchedRef && (
-          <div className="rounded-[3rem] border border-dashed border-zinc-200 bg-white/80 py-20 text-center shadow-sm shadow-zinc-900/5">
+          <div className="rounded-2xl border border-dashed border-zinc-200 bg-white/80 py-14 text-center shadow-sm shadow-zinc-900/5 sm:rounded-[3rem] sm:py-20">
             <Receipt size={56} className="mx-auto mb-6 text-zinc-200" />
             <p className="text-sm font-black uppercase tracking-widest text-zinc-500">Search an order to split bill</p>
           </div>
         )}
 
         {searchedRef && !foundBill && (
-          <div className="rounded-[3rem] border border-dashed border-zinc-200 bg-white/80 py-20 text-center shadow-sm shadow-zinc-900/5">
+          <div className="rounded-2xl border border-dashed border-zinc-200 bg-white/80 py-14 text-center shadow-sm shadow-zinc-900/5 sm:rounded-[3rem] sm:py-20">
             <Search size={56} className="mx-auto mb-6 text-zinc-200" />
             <p className="font-black uppercase tracking-widest text-zinc-500">No order found for #{searchedRef}</p>
           </div>

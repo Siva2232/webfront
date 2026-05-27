@@ -130,16 +130,16 @@ export default function CustomerSupport() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-6xl mx-auto px-3 py-4 sm:px-6 lg:px-8 pb-8">
       {/* Header Section */}
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Support Center</h1>
-          <p className="text-slate-500 mt-2 font-medium">How can we help you with <span className="text-indigo-600">My Cafe</span> today?</p>
+      <div className="mb-6 sm:mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">Support Center</h1>
+          <p className="text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base font-medium">How can we help you with <span className="text-indigo-600">My Cafe</span> today?</p>
         </div>
         <button 
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-2 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700 hover:shadow-md transition-all active:scale-95"
+          className="flex w-full items-center justify-center gap-2 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm font-bold text-slate-700 hover:shadow-md transition-all active:scale-95 sm:w-auto"
         >
           {showHistory ? <Send size={18} /> : <History size={18} />}
           {showHistory ? "Submit Ticket" : `My History (${tickets.length})`}
@@ -147,9 +147,9 @@ export default function CustomerSupport() {
       </div>
 
       {showHistory ? (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8">
           {/* Ticket List */}
-          <div className="lg:col-span-1 space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+          <div className="lg:col-span-1 space-y-3 max-h-[min(40vh,20rem)] lg:max-h-[70vh] overflow-y-auto pr-0 sm:pr-2">
             <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest ml-2 mb-4">Past Tickets</h3>
             {tickets.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 rounded-3xl">
@@ -187,15 +187,15 @@ export default function CustomerSupport() {
           </div>
 
           {/* Chat Panel */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 min-w-0">
             {selectedTicket ? (
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col h-[70vh]">
-                <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold text-slate-800">{selectedTicket.subject}</h3>
+              <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col h-[min(65vh,32rem)] lg:h-[70vh]">
+                <div className="p-4 sm:p-6 border-b border-slate-50 flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-800 truncate">{selectedTicket.subject}</h3>
                     <p className="text-xs text-slate-400">Raised on {new Date(selectedTicket.createdAt).toLocaleString()}</p>
                   </div>
-                  <div className={`px-4 py-1.5 rounded-full text-xs font-bold ${
+                  <div className={`w-fit shrink-0 px-4 py-1.5 rounded-full text-xs font-bold ${
                     selectedTicket.priority === 'High' ? 'bg-red-50 text-red-600' : 
                     selectedTicket.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                   }`}>
@@ -203,13 +203,13 @@ export default function CustomerSupport() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/30">
                   {selectedTicket.messages.map((msg, i) => (
                     <div 
                       key={i} 
                       className={`flex ${msg.senderModel === 'SuperAdmin' ? 'justify-start' : 'justify-end'}`}
                     >
-                      <div className={`max-w-[80%] p-4 rounded-3xl ${
+                      <div className={`max-w-[92%] sm:max-w-[80%] p-3 sm:p-4 rounded-3xl ${
                         msg.senderModel === 'SuperAdmin' 
                         ? 'bg-slate-800 text-white rounded-tl-none' 
                         : 'bg-white border border-slate-100 text-slate-800 shadow-sm rounded-tr-none'
@@ -228,27 +228,28 @@ export default function CustomerSupport() {
                 </div>
 
                 {selectedTicket.status !== 'Closed' && (
-                  <form onSubmit={handleReply} className="p-6 bg-white border-t border-slate-50 rounded-b-[2.5rem]">
-                    <div className="flex gap-4">
+                  <form onSubmit={handleReply} className="p-4 sm:p-6 bg-white border-t border-slate-50 rounded-b-2xl sm:rounded-b-[2.5rem]">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
                       <input 
                         type="text"
                         value={newReply}
                         onChange={(e) => setNewReply(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1 bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                        className="w-full flex-1 bg-slate-50 border-none rounded-2xl px-4 sm:px-6 py-3.5 sm:py-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
                       />
                       <button 
                         type="submit"
-                        className="bg-indigo-600 text-white p-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                        className="flex w-full items-center justify-center gap-2 bg-indigo-600 text-white py-3.5 sm:py-4 sm:w-auto sm:p-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                       >
                         <Send size={20} />
+                        <span className="text-sm font-bold sm:hidden">Send</span>
                       </button>
                     </div>
                   </form>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm h-full flex flex-center items-center justify-center p-12 text-center">
+              <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm min-h-[12rem] lg:min-h-0 lg:h-full flex items-center justify-center p-8 sm:p-12 text-center">
                 <div className="space-y-4">
                   <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
                     <MessageCircle size={40} />
@@ -261,9 +262,9 @@ export default function CustomerSupport() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Left Column: Support Options */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-1 space-y-4 order-2 lg:order-1">
             {supportTicketCount > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -323,8 +324,8 @@ export default function CustomerSupport() {
           </div>
 
           {/* Right Column: Contact Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8">
+          <div className="lg:col-span-2 order-1 lg:order-2">
+            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm p-4 sm:p-8">
               {submitted ? (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }} 
@@ -345,13 +346,13 @@ export default function CustomerSupport() {
                 </motion.div>
               ) : (
                 <>
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold text-slate-800">Submit a Ticket</h3>
+                  <div className="mb-6 sm:mb-8">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-800">Submit a Ticket</h3>
                     <p className="text-slate-400 text-sm mt-1">Directly contact our technical department.</p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Subject</label>
                         <select 
@@ -367,13 +368,13 @@ export default function CustomerSupport() {
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Priority</label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {['Low', 'Medium', 'High'].map((p) => (
                             <button 
                               key={p} 
                               type="button" 
                               onClick={() => setFormData({ ...formData, priority: p })}
-                              className={`flex-1 py-3 px-2 rounded-2xl text-xs font-bold transition-all ${
+                              className={`flex-1 min-w-[4.5rem] py-2.5 sm:py-3 px-2 rounded-2xl text-xs font-bold transition-all ${
                                 formData.priority === p 
                                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
                                   : "bg-slate-50 text-slate-600 hover:bg-white hover:shadow-sm"

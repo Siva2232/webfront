@@ -225,11 +225,11 @@ export default function AdminAttendance() {
         title="Attendance"
         subtitle="Attendance & location setup"
         rightAddon={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               type="button"
               onClick={() => setActiveTab("attendance")}
-              className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+              className={`w-full rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors sm:w-auto ${
                 activeTab === "attendance"
                   ? "bg-zinc-900 text-white"
                   : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
@@ -240,7 +240,7 @@ export default function AdminAttendance() {
             <button
               type="button"
               onClick={() => setActiveTab("location")}
-              className={`rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+              className={`w-full rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors sm:w-auto ${
                 activeTab === "location"
                   ? "bg-zinc-900 text-white"
                   : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
@@ -252,13 +252,13 @@ export default function AdminAttendance() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       {/* ==================== ATTENDANCE TAB ==================== */}
       {activeTab === "attendance" && (
         <>
           {/* Date Navigator */}
-          <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 w-fit">
+          <div className="flex w-full max-w-full items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 sm:w-fit">
             <button
               onClick={() => {
                 const d = new Date(date);
@@ -321,10 +321,10 @@ export default function AdminAttendance() {
               ))}
             </div>
 
-            <div className="lg:col-span-3 flex justify-end gap-2">
+            <div className="lg:col-span-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 onClick={() => markAll("present")}
-                className="px-4 py-2 text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"
+                className="w-full px-4 py-2 text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl hover:bg-emerald-600 hover:text-white transition-all sm:w-auto"
               >
                 Mark All Present
               </button>
@@ -345,7 +345,63 @@ export default function AdminAttendance() {
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Fetching Daily Logs</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="lg:hidden divide-y divide-slate-100">
+                {filteredStaff.map((s, idx) => {
+                  const att = attendanceMap[s._id] || {};
+                  return (
+                    <div key={s._id} className="p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-600">
+                          {s.name?.charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-800 text-sm truncate">{s.name}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{s.department || "General"}</p>
+                        </div>
+                        <span className="text-xs font-bold text-slate-300">#{idx + 1}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["present", "absent", "leave", "halfday"].map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => setStaffStatus(s._id, st)}
+                            className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                              att.status === (STATUS_MAP[st].apiValue || st)
+                                ? STATUS_MAP[st].active + " shadow-sm"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {STATUS_MAP[st].label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="time"
+                          value={att.checkIn || ""}
+                          onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], checkIn: e.target.value } }))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold"
+                        />
+                        <input
+                          type="time"
+                          value={att.checkOut || ""}
+                          onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], checkOut: e.target.value } }))}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Remarks..."
+                        value={att.note || ""}
+                        onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], note: e.target.value } }))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -432,6 +488,7 @@ export default function AdminAttendance() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
 
@@ -455,7 +512,7 @@ export default function AdminAttendance() {
 
       {/* ==================== LOCATION SETUP TAB ==================== */}
       {activeTab === "location" && (
-        <div className="max-w-lg space-y-6">
+        <div className="w-full max-w-lg space-y-6">
           <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -518,7 +575,7 @@ export default function AdminAttendance() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:gap-3">
               <button
                 onClick={handleAutoFetchLocation}
                 disabled={fetchingGPS}

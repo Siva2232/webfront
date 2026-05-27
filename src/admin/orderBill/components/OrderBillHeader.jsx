@@ -21,8 +21,8 @@ export function OrderBillHeader({
   const isAdmin = base === "/admin";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-3 py-3 shadow-sm backdrop-blur-md sm:px-4 sm:py-4 md:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
@@ -44,8 +44,8 @@ export function OrderBillHeader({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:justify-end">
-          <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:gap-3 lg:w-auto lg:justify-end">
+          <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
               <Receipt size={16} className="text-zinc-700" />
             </div>
@@ -57,13 +57,13 @@ export function OrderBillHeader({
             </div>
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 focus-within:ring-2 focus-within:ring-zinc-900/10">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 focus-within:ring-2 focus-within:ring-zinc-900/10 sm:flex-initial">
             <Calendar size={14} className="ml-1 shrink-0 text-zinc-500" />
             <input
               type="date"
               value={dateFilter}
               onChange={(e) => onDateChange(e.target.value)}
-              className="min-w-0 bg-transparent text-[10px] font-bold uppercase tracking-wide text-zinc-800 outline-none"
+              className="min-w-0 w-full flex-1 bg-transparent text-[10px] font-bold uppercase tracking-wide text-zinc-800 outline-none"
             />
             {dateFilter && (
               <button
@@ -79,7 +79,7 @@ export function OrderBillHeader({
           {isAdmin && (
             <Link
               to="/admin/manual-bill"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-900 shadow-sm shadow-zinc-900/10 transition-colors hover:bg-zinc-50 active:scale-[0.99]"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-900 shadow-sm shadow-zinc-900/10 transition-colors hover:bg-zinc-50 active:scale-[0.99]"
             >
               <Scissors size={14} />
               Split bill
@@ -90,7 +90,7 @@ export function OrderBillHeader({
             type="button"
             onClick={onRefresh}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
           >
             <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
             {isLoading ? "Syncing" : "Refresh"}

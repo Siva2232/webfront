@@ -31,7 +31,7 @@ export default function SelectCashierModal({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl"
+            className="bg-white rounded-2xl sm:rounded-[3rem] p-6 sm:p-10 max-w-sm w-full max-h-[min(90vh,32rem)] overflow-y-auto shadow-2xl"
           >
             <div className="text-center space-y-6">
               <div className="mx-auto w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center text-indigo-600">

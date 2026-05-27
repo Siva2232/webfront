@@ -50,16 +50,16 @@ export const BillCard = React.memo(function BillCard({
       {/* Print Button */}
       <button
         onClick={() => onPrint(order)}
-        className="absolute -top-3 right-4 z-10 bg-white border border-slate-200 shadow-sm px-4 py-1.5 rounded-2xl hover:bg-slate-900 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider"
+        className="absolute top-2 right-2 sm:-top-3 sm:right-4 z-10 bg-white border border-slate-200 shadow-sm px-3 py-1.5 sm:px-4 rounded-xl sm:rounded-2xl hover:bg-slate-900 hover:text-white transition-all flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider"
       >
         <Printer size={13} /> Print
       </button>
 
       {/* Small Premium Card */}
-      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm h-full flex flex-col">
+      <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm h-full flex flex-col">
         
         {/* Top Info Bar */}
-        <div className="px-5 pt-5 pb-3 border-b border-slate-100">
+        <div className="px-4 pt-10 sm:pt-5 sm:px-5 pb-3 border-b border-slate-100">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] text-slate-400 uppercase tracking-widest">Order Ref</p>

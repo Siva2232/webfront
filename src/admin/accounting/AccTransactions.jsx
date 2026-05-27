@@ -87,7 +87,7 @@ export default function AccTransactions() {
         title="Transactions"
         subtitle="Journal ledger & audit trail"
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-zinc-200/80">
                 <Hash size={16} className="text-zinc-700" />
@@ -106,7 +106,7 @@ export default function AccTransactions() {
               type="button"
               onClick={fetchTransactions}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
@@ -115,7 +115,7 @@ export default function AccTransactions() {
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors ${
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors sm:w-auto ${
                 showFilters
                   ? "bg-zinc-900 text-white shadow-md shadow-zinc-900/15"
                   : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
@@ -124,11 +124,11 @@ export default function AccTransactions() {
               <Filter size={14} />
               Filters
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-10">
 
         {/* ADVANCED FILTERING PANEL */}
         <AnimatePresence>
@@ -200,14 +200,14 @@ export default function AccTransactions() {
                   <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
                     <Calendar size={12} /> Fiscal Interval
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <input 
                       type="date"
                       value={dateRange.start}
                       onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
                       className="w-full px-3 py-3 bg-slate-50/50 border-2 border-transparent focus:border-indigo-500/20 focus:bg-white rounded-xl text-[10px] font-black tracking-tight text-slate-700 outline-none transition-all"
                     />
-                    <ArrowRight size={12} className="text-slate-300 shrink-0" />
+                    <ArrowRight size={12} className="text-slate-300 shrink-0 hidden sm:block" />
                     <input 
                       type="date"
                       value={dateRange.end}

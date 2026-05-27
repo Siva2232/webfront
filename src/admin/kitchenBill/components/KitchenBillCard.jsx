@@ -17,13 +17,13 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
     <div className={`relative group ${isServed ? "opacity-70" : ""}`}>
       <button
         onClick={onPrint}
-        className="absolute -top-3 right-4 z-10 bg-white border border-slate-200 shadow px-4 py-1.5 rounded-xl hover:bg-slate-900 hover:text-white transition-all flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider"
+        className="absolute top-2 right-2 sm:-top-3 sm:right-4 z-10 bg-white border border-slate-200 shadow px-3 py-1.5 sm:px-4 rounded-lg sm:rounded-xl hover:bg-slate-900 hover:text-white transition-all flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider"
       >
         <Printer size={13} /> Print
       </button>
 
-      <div className={`bg-white border-2 ${colors.border} rounded-3xl overflow-hidden shadow-sm h-full flex flex-col`}>
-        <div className={`p-4 text-center ${colors.bg} border-b ${colors.border}`}>
+      <div className={`bg-white border-2 ${colors.border} rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm h-full flex flex-col`}>
+        <div className={`p-4 pt-8 sm:pt-4 text-center ${colors.bg} border-b ${colors.border}`}>
           <div className="flex justify-center mb-2">
             <div className="w-9 h-9 bg-slate-900 text-white rounded-xl flex items-center justify-center">
               <ChefHat size={18} />

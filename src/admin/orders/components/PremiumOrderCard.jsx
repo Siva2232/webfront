@@ -65,8 +65,8 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[2.5rem] bg-white border border-slate-100 shadow-sm transition-all ${
-        isCompleted ? "scale-[0.98]" : ""
+      className={`relative overflow-hidden rounded-2xl sm:rounded-[2.5rem] bg-white border border-slate-100 shadow-sm transition-all ${
+        isCompleted ? "lg:scale-[0.98]" : ""
       }`}
     >
       {!isCompleted && (
@@ -78,16 +78,16 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
         </div>
       )}
 
-      <div className="p-6 md:p-8 flex flex-col md:flex-row gap-8">
-        <div className="flex-1 space-y-6">
-          <div className="flex items-center gap-5">
+      <div className="p-4 sm:p-6 md:p-8 flex flex-col md:flex-row gap-5 md:gap-8">
+        <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
+          <div className="flex items-start gap-3 sm:gap-5">
             <div
-              className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black text-2xl italic shadow-lg`}
+              className={`h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-xl sm:rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-black text-lg sm:text-2xl italic shadow-lg`}
             >
               {order.table === DELIVERY_TABLE ? "HD" : "TA"}
             </div>
-            <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                 {isTakeawayOrder(order) ? (order.table === DELIVERY_TABLE ? "Delivery" : "Takeaway") : `Table ${order.table}`}
                 {order.hasTakeaway && !isTakeawayOrder(order) && (
                   <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-wider rounded-full">
@@ -208,7 +208,7 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
           )}
         </div>
 
-        <div className="w-full md:w-48 flex flex-col justify-center border-l border-slate-50 md:pl-8 space-y-2">
+        <div className="w-full md:w-48 flex flex-col justify-center border-t md:border-t-0 md:border-l border-slate-100 md:border-slate-50 pt-4 md:pt-0 md:pl-8 space-y-2 shrink-0">
           <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
             <span>Items</span>
             <span>₹{subtotal.toLocaleString()}</span>
@@ -224,11 +224,11 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
         </div>
 
         {!isCompleted && (
-          <div className="w-full md:w-56 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center italic">
+          <div className="w-full md:w-56 bg-slate-50 p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-slate-100 shrink-0">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 sm:mb-4 text-center italic">
               Move Status
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2 md:flex md:flex-col">
               {["New", "Preparing", "Ready", "Served"].map((s) => {
                 const statusOrder = { New: 0, Preparing: 1, Ready: 2, Served: 3 };
                 // Backend sometimes sends "Pending" for fresh orders; treat it same as "New"
@@ -248,7 +248,7 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
                       }
                     }}
                     disabled={!canclick}
-                    className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
+                    className={`px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase transition-all ${
                       isCurrentStatus
                         ? "bg-slate-900 text-white shadow-lg cursor-default"
                         : canclick

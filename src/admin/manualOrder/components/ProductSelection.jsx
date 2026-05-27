@@ -36,7 +36,7 @@ export default function ProductSelection({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-2">
         {filteredProducts.map((p) => {
           const prodId = p._id || p.id;
           const existing = itemsMap.get(prodId);

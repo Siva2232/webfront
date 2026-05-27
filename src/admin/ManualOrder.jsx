@@ -328,23 +328,23 @@ export default function ManualOrder() {
         title={isAddMoreMode ? "Add more items" : "Manual order"}
         subtitle="Create an order or add items to an existing one"
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
             {isAddMoreMode && (
               <button
                 type="button"
                 onClick={handleCancelAddMore}
-                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
               >
                 Cancel
               </button>
             )}
-            <div className="hidden items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner sm:flex">
+            <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 shadow-inner">
               <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-700" />
               <span className="text-[10px] font-black uppercase tracking-wider text-zinc-700">
                 Admin
               </span>
             </div>
-          </>
+          </div>
         }
       />
 
@@ -364,7 +364,7 @@ export default function ManualOrder() {
           />
 
           {/* Order details — scrollable panel on wide screens */}
-          <div className="min-w-0 space-y-6 xl:sticky xl:top-20 xl:col-span-4 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 xl:[scrollbar-gutter:stable]">
+          <div className="min-w-0 space-y-4 sm:space-y-6 xl:sticky xl:top-20 xl:col-span-4 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 xl:[scrollbar-gutter:stable]">
             {/* Add More Items Section */}
             <ExistingOrderPicker
               isAddMoreMode={isAddMoreMode}
@@ -387,23 +387,23 @@ export default function ManualOrder() {
                 <button 
                   type="button"
                   onClick={() => { setIsDineIn(!isDineIn); if(!isDineIn) { setIsTakeaway(false); setIsDelivery(false); }}}
-                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isDineIn ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
+                  className={`flex min-h-[2.75rem] sm:min-h-[3rem] flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-xl border-2 px-1.5 py-2.5 sm:px-2 sm:py-3 text-[10px] sm:text-xs font-bold uppercase transition-all ${isDineIn ? "border-emerald-600 bg-emerald-600 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <Package size={16} className="shrink-0" /> <span className="truncate">Dine-in</span>
+                  <Package size={14} className="shrink-0 sm:h-4 sm:w-4" /> <span className="truncate leading-none">Dine-in</span>
                 </button>
                 <button 
                   type="button"
                   onClick={() => { setIsTakeaway(!isTakeaway); if(!isTakeaway) { setIsDelivery(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
-                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isTakeaway ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
+                  className={`flex min-h-[2.75rem] sm:min-h-[3rem] flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-xl border-2 px-1.5 py-2.5 sm:px-2 sm:py-3 text-[10px] sm:text-xs font-bold uppercase transition-all ${isTakeaway ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <ShoppingCart size={16} className="shrink-0" /> <span className="truncate">Takeaway</span>
+                  <ShoppingCart size={14} className="shrink-0 sm:h-4 sm:w-4" /> <span className="truncate leading-none">Takeaway</span>
                 </button>
                 <button 
                   type="button"
                   onClick={() => { setIsDelivery(!isDelivery); if(!isDelivery) { setIsTakeaway(false); setIsDineIn(false); setHasTakeawayWithDineIn(false); }}}
-                  className={`flex min-h-[3rem] items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-xs font-bold uppercase transition-all ${isDelivery ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
+                  className={`flex min-h-[2.75rem] sm:min-h-[3rem] flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-xl border-2 px-1.5 py-2.5 sm:px-2 sm:py-3 text-[10px] sm:text-xs font-bold uppercase transition-all ${isDelivery ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 text-zinc-800 hover:border-zinc-400"}`}
                 >
-                  <MapPin size={16} className="shrink-0" /> <span className="truncate">Delivery</span>
+                  <MapPin size={14} className="shrink-0 sm:h-4 sm:w-4" /> <span className="truncate leading-none">Delivery</span>
                 </button>
               </div>
 
@@ -491,7 +491,7 @@ export default function ManualOrder() {
           isAddMoreMode ? "border-zinc-300" : "border-zinc-200"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 px-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
           <div className="min-w-0 w-full text-center sm:flex-1">
             <p className="text-xs font-bold uppercase text-zinc-500">
               {isAddMoreMode ? "Adding items worth" : "Current subtotal"}

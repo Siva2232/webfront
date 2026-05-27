@@ -107,28 +107,28 @@ export default function AccDashboard() {
           "MMM dd, yyyy",
         )}`}
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               type="button"
               onClick={fetchDashboard}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 sm:w-auto"
             >
               <Download size={14} />
               Full report
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       {/* TOP KPI GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -172,14 +172,14 @@ export default function AccDashboard() {
                  <TrendingUp size={100} />
               </div>
               
-              <div className="flex justify-between items-end mb-8 relative z-10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-end mb-6 sm:mb-8 relative z-10">
                  <div>
-                    <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
                       Growth Analytics 
                     </h3>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Revenue vs Operating Costs</p>
                  </div>
-                 <div className="flex gap-3">
+                 <div className="flex flex-wrap gap-3">
                     <div className="flex items-center gap-1.5">
                        <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
                        <span className="text-[10px] font-black text-slate-600">REVENUE</span>
@@ -191,7 +191,7 @@ export default function AccDashboard() {
                  </div>
               </div>
 
-              <div className="h-[380px] w-full">
+              <div className="h-[240px] sm:h-[320px] lg:h-[380px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={data?.chartData}>
                     <defs>
@@ -279,7 +279,7 @@ export default function AccDashboard() {
               <h3 className="text-lg font-black text-slate-900 mb-6 border-b border-slate-50 pb-3 flex items-center gap-2">
                 <TrendingDown className="text-rose-500" size={18}/> Expense Map
               </h3>
-              <div className="h-[240px] w-full relative">
+              <div className="h-[200px] sm:h-[240px] w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie

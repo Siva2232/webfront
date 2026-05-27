@@ -560,11 +560,11 @@ export default function Tables() {
         </div>
 
         {canManageTables && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => setShowAreaModal(true)}
-              className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider bg-white border border-slate-200 text-slate-700 hover:border-slate-400 transition-all active:scale-95 shadow-sm"
+              className="flex w-full items-center justify-center gap-2 px-5 sm:w-auto sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider bg-white border border-slate-200 text-slate-700 hover:border-slate-400 transition-all active:scale-95 shadow-sm"
             >
               <FolderPlus size={18} />
               Manage Areas
@@ -578,7 +578,7 @@ export default function Tables() {
                   : undefined
               }
               onClick={addNewTable}
-              className={`group flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-xl ${
+              className={`group flex w-full items-center justify-center gap-2 px-5 sm:w-auto sm:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-xl ${
                 atTableLimit
                   ? "cursor-not-allowed bg-slate-300 text-slate-500 shadow-none"
                   : "bg-slate-900 text-white hover:bg-orange-600 hover:shadow-orange-200/40"

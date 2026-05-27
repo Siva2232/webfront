@@ -53,7 +53,7 @@ export default function AccLedgerDetail() {
             type="button"
             onClick={fetchHistory}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             {loading ? "Syncing" : "Refresh"}
@@ -61,7 +61,7 @@ export default function AccLedgerDetail() {
         }
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_2fr] mb-8">
         <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100">
@@ -88,7 +88,7 @@ export default function AccLedgerDetail() {
             {ledger?.bankDetails?.accountNumber && (
               <div className="flex flex-col gap-2 border-b border-slate-100 pb-3">
                 <span className="font-bold">Bank Details</span>
-                <div className="grid grid-cols-2 gap-2 text-sm text-slate-600">
+                <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 sm:grid-cols-2">
                   <div>
                     <p className="text-slate-400">Account</p>
                     <p>{ledger.bankDetails.accountNumber}</p>

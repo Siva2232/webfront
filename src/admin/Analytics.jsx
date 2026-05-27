@@ -527,7 +527,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 pb-12 font-sans text-zinc-900">
-      <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
+      <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-3 py-3 shadow-sm backdrop-blur-md sm:px-4 sm:py-4 md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/20">
@@ -540,7 +540,7 @@ export default function Analytics() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center md:gap-3">
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
               <input
@@ -569,18 +569,18 @@ export default function Analytics() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2 py-1.5 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-1.5">
               <Calendar size={12} className="text-zinc-500" />
               <input
                 type="date"
-                className="w-[108px] bg-transparent text-[10px] font-bold outline-none"
+                className="w-[min(10.5rem,100%)] bg-transparent text-[10px] font-bold outline-none sm:w-[108px]"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               />
               <span className="text-zinc-300">–</span>
               <input
                 type="date"
-                className="w-[108px] bg-transparent text-[10px] font-bold outline-none"
+                className="w-[min(10.5rem,100%)] bg-transparent text-[10px] font-bold outline-none sm:w-[108px]"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               />
@@ -589,7 +589,7 @@ export default function Analytics() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-12 px-4 pt-8 md:space-y-14 md:px-8">
+      <main className="mx-auto max-w-7xl space-y-10 px-3 pt-6 sm:px-4 sm:pt-8 md:space-y-14 md:px-8">
         {/* ── Sales performance (order-based) ── */}
         <section className="space-y-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -610,18 +610,18 @@ export default function Analytics() {
                 <p className="mt-2 text-xs text-zinc-400">Profit and loss: use Accounting reports.</p>
               ) : null}
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex w-full shrink-0 gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={() => handleExport("xlsx")}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-zinc-700 shadow-sm hover:bg-zinc-50"
+                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-zinc-700 shadow-sm hover:bg-zinc-50 sm:w-auto"
               >
                 Excel
               </button>
               <button
                 type="button"
                 onClick={() => handleExport("pdf")}
-                className="rounded-xl bg-zinc-900 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-md hover:bg-zinc-800"
+                className="w-full rounded-xl bg-zinc-900 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-white shadow-md hover:bg-zinc-800 sm:w-auto"
               >
                 PDF
               </button>

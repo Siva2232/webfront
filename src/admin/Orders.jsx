@@ -130,25 +130,29 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-10 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto space-y-12">
+    <div className="min-h-screen bg-[#FDFDFD] p-3 font-sans text-slate-900 sm:p-10">
+      <div className="max-w-7xl mx-auto space-y-6 lg:space-y-12">
         
         {/* HEADER & ANALYTICS */}
-        <header className="space-y-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase">Kitchen Control <span className="text-orange-500">Center</span></h1>
-              <p className="text-slate-400 font-bold mt-2 uppercase tracking-[0.3em] text-[10px]">Real-time Operations & History</p>
+        <header className="space-y-5 lg:space-y-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase sm:text-4xl lg:text-5xl leading-tight">
+                Kitchen Control <span className="text-orange-500">Center</span>
+              </h1>
+              <p className="text-slate-400 font-bold mt-1.5 lg:mt-2 uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[9px] sm:text-[10px]">
+                Real-time Operations & History
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
             {stats.map((stat, i) => (
-              <div key={i} className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-sm flex flex-col items-center text-center gap-3 transition-all hover:shadow-md">
-                <div className={`${stat.bg} ${stat.color} p-3 rounded-2xl`}><stat.icon size={20} /></div>
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                  <p className="text-xl font-black text-slate-800 italic">{stat.value}</p>
+              <div key={i} className="bg-white border border-slate-100 p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] shadow-sm flex flex-col items-center text-center gap-2 sm:gap-3 transition-all hover:shadow-md">
+                <div className={`${stat.bg} ${stat.color} p-2 sm:p-3 rounded-xl sm:rounded-2xl`}><stat.icon size={18} className="sm:h-5 sm:w-5" /></div>
+                <div className="min-w-0 w-full">
+                  <p className="text-[7px] sm:text-[8px] font-black text-slate-400 uppercase tracking-wide sm:tracking-widest mb-0.5 sm:mb-1 line-clamp-2">{stat.label}</p>
+                  <p className="text-base sm:text-xl font-black text-slate-800 italic truncate">{stat.value}</p>
                 </div>
               </div>
             ))}
@@ -156,19 +160,21 @@ export default function OrdersDashboard({ overrideOrders = null }) {
         </header>
 
         {/* 1. LIVE ORDERS SECTION */}
-        <section className="space-y-8">
+        <section className="space-y-5 lg:space-y-8">
           <div className="flex items-center gap-4">
             <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-            <h2 className="text-[12px] font-black text-slate-900 uppercase tracking-[0.4em]">Ongoing Preparations ({activeOrders.length})</h2>
+            <h2 className="text-[10px] sm:text-[12px] font-black text-slate-900 uppercase tracking-[0.25em] sm:tracking-[0.4em]">
+              Ongoing Preparations ({activeOrders.length})
+            </h2>
           </div>
 
           {activeOrders.length === 0 ? (
-            <div className="py-20 text-center bg-slate-50 rounded-[3rem] border border-dashed border-slate-200">
+            <div className="py-14 sm:py-20 text-center bg-slate-50 rounded-2xl sm:rounded-[3rem] border border-dashed border-slate-200">
                <Coffee size={48} className="mx-auto text-slate-200 mb-4" />
                <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Kitchen is currently clear</p>
             </div>
           ) : (
-            <div className="grid gap-8">
+            <div className="grid gap-4 sm:gap-8">
               {pagedActiveOrders.map((order) => (
                 <PremiumOrderCard key={order._id} order={order} updateOrderStatus={updateOrderStatus} />
               ))}
@@ -176,7 +182,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
           )}
 
           {activeOrders.length > PER_PAGE && (
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <button
                 onClick={() => setActivePage((p) => Math.max(1, p - 1))}
                 disabled={safeActivePage <= 1}
@@ -200,21 +206,21 @@ export default function OrdersDashboard({ overrideOrders = null }) {
 
         {/* 2. HISTORY SECTION */}
         {servedOrders.length > 0 && (
-          <section className="space-y-8 pt-10 border-t border-slate-100">
+          <section className="space-y-5 lg:space-y-8 pt-6 lg:pt-10 border-t border-slate-100">
             <div className="flex items-center justify-center gap-4">
               <div className="h-[1px] w-12 bg-slate-200" />
               <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Recently Served</h2>
               <div className="h-[1px] w-12 bg-slate-200" />
             </div>
             
-            <div className="grid gap-6 opacity-60 hover:opacity-100 transition-opacity duration-150 grayscale-[0.5] hover:grayscale-0">
+            <div className="grid gap-4 sm:gap-6 opacity-60 hover:opacity-100 transition-opacity duration-150 grayscale-[0.5] hover:grayscale-0">
               {pagedServedOrders.map((order) => (
                 <PremiumOrderCard key={order._id || order.id} order={order} updateOrderStatus={updateOrderStatus} isCompleted />
               ))}
             </div>
 
             {servedOrders.length > PER_PAGE && (
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <button
                   onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                   disabled={safeHistoryPage <= 1}

@@ -151,12 +151,12 @@ export default function AdminPayroll() {
         title="Payroll"
         subtitle={`Manage and generate staff compensation for ${MONTHS[month - 1]} ${year}`}
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={load}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
@@ -166,7 +166,7 @@ export default function AdminPayroll() {
                 type="button"
                 onClick={handleBulkGenerate}
                 disabled={bulkGenerating}
-                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50 sm:w-auto"
               >
                 {bulkGenerating ? (
                   <Loader2 className="animate-spin" size={14} />
@@ -182,16 +182,16 @@ export default function AdminPayroll() {
                 setGenForm({ staffId: "", bonus: 0, overtime: 0 });
                 setGenerateModal(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 sm:w-auto"
             >
               <Plus size={14} />
               Manual entry
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-[1600px] space-y-6 px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       {/* Analytics & Controls Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -275,7 +275,37 @@ export default function AdminPayroll() {
             <p className="text-slate-400 text-sm mt-1">There are no payroll entries for the selected period.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="lg:hidden divide-y divide-slate-100">
+            {filtered.map((p) => (
+              <div key={p._id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-700 shrink-0">
+                      {p.staff?.name?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-black text-slate-900 truncate">{p.staff?.name || "—"}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">{p.staff?.designation || "Staff"}</p>
+                    </div>
+                  </div>
+                  <PayrollStatusBadge status={p.status} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><p className="text-[9px] font-black uppercase text-slate-400">Base</p><p className="font-bold">₹{Number(p.baseSalary || 0).toLocaleString("en-IN")}</p></div>
+                  <div><p className="text-[9px] font-black uppercase text-slate-400">Net</p><p className="font-black text-indigo-700">₹{Number(p.netSalary || 0).toLocaleString("en-IN")}</p></div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => openEdit(p)} className="flex-1 py-2 text-[10px] font-black uppercase rounded-xl border border-slate-200">Edit</button>
+                  <button onClick={() => handleSendPayslip(p._id, p.staff?.name)} disabled={sending === p._id} className="p-2 rounded-xl border border-indigo-200 text-indigo-600 disabled:opacity-50">
+                    {sending === p._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => handleDownloadPDF(p._id)} className="p-2 rounded-xl border border-emerald-200 text-emerald-600"><Download className="w-4 h-4" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100 uppercase tracking-[0.1em] text-[10px] font-black text-slate-400">
@@ -340,6 +370,7 @@ export default function AdminPayroll() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

@@ -175,7 +175,7 @@ export default function AdminStaff() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 sm:w-auto"
           >
             <Plus size={14} />
             Add staff
@@ -183,11 +183,11 @@ export default function AdminStaff() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       {/* Filter Toolbar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-3 flex-1 min-w-[280px] bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex items-center gap-3 w-full min-w-0 flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-indigo-100 transition-all sm:min-w-[200px]">
           <Search className="w-4 h-4 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, contact, or email..."
@@ -237,7 +237,47 @@ export default function AdminStaff() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="lg:hidden divide-y divide-slate-100">
+            {filtered.map((s) => (
+              <div key={s._id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 flex items-center justify-center text-slate-600 text-sm font-bold shrink-0">
+                      {s.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate">{s.name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{s.designation || "N/A"}</p>
+                    </div>
+                  </div>
+                  <StaffBadge value={s.status} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Role</p>
+                    <StaffBadge value={s.role} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Salary</p>
+                    <p className="font-bold text-slate-800">₹{s.baseSalary ? Number(s.baseSalary).toLocaleString("en-IN") : "0"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[9px] font-black uppercase text-slate-400">Email</p>
+                    <p className="font-medium text-slate-600 truncate">{s.email}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => setViewStaff(s)} className="flex-1 py-2 text-[10px] font-black uppercase rounded-xl border border-slate-200 text-slate-700">View</button>
+                  <button onClick={() => openEdit(s)} className="flex-1 py-2 text-[10px] font-black uppercase rounded-xl border border-amber-200 bg-amber-50 text-amber-700">Edit</button>
+                  <button onClick={() => handleDelete(s._id)} disabled={deleting === s._id} className="p-2 rounded-xl border border-rose-200 text-rose-600 disabled:opacity-50">
+                    {deleting === s._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -288,7 +328,7 @@ export default function AdminStaff() {
                     </td>
                     <td className="px-6 py-4"><StaffBadge value={s.status} /></td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => setViewStaff(s)} title="View Profile"
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-indigo-100 transition-all">
                           <Eye className="w-4 h-4" />
@@ -308,6 +348,7 @@ export default function AdminStaff() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

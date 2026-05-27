@@ -389,11 +389,11 @@ export default function OrderBill() {
         onRefresh={handleRefresh}
       />
 
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 pt-6 md:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-3 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-4 sm:pt-6 md:px-8">
         <button
           type="button"
           onClick={() => setTakeawayOnly((v) => !v)}
-          className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${
+          className={`w-full sm:w-auto rounded-full border px-3 py-2 sm:py-1.5 text-[10px] font-black uppercase tracking-wider ${
             takeawayOnly
               ? "border-orange-500 bg-orange-500 text-white"
               : "border-zinc-200 bg-white text-zinc-600"
@@ -406,12 +406,12 @@ export default function OrderBill() {
           value={customerSearch}
           onChange={(e) => setCustomerSearch(e.target.value)}
           placeholder="Search customer name or token #"
-          className="min-w-[12rem] flex-1 max-w-md rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium outline-none focus:border-zinc-400"
+          className="w-full min-w-0 flex-1 sm:max-w-md rounded-xl border border-zinc-200 bg-white px-4 py-2.5 sm:py-2 text-sm font-medium outline-none focus:border-zinc-400"
         />
       </div>
 
       {/* Bills Grid */}
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
+      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-3 pb-10 pt-5 sm:grid-cols-2 sm:gap-8 sm:px-4 sm:pb-12 sm:pt-8 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
         {pagedBills.map((order, index) => {
           const billId = order._id || order.id || index;
           const orderRefId = order.orderRef || order._id || order.id;
@@ -432,7 +432,7 @@ export default function OrderBill() {
       </main>
 
       {displayBills.length > PER_PAGE && (
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 pb-10 md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-3 pb-10 sm:px-4 md:px-8">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}

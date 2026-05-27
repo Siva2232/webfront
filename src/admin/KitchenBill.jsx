@@ -94,24 +94,6 @@ export default function KitchenBill({ embedded = false }) {
         />
       )}
 
-      {!embedded && (
-        <div className="mx-auto max-w-7xl px-4 pt-4 md:px-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTakeawayOnly((v) => !v)}
-              className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${
-                takeawayOnly
-                  ? "border-orange-500 bg-orange-500 text-white"
-                  : "border-zinc-200 bg-white text-zinc-600"
-              }`}
-            >
-              Takeaway only
-            </button>
-          </div>
-        </div>
-      )}
-
       {(!filteredBills || filteredBills.length === 0) && !embedded ? (
         <KitchenBillEmptyState embedded={false} />
       ) : (
@@ -136,7 +118,7 @@ export default function KitchenBill({ embedded = false }) {
       )}
 
       {!embedded && filteredBills.length > PER_PAGE && (
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 pb-10 md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-3 pb-10 sm:px-4 md:px-8">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}

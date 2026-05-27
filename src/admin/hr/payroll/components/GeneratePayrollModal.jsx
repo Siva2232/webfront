@@ -16,15 +16,15 @@ export default function GeneratePayrollModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-8 border-b border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create Entry</h2>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[min(92vh,40rem)] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 sm:p-8 border-b border-slate-100">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Create Entry</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-8 space-y-5">
+        <div className="p-5 sm:p-8 space-y-5">
           <div className="bg-indigo-600 text-white p-4 rounded-2xl flex items-center gap-3 shadow-lg shadow-indigo-100">
             <div className="p-2 bg-white/20 rounded-xl">
               <Clock className="w-5 h-5" />

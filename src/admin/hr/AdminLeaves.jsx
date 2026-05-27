@@ -107,14 +107,14 @@ export default function AdminLeaves() {
         title="Leave requests"
         subtitle="Review and approve staff leave requests"
         rightAddon={
-          <>
-            <div className="flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <div className="flex w-full flex-wrap gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm sm:w-auto">
               {["all", "pending", "approved", "rejected"].map((key) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setStatusFilter(key)}
-                  className={`relative rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wide transition-all ${
+                  className={`relative flex-1 rounded-lg px-2.5 py-2 text-[10px] font-black uppercase tracking-wide transition-all sm:flex-none sm:px-3 ${
                     statusFilter === key
                       ? "bg-zinc-900 text-white shadow-sm"
                       : "text-zinc-500 hover:text-zinc-700"
@@ -134,16 +134,16 @@ export default function AdminLeaves() {
               type="button"
               onClick={load}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 sm:py-8 md:px-8">
 
       {/* Filter Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

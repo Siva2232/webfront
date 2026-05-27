@@ -205,10 +205,9 @@ export default function AdminLayout() {
     return menuItems.filter((item) => {
       const featureKey = FEATURE_MAP[item.path];
       if (!featureKey) return true;
-      if (!featuresReady) return true;
       return features[featureKey] !== false;
     });
-  }, [features, featuresReady]);
+  }, [features]);
 
   /**
    * HR: All HR routes live under the “HR Management” submenu. Staff / Attendance / Leaves are
@@ -222,14 +221,12 @@ export default function AdminLayout() {
       (children || []).filter((c) => {
         const featureKey = FEATURE_MAP[c.path];
         if (!featureKey) return true;
-        if (!featuresReady) return true;
         return features[featureKey] !== false;
       });
 
     const filterHrChildren = (children, { includeCore }) =>
       (children || []).filter((c) => {
         if (c.flag) {
-          if (!featuresReady) return true;
           return features[c.flag] !== false;
         }
         return includeCore;
@@ -261,7 +258,7 @@ export default function AdminLayout() {
     }
 
     return out.filter((item) => !item.children || item.children.length > 0);
-  }, [visibleMenuItems, features, featuresReady]);
+  }, [visibleMenuItems, features]);
 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -331,6 +328,8 @@ export default function AdminLayout() {
 
   // track which top‑level menu has its submenu open (if any)
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  /** When user manually collapses a section, don't re-open it until route or nav changes */
+  const submenuSyncSuppressRef = useRef(null);
 
   const {
     outOfStockProducts,
@@ -433,6 +432,16 @@ export default function AdminLayout() {
     // OrderContext already fetches on mount — no duplicate calls needed
   }, []);
 
+  // Lock page scroll while mobile drawer is open
+  useEffect(() => {
+    if (!isMobileOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isMobileOpen]);
+
   // Close profile dropdown, stock alert, and waiter panel when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -464,57 +473,45 @@ export default function AdminLayout() {
 
   // Removed auto-open waiter panel: was causing re-renders on every notification change
 
-  // automatically expand the submenu for current path
-  useEffect(() => {
+  const resolveSubmenuForPath = (pathname) => {
     const parent = menuItems.find(
       (item) =>
         item.children &&
         item.children.some((child) =>
-          adminChildPathActive(location.pathname, child.path),
+          adminChildPathActive(pathname, child.path),
         ),
     );
+    if (parent) return parent.name;
 
-    if (parent) {
-      setOpenSubmenu(parent.name);
+    if (
+      pathname.startsWith("/admin/products") ||
+      pathname.startsWith("/admin/sub-items")
+    ) {
+      return "Manage Menu";
+    }
+    if (
+      pathname.startsWith("/admin/tables") ||
+      pathname.startsWith("/admin/qr-generator") ||
+      pathname.startsWith("/admin/reservations")
+    ) {
+      return "Tables & QR";
+    }
+    return null;
+  };
+
+  // Sync submenu open state from route only (prevents click + effect fighting / sidebar jump)
+  useEffect(() => {
+    const next = resolveSubmenuForPath(location.pathname);
+    if (
+      submenuSyncSuppressRef.current &&
+      submenuSyncSuppressRef.current === next
+    ) {
+      setOpenSubmenu((prev) => (prev === null ? prev : null));
       return;
     }
-
-    // fall back to exact path support for older HR routes
-    if (
-      location.pathname.startsWith("/admin/products") ||
-      location.pathname.startsWith("/admin/sub-items")
-    ) {
-      setOpenSubmenu("Manage Menu");
-    } else if (
-      location.pathname.startsWith("/admin/tables") ||
-      location.pathname.startsWith("/admin/qr-generator") ||
-      location.pathname.startsWith("/admin/reservations")
-    ) {
-      setOpenSubmenu("Tables & QR");
-    } else {
-      setOpenSubmenu(null);
-    }
+    submenuSyncSuppressRef.current = null;
+    setOpenSubmenu((prev) => (prev === next ? prev : next));
   }, [location.pathname, location.search]);
-
-  // When a parent submenu opens, scroll its block into view inside the sidebar (nav is overflow-y-auto)
-  useEffect(() => {
-    if (!openSubmenu) return;
-    let cancelled = false;
-    const run = () => {
-      if (cancelled) return;
-      const safe =
-        typeof CSS !== "undefined" && typeof CSS.escape === "function"
-          ? CSS.escape(openSubmenu)
-          : String(openSubmenu).replace(/"/g, '\\"');
-      const el = document.querySelector(`[data-nav-group="${safe}"]`);
-      el?.scrollIntoView({ block: "nearest", behavior: "instant", inline: "nearest" });
-    };
-    const id = requestAnimationFrame(run);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(id);
-    };
-  }, [openSubmenu, location.pathname, isCollapsed]);
 
   // Helper to close mobile sidebar only on mobile
   const closeMobileMenu = () => {
@@ -524,9 +521,13 @@ export default function AdminLayout() {
     }
   };
 
-  /** Top-level routes (no submenu): collapse every dropdown so only one nav “mode” at a time */
   const handleLeafNavClick = () => {
-    setOpenSubmenu(null);
+    submenuSyncSuppressRef.current = null;
+    closeMobileMenu();
+  };
+
+  const handleSubmenuNavClick = () => {
+    submenuSyncSuppressRef.current = null;
     closeMobileMenu();
   };
 
@@ -557,11 +558,13 @@ export default function AdminLayout() {
 
     // Second click on same group while already inside it: collapse only
     if (isOpen && sectionActive) {
+      submenuSyncSuppressRef.current = item.name;
       setOpenSubmenu(null);
       closeMobileMenu();
       return;
     }
 
+    submenuSyncSuppressRef.current = null;
     setOpenSubmenu(item.name);
     if (firstPathChild) {
       navigate(`/admin/${firstPathChild.path}`);
@@ -637,33 +640,33 @@ export default function AdminLayout() {
           fixed top-0 left-0 z-[70] h-screen flex flex-col overflow-hidden
           border-r border-slate-200 transition-all duration-150 ease-out
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          ${isCollapsed ? "lg:w-[90px]" : "w-72"}
+          w-[min(18rem,88vw)] lg:w-72 ${isCollapsed ? "lg:w-[90px]" : ""}
         `}
         style={{
           backgroundColor: "var(--sidebar-bg)",
           borderRightColor: "color-mix(in srgb, var(--sidebar-bg), black 10%)",
         }}
       >
-        <div className="h-28 shrink-0 flex items-center px-6 justify-between">
+        <div className="h-28 shrink-0 flex items-center px-4 lg:px-6 justify-between max-lg:h-20">
           <div
-            className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}
+            className={`flex min-w-0 flex-1 items-center gap-2.5 lg:gap-3 overflow-hidden max-lg:flex-1 lg:overflow-visible lg:pr-1 ${isCollapsed && "lg:hidden"}`}
           >
             {branding.logo ? (
               <img
                 src={branding.logo}
                 alt={branding.name || "Logo"}
-                className="h-14 w-14 shrink-0 object-contain"
+                className="h-11 w-11 lg:h-14 lg:w-14 shrink-0 object-contain"
               />
             ) : (
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
+                className="flex h-11 w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-xl"
                 style={{ backgroundColor: branding.primaryColor || "#0f172a" }}
               >
-                <Sparkles className="h-8 w-8 text-white" />
+                <Sparkles className="h-7 w-7 lg:h-8 lg:w-8 text-white" />
               </div>
             )}
             <span
-              className="text-xl font-black tracking-tight"
+              className="text-base font-black tracking-tight truncate max-lg:block lg:text-xl lg:truncate-none lg:whitespace-normal lg:leading-snug"
               style={{ color: "var(--sidebar-text)" }}
             >
               {branding.name}
@@ -673,15 +676,24 @@ export default function AdminLayout() {
             </span>
           </div>
           <button
-            onClick={() =>
-              isMobileOpen
-                ? setIsMobileOpen(false)
-                : setIsCollapsed(!isCollapsed)
-            }
-            className="p-2 rounded-xl hover:bg-black/5 transition-colors"
+            type="button"
+            onClick={() => setIsMobileOpen(false)}
+            className="p-2 rounded-xl hover:bg-black/5 transition-colors lg:hidden shrink-0"
             style={{
               color: "color-mix(in srgb, var(--sidebar-text), transparent 50%)",
             }}
+            aria-label="Close menu"
+          >
+            <X size={22} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:block p-2 rounded-xl hover:bg-black/5 transition-colors shrink-0"
+            style={{
+              color: "color-mix(in srgb, var(--sidebar-text), transparent 50%)",
+            }}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? (
               <ChevronRight size={20} />
@@ -691,13 +703,11 @@ export default function AdminLayout() {
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-4 space-y-1 mt-4 no-scrollbar">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 lg:px-4 space-y-1 mt-2 lg:mt-4 pb-4 no-scrollbar">
           {navMenuItems.map((item) => {
             // Shared classes for both Disabled and Active states to maintain visual harmony
-            const baseClasses = `
-      group relative flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors duration-100
-      active:scale-[0.98] touch-none select-none
-    `;
+            const baseClasses =
+              "group relative flex items-center gap-4 px-4 py-3 rounded-xl font-bold transition-colors duration-100 select-none border border-transparent";
 
             // 1. DISABLED / COMING SOON STATE
             if (item.disabled) {
@@ -759,7 +769,7 @@ export default function AdminLayout() {
               return (
                 <div
                   key={item.name}
-                  className="relative scroll-my-2"
+                  className="relative"
                   data-nav-group={item.name}
                 >
                   <button
@@ -793,9 +803,15 @@ export default function AdminLayout() {
                     )}
                   </button>
 
-                  {/* submenu list */}
-                  {isOpen && !isCollapsed && (
-                    <div className="ml-10 mt-1 flex flex-col space-y-1">
+                  {/* submenu — always mounted when sidebar expanded; CSS height avoids layout jump */}
+                  {!isCollapsed && (
+                    <div
+                      className={`grid transition-[grid-template-rows] duration-200 ease-out ${isOpen ? "" : "pointer-events-none"}`}
+                      style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                      aria-hidden={!isOpen}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                    <div className="ml-10 mt-1 flex flex-col space-y-1 pb-0.5">
                       {(() => {
                         const currentTab = new URLSearchParams(
                           location.search,
@@ -843,8 +859,8 @@ export default function AdminLayout() {
                             key={key}
                             to={`/admin/${child.path}`}
                             end
-                            onClick={closeMobileMenu}
-                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold"
+                            onClick={handleSubmenuNavClick}
+                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold border border-transparent"
                             style={({ isActive }) => ({
                               backgroundColor: isActive
                                 ? "var(--primary)"
@@ -860,10 +876,11 @@ export default function AdminLayout() {
                           <button
                             key={key}
                             onClick={() => {
+                              submenuSyncSuppressRef.current = null;
                               navigate(`/admin/${item.path}?tab=${child.tab}`);
                               closeMobileMenu();
                             }}
-                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold"
+                            className="w-full text-left text-sm pl-3 py-2 rounded-lg flex items-center transition-colors font-semibold border border-transparent"
                             style={{
                               backgroundColor: isActiveChild
                                 ? "var(--primary)"
@@ -878,6 +895,8 @@ export default function AdminLayout() {
                         );
                         });
                       })()}
+                    </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -896,9 +915,7 @@ export default function AdminLayout() {
                 style={({ isActive }) => ({
                   backgroundColor: isActive ? "var(--primary)" : "transparent",
                   color: isActive ? "#fff" : "var(--sidebar-text)",
-                  border: isActive
-                    ? "1px solid rgba(0,0,0,0.1)"
-                    : "1px solid transparent",
+                  borderColor: isActive ? "rgba(0,0,0,0.1)" : "transparent",
                 })}
               >
                 {({ isActive }) => (
@@ -906,7 +923,7 @@ export default function AdminLayout() {
                     <item.icon size={22} className="flex-shrink-0" />
 
                     <span
-                      className={`transition-opacity duration-100 whitespace-nowrap overflow-hidden ${
+                      className={`flex-1 min-w-0 transition-opacity duration-100 whitespace-nowrap overflow-hidden ${
                         isCollapsed
                           ? "lg:w-0 lg:opacity-0"
                           : "w-auto opacity-100"
@@ -915,9 +932,14 @@ export default function AdminLayout() {
                       {item.name}
                     </span>
 
-                    {/* Active Indicator Dot (Mobile/Expanded only) */}
-                    {isActive && !isCollapsed && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />
+                    {/* Active dot — reserved space so row height doesn't shift */}
+                    {!isCollapsed && (
+                      <div
+                        className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white/50 transition-opacity ${
+                          isActive ? "opacity-100" : "opacity-0"
+                        }`}
+                        aria-hidden={!isActive}
+                      />
                     )}
 
                     {/* Desktop Collapsed Tooltip */}
@@ -1061,20 +1083,23 @@ export default function AdminLayout() {
         style={{ backgroundColor: "#F8FAFC" }}
       >
         {/* Header */}
-        <header className="h-24 flex items-center justify-between px-6 lg:px-10 bg-white/70 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
-          <div className="flex items-center gap-4">
+        <header className="h-16 sm:h-20 lg:h-24 flex items-center justify-between gap-2 px-3 sm:px-4 lg:px-10 bg-white/70 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <button
+              type="button"
               onClick={() => setIsMobileOpen(true)}
-              className="lg:hidden p-2 text-slate-600"
+              className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 shrink-0"
+              aria-label="Open menu"
             >
-              <Menu size={24} />
+              <Menu size={22} className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 hidden sm:block">
-              Internal Management System
+            <h2 className="text-[10px] sm:text-sm font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-slate-400 truncate leading-none">
+              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">Internal Management System</span>
             </h2>
           </div>
 
-          <div className="flex items-center gap-6 ml-[-0px]">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-6 ml-auto shrink-0">
             {/* Digital Clock */}
             <div className="hidden sm:flex flex-col items-end justify-center text-right pr-4 border-r border-slate-200">
               <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-0.5">
@@ -1121,13 +1146,13 @@ export default function AdminLayout() {
                   <BellRing
                     size={24}
                     strokeWidth={2}
-                    className={
+                    className={`h-5 w-5 sm:h-6 sm:w-6 ${
                       billingNotifications.length > 0
                         ? "animate-bounce"
                         : billingReminderWindowActive
                           ? "animate-pulse"
                           : ""
-                    }
+                    }`}
                   />
                 )}
                 {billingNotifications.length > 0 && !notificationsLoading && (
@@ -1150,11 +1175,17 @@ export default function AdminLayout() {
 
               <AnimatePresence>
                 {showBillingPanel && (
+                  <>
+                  <div
+                    className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-[90] lg:hidden"
+                    onClick={() => setShowBillingPanel(false)}
+                    aria-hidden
+                  />
                   <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 max-w-[95vw] md:max-w-[380px] bg-white rounded-3xl shadow-2xl border border-amber-100 overflow-hidden z-[100]"
+                    className="fixed left-3 right-3 top-[4.5rem] max-h-[min(70vh,520px)] flex flex-col lg:absolute lg:left-auto lg:right-0 lg:top-auto lg:mt-4 lg:max-h-none w-auto lg:w-80 max-w-none lg:max-w-[380px] bg-white rounded-3xl shadow-2xl border border-amber-100 overflow-hidden z-[100]"
                   >
                     <div className="p-5 border-b border-amber-50 bg-amber-50/50 flex items-center justify-between gap-2">
                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
@@ -1169,7 +1200,7 @@ export default function AdminLayout() {
                         Renew
                       </button>
                     </div>
-                    <div className="max-h-[320px] overflow-y-auto no-scrollbar">
+                    <div className="min-h-0 flex-1 overflow-y-auto max-h-[320px] lg:max-h-[320px] no-scrollbar">
                       {billingNotifications.length === 0 && subscriptionSidebarAlert && (
                         <div className="p-4 border-b border-amber-100/80 bg-gradient-to-b from-amber-50/90 to-white">
                           <p className="text-xs font-black uppercase tracking-widest text-amber-800">
@@ -1252,6 +1283,7 @@ export default function AdminLayout() {
                         ))}
                     </div>
                   </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
@@ -1274,9 +1306,9 @@ export default function AdminLayout() {
                   ) : (
                     <HandHelping
                       size={24}
-                      className={
+                      className={`h-5 w-5 sm:h-6 sm:w-6 ${
                         serviceNotifications.length > 0 ? "animate-bounce" : ""
-                      }
+                      }`}
                     />
                   )}
                   {serviceNotifications.length > 0 && !notificationsLoading && (
@@ -1289,11 +1321,17 @@ export default function AdminLayout() {
                 {/* Notification Popup if any */}
                 <AnimatePresence>
                   {showWaiterPanel && (
+                    <>
+                    <div
+                      className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-[90] lg:hidden"
+                      onClick={() => setShowWaiterPanel(false)}
+                      aria-hidden
+                    />
                     <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-4 w-80 max-w-[95vw] md:max-w-[350px] bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-[100]"
+                      className="fixed left-3 right-3 top-[4.5rem] max-h-[min(70vh,520px)] flex flex-col lg:absolute lg:left-auto lg:right-0 lg:top-auto lg:mt-4 lg:max-h-none w-auto lg:w-80 max-w-none lg:max-w-[350px] bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-[100]"
                     >
                       <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
@@ -1304,7 +1342,7 @@ export default function AdminLayout() {
                           {serviceNotifications.length} Active
                         </span>
                       </div>
-                      <div className="max-h-[350px] overflow-y-auto no-scrollbar">
+                      <div className="min-h-0 flex-1 overflow-y-auto max-h-[350px] no-scrollbar">
                         {serviceNotifications.map((notif) => (
                           <div
                             key={notif._id}
@@ -1355,6 +1393,7 @@ export default function AdminLayout() {
                         ))}
                       </div>
                     </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
               </div>
@@ -1373,7 +1412,9 @@ export default function AdminLayout() {
               >
                 <Headset
                   size={24}
-                  className={supportTicketCount > 0 ? "animate-pulse" : ""}
+                  className={`h-5 w-5 sm:h-6 sm:w-6 ${
+                    supportTicketCount > 0 ? "animate-pulse" : ""
+                  }`}
                 />
                 {supportTicketCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-sky-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
@@ -1384,11 +1425,17 @@ export default function AdminLayout() {
 
               <AnimatePresence>
                 {showSupportModal && (
+                  <>
+                  <div
+                    className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-[90] lg:hidden"
+                    onClick={() => setShowSupportModal(false)}
+                    aria-hidden
+                  />
                   <motion.div
                     initial={{ opacity: 0, y: -12, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                    className="absolute right-0 mt-4 w-[320px] lg:w-[380px] bg-white rounded-3xl border border-slate-200 shadow-2xl shadow-slate-200/80 overflow-hidden z-50"
+                    className="fixed left-3 right-3 top-[4.5rem] max-h-[min(70vh,520px)] flex flex-col lg:absolute lg:left-auto lg:right-0 lg:top-auto lg:mt-4 lg:max-h-none w-auto lg:w-[380px] bg-white rounded-3xl border border-slate-200 shadow-2xl shadow-slate-200/80 overflow-hidden z-[100]"
                   >
                     <div className="p-4 border-b border-slate-100">
                       <div className="flex items-center justify-between gap-3">
@@ -1410,7 +1457,7 @@ export default function AdminLayout() {
                         </button>
                       </div>
                     </div>
-                    <div className="max-h-[320px] overflow-y-auto no-scrollbar">
+                    <div className="min-h-0 flex-1 overflow-y-auto max-h-[320px] no-scrollbar">
                       {supportModalLoading ? (
                         <div className="p-6 text-center text-slate-500">
                           Loading support tickets…
@@ -1481,6 +1528,7 @@ export default function AdminLayout() {
                       </button>
                     </div>
                   </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </div>
@@ -1491,7 +1539,7 @@ export default function AdminLayout() {
             <div className="relative" ref={stockRef}>
               <button
                 onClick={() => setShowStockAlert(!showStockAlert)}
-                className={`relative p-3 rounded-full transition-all duration-200 ${
+                className={`relative p-2 sm:p-3 rounded-full transition-all duration-200 ${
                   lowStockCount > 0
                     ? "hover:bg-red-50 text-red-600 active:bg-red-100"
                     : "hover:bg-slate-100 text-slate-400 active:bg-slate-200"
@@ -1504,7 +1552,9 @@ export default function AdminLayout() {
               >
                 <AlertTriangle
                   size={24}
-                  className={lowStockCount > 0 ? "animate-pulse" : ""}
+                  className={`h-5 w-5 sm:h-6 sm:w-6 ${
+                    lowStockCount > 0 ? "animate-pulse" : ""
+                  }`}
                 />
                 {lowStockCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold min-w-[20px] h-5 flex items-center justify-center rounded-full border-2 border-white shadow-md px-1.5">
@@ -1708,9 +1758,9 @@ export default function AdminLayout() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+                className="flex items-center gap-2 sm:gap-3 p-1 pr-2 sm:pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 shrink-0"
               >
-                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200/90">
+                <div className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-full border border-slate-200/90">
                   {branding.logo ? (
                     <img
                       src={branding.logo}
@@ -1735,7 +1785,7 @@ export default function AdminLayout() {
                 </div>
                 <ChevronDown
                   size={14}
-                  className={`text-slate-400 transition-transform ${isProfileOpen ? "rotate-180" : ""}`}
+                  className={`hidden sm:block text-slate-400 transition-transform shrink-0 ${isProfileOpen ? "rotate-180" : ""}`}
                 />
               </button>
 
@@ -1746,7 +1796,7 @@ export default function AdminLayout() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
                     transition={{ duration: 0.1 }}
-                    className="absolute right-0 mt-4 w-64 bg-white rounded-[1.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden p-2"
+                    className="absolute right-0 mt-3 sm:mt-4 w-[min(16rem,calc(100vw-1.5rem))] sm:w-64 max-lg:origin-top-right bg-white rounded-[1.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden p-2 z-[110]"
                   >
                     <div className="p-4 border-b border-slate-50">
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
@@ -1863,8 +1913,8 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="py-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="py-3 px-3 sm:py-8 sm:px-0 max-lg:min-w-0">
             <Outlet />
           </div>
         </main>
@@ -1877,7 +1927,7 @@ export default function AdminLayout() {
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 100 }}
-            className="fixed bottom-10 right-10 z-[100] bg-slate-900 text-white p-1 pr-6 rounded-2xl flex items-center gap-4 shadow-2xl border border-slate-700"
+            className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 z-[100] bg-slate-900 text-white p-1 pr-4 sm:pr-6 rounded-2xl flex items-center gap-3 sm:gap-4 shadow-2xl border border-slate-700 max-w-md sm:max-w-none ml-auto"
           >
             <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center text-xl">
               👋

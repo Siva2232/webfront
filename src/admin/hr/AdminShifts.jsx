@@ -124,12 +124,12 @@ export default function AdminShifts() {
         title="Shifts"
         subtitle="Resource allocation & scheduling"
         rightAddon={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               type="button"
               onClick={load}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
@@ -141,16 +141,16 @@ export default function AdminShifts() {
                 setForm(EMPTY_FORM);
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 sm:w-auto"
             >
               <Plus size={14} />
               Add shift
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6 px-3 py-4 sm:space-y-8 sm:px-4 sm:py-8 md:px-8">
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
@@ -178,7 +178,7 @@ export default function AdminShifts() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditing(shift); setForm(shift); setShowModal(true); }} className="p-2 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-lg"><Edit2 size={16} /></button>
                     <button onClick={() => deleteShift(shift._id)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg"><Trash2 size={16} /></button>
                   </div>

@@ -142,21 +142,42 @@ export const ThemeProvider = ({ children }) => {
 
   /**
    * Feature flags: hydrate from persisted branding so the admin sidebar matches the last known
-   * server state on first paint (no 2–3s “missing links”). loadBranding() always refreshes from API.
+   * server state on first paint. loadBranding() refreshes from API without clearing flags on nav.
    */
-  const [features, setFeatures] = useState(DEFAULT_FEATURES);
-  /** False until the first authoritative features fetch completes (avoids stale sidebar modules). */
-  const [featuresReady, setFeaturesReady] = useState(false);
+  const [features, setFeatures] = useState(() => {
+    const rid = getCurrentRestaurantId();
+    const cached = rid ? loadCachedBranding(rid) : null;
+    if (cached?.features && typeof cached.features === "object") {
+      return { ...DEFAULT_FEATURES, ...cached.features };
+    }
+    return DEFAULT_FEATURES;
+  });
+  /** False until the first authoritative features fetch completes for this session/tenant. */
+  const [featuresReady, setFeaturesReady] = useState(() => {
+    const rid = getCurrentRestaurantId();
+    const cached = rid ? loadCachedBranding(rid) : null;
+    return Boolean(
+      cached?.features && typeof cached.features === "object",
+    );
+  });
   const [loading, setLoading] = useState(false);
 
   /** Concurrent loadBranding(restaurantId) calls (login + ThemeProvider mount, tab focus overlap) share one HTTP request. */
   const loadBrandingInflightRef = useRef(null);
+  const featuresReadyRef = useRef(featuresReady);
+  const loadedRestaurantRef = useRef(null);
+
+  useEffect(() => {
+    featuresReadyRef.current = featuresReady;
+  }, [featuresReady]);
 
   /** Clears Super Admin preview / stale tenant colours before loading a new restaurant theme */
   const resetBrandingToDefault = useCallback(() => {
     setBranding(DEFAULT_THEME);
     setFeatures(DEFAULT_FEATURES);
     setFeaturesReady(false);
+    featuresReadyRef.current = false;
+    loadedRestaurantRef.current = null;
     applyThemeToDom(DEFAULT_THEME);
     try { sessionStorage.removeItem("restaurantBranding"); } catch (_) {}
   }, []);
@@ -169,11 +190,26 @@ export const ThemeProvider = ({ children }) => {
 
     const run = async () => {
       setLoading(true);
-      setFeaturesReady(false);
-      // Cached colours/name only — never trust cached module flags (Super Admin may have changed them).
+      const tenantChanged =
+        loadedRestaurantRef.current !== null &&
+        loadedRestaurantRef.current !== dedupeKey;
+      const isFirstLoadForSession = !featuresReadyRef.current;
+      if (isFirstLoadForSession || tenantChanged) {
+        setFeaturesReady(false);
+        featuresReadyRef.current = false;
+      }
       const immediate = loadCachedBranding(restaurantId);
       if (immediate) {
-        setBranding({ ...immediate, features: { ...DEFAULT_THEME.features } });
+        const cachedFeatures = {
+          ...DEFAULT_THEME.features,
+          ...(immediate.features && typeof immediate.features === "object"
+            ? immediate.features
+            : {}),
+        };
+        setBranding({ ...immediate, features: cachedFeatures });
+        if (isFirstLoadForSession || tenantChanged) {
+          setFeatures(cachedFeatures);
+        }
         applyThemeToDom(immediate);
       }
       try {
@@ -213,6 +249,8 @@ export const ThemeProvider = ({ children }) => {
       } finally {
         setLoading(false);
         setFeaturesReady(true);
+        featuresReadyRef.current = true;
+        loadedRestaurantRef.current = String(restaurantId).toUpperCase().trim();
       }
     };
 
@@ -243,8 +281,18 @@ export const ThemeProvider = ({ children }) => {
     const fromUrl = params.get("restaurantId");
     if (fromUrl) syncRestaurantCache(fromUrl);
     const restaurantId = getCurrentRestaurantId();
-    if (restaurantId) loadBranding(restaurantId);
-  }, [location.pathname, location.search, loadBranding]);
+    if (!restaurantId) return;
+
+    const ridKey = String(restaurantId).toUpperCase().trim();
+    const tenantChanged =
+      loadedRestaurantRef.current !== null &&
+      loadedRestaurantRef.current !== ridKey;
+
+    // Only refetch when tenant changes or features never loaded — NOT on every nav click.
+    if (tenantChanged || !featuresReadyRef.current) {
+      loadBranding(restaurantId);
+    }
+  }, [location.search, loadBranding]);
 
   /** Re-fetch when the tab/window regains focus so Super Admin module changes apply without re-login. */
   useEffect(() => {

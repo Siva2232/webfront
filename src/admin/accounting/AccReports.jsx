@@ -90,18 +90,18 @@ export default function AccReports() {
         title="Reports"
         subtitle="Detailed financial performance insights"
         rightAddon={
-          <>
-            <div className="flex overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+          <div className="flex w-full flex-col gap-2 sm:w-auto lg:flex-row lg:flex-wrap lg:items-center">
+            <div className="flex w-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm sm:flex-row sm:w-auto">
               <input
                 type="date"
-                className="px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+                className="w-full px-3 py-2.5 text-xs font-bold text-zinc-700 outline-none sm:w-auto"
                 value={dateRange.start}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
               />
-              <div className="flex items-center text-zinc-200">|</div>
+              <div className="hidden sm:flex items-center text-zinc-200">|</div>
               <input
                 type="date"
-                className="px-3 py-2 text-xs font-bold text-zinc-700 outline-none"
+                className="w-full px-3 py-2.5 text-xs font-bold text-zinc-700 outline-none sm:w-auto"
                 value={dateRange.end}
                 onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
               />
@@ -110,28 +110,28 @@ export default function AccReports() {
               type="button"
               onClick={fetchReport}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 disabled:opacity-50 sm:w-auto"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
               {loading ? "Syncing" : "Refresh"}
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 sm:w-auto"
             >
               <Download size={14} />
               Export
             </button>
-          </>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-8 md:px-8">
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* SECTION 1: KEY PERFORMANCE INDICATORS */}
-        <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="lg:col-span-12 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           <KPICard 
             title="Total Revenue" 
             value={`₹${(report?.summary?.totalIncome || 0).toLocaleString()}`} 
@@ -169,7 +169,7 @@ export default function AccReports() {
               <Activity className="text-indigo-600" size={20} /> Revenue vs Expense Trend
             </h3>
           </div>
-          <div className="h-[350px] w-full">
+          <div className="h-[240px] sm:h-[300px] lg:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={report?.chartData}>
                 <defs>

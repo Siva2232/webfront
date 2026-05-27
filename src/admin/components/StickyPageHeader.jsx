@@ -16,7 +16,7 @@ export default function StickyPageHeader({
   breadcrumbItems,
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
+    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/90 px-3 py-3 shadow-sm backdrop-blur-md sm:px-4 sm:py-4 md:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {onBack ? (
@@ -61,7 +61,7 @@ export default function StickyPageHeader({
         </div>
 
         {rightAddon ? (
-          <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:justify-end">{rightAddon}</div>
+          <div className="w-full lg:w-auto lg:justify-end">{rightAddon}</div>
         ) : null}
       </div>
     </header>

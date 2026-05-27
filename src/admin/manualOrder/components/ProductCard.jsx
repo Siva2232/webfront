@@ -32,7 +32,7 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <div
-      className={`relative flex min-h-[8.5rem] min-w-0 flex-col justify-between rounded-2xl border-2 p-4 transition-all ${
+      className={`relative flex min-h-[7.5rem] sm:min-h-[8.5rem] min-w-0 flex-col justify-between rounded-xl sm:rounded-2xl border-2 p-3 sm:p-4 transition-all ${
         qty > 0
           ? isTakeawayItem
             ? "border-amber-300 bg-amber-50/80"
@@ -57,9 +57,9 @@ const ProductCard = memo(function ProductCard({
         </button>
       )}
       <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 pr-8">
+        <div className="min-w-0 flex-1 pr-7 sm:pr-8">
           <p
-            className={`break-words font-bold leading-snug tracking-tight line-clamp-3 ${
+            className={`break-words text-sm sm:text-base font-bold leading-snug tracking-tight line-clamp-2 sm:line-clamp-3 ${
               soldOut ? "text-zinc-400 line-through decoration-rose-300" : "text-zinc-900"
             }`}
           >
@@ -101,14 +101,14 @@ const ProductCard = memo(function ProductCard({
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-3 sm:gap-4">
+      <div className="flex items-center justify-center gap-2 sm:gap-4">
         {available || qty > 0 ? (
           <>
             <button
               type="button"
               onClick={() => onAdjustQty(product, -1)}
               disabled={qty <= 0}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-zinc-300 transition-colors hover:border-zinc-900 hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border-2 border-zinc-300 transition-colors hover:border-zinc-900 hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
               aria-label="Decrease quantity"
             >
               <Minus size={16} />
@@ -124,7 +124,7 @@ const ProductCard = memo(function ProductCard({
                     onAdjustQty(product, 1);
                   }
                 }}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white transition-colors hover:bg-zinc-800"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border-2 border-zinc-900 bg-zinc-900 text-white transition-colors hover:bg-zinc-800"
                 aria-label={hasCustomisation ? "Customise and add" : "Increase quantity"}
               >
                 <Plus size={16} />

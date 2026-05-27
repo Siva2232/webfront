@@ -108,7 +108,7 @@ export default function BannerPanel() {
           <button
             type="button"
             onClick={() => openModal()}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 sm:w-auto"
           >
             <Plus size={14} />
             New banner
@@ -116,15 +116,15 @@ export default function BannerPanel() {
         }
       />
 
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-5xl px-3 py-6 sm:px-6 sm:py-10 md:px-8">
 
         {slides.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-3xl">
+          <div className="text-center py-14 sm:py-20 border-2 border-dashed border-gray-100 rounded-3xl">
             <Layout size={48} className="mx-auto text-gray-200 mb-4" />
             <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No banners found. Start by creating one.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
             {slides.map((slide) => (
               <div key={slide._id} className="bg-white border-2 border-gray-100 p-4 rounded-2xl hover:border-black transition-all group">
                 <div
@@ -150,9 +150,9 @@ export default function BannerPanel() {
 
         {/* ==================== COMPACT SMALL MODAL ==================== */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4">
             <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
+              <div className="p-5 sm:p-6">
                 {/* Modal Header */}
                 <div className="flex justify-between items-center mb-5">
                   <h2 className="text-xl font-black uppercase italic tracking-tighter">

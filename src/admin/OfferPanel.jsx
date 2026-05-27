@@ -117,7 +117,7 @@ export default function PromoPanel() {
           <button
             type="button"
             onClick={() => openModal()}
-            className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white shadow-md shadow-zinc-900/15 transition-colors hover:bg-zinc-800 sm:w-auto"
           >
             <Plus size={14} />
             New offer
@@ -125,16 +125,16 @@ export default function PromoPanel() {
         }
       />
 
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-10 md:px-8">
 
         {/* Promo Grid - unchanged */}
         {promos.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-[3rem]">
+          <div className="text-center py-14 sm:py-20 border-2 border-dashed border-gray-100 rounded-[3rem]">
             <LayoutGrid size={64} className="mx-auto text-gray-100 mb-6" />
             <p className="text-gray-400 font-black uppercase tracking-[0.3em] text-sm">No active deals found. Create your first offer!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 gap-5 sm:gap-8 md:grid-cols-2 lg:grid-cols-3 lg:gap-10">
             {promos.map((promo) => (
               <div 
                 key={promo._id} 
@@ -179,7 +179,7 @@ export default function PromoPanel() {
 
         {/* ==================== COMPACT MODAL (Reduced Height) ==================== */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-3 sm:p-4">
             <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 max-h-[92vh] overflow-y-auto">
               <div className="p-5 md:p-6">
                 {/* Header */}

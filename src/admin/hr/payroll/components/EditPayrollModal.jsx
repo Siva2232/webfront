@@ -21,19 +21,19 @@ export default function EditPayrollModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between p-8 border-b border-slate-100">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Edit Payroll</h2>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[min(92vh,40rem)] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 sm:p-8 border-b border-slate-100">
+          <div className="min-w-0 pr-2">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Edit Payroll</h2>
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1.5">{payroll.staff?.name}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-8 space-y-6">
-          <div className="grid grid-cols-3 gap-3">
+        <div className="p-5 sm:p-8 space-y-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <div className="bg-slate-50 p-3 rounded-2xl text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Base</p>
               <p className="text-[13px] font-black text-slate-700">₹{payroll.baseSalary}</p>

@@ -28,7 +28,7 @@ import toast from "react-hot-toast";
 export default function AdminProfile() {
   const navigate = useNavigate();
   const { branding } = useTheme();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -201,6 +201,12 @@ export default function AdminProfile() {
 
   const status = branding.subscriptionStatus || "trial";
 
+  const profileDisplayName = profile.name || user?.name || "Admin";
+  const profileAvatarSrc = branding.logo
+    ? branding.logo
+    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileDisplayName)}`;
+  const profileAvatarIsLogo = Boolean(branding.logo);
+
   if (loading) {
     return (
       <div className="p-12 text-center text-slate-400 font-bold">
@@ -210,18 +216,22 @@ export default function AdminProfile() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center text-slate-700 text-3xl font-black">
-              {profile.name?.charAt(0)?.toUpperCase() || "A"}
+    <div className="max-w-6xl mx-auto px-3 py-4 sm:px-6 lg:px-8 pb-8 sm:pb-12">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
+          <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-slate-200/90 bg-slate-50">
+              <img
+                src={profileAvatarSrc}
+                alt={profileAvatarIsLogo ? `${profileDisplayName} logo` : `${profileDisplayName} avatar`}
+                className={`h-full w-full ${profileAvatarIsLogo ? "object-contain" : "object-cover"}`}
+              />
             </div>
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-black mb-2">
                 Admin Profile
               </p>
-              <h1 className="text-2xl font-black text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900">
                 {profile.name || "Admin User"}
               </h1>
               <p className="text-sm text-slate-500 mt-1">
@@ -252,12 +262,12 @@ export default function AdminProfile() {
               </div>
               <div className="space-y-3 text-sm text-slate-700">
                 <div className="rounded-2xl bg-white border border-slate-200 p-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.3em] text-slate-400 font-black">Current Plan</p>
                       <p className="mt-1 text-base font-bold text-slate-900">{planName || "No Plan"}</p>
                     </div>
-                    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${status === "active" ? "bg-emerald-100 text-emerald-700" : status === "expired" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                    <span className={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${status === "active" ? "bg-emerald-100 text-emerald-700" : status === "expired" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
                       <span className="uppercase tracking-[0.25em]">{status}</span>
                     </span>
                   </div>
@@ -273,12 +283,12 @@ export default function AdminProfile() {
                     <span className="text-xs uppercase tracking-[0.3em] font-black">Branding</span>
                   </div>
                   <div className="grid gap-3 text-sm text-slate-700">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold w-24 text-slate-500">Theme</span>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="font-semibold text-slate-500 sm:w-24">Theme</span>
                       <span>{branding.theme || "default"}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold w-24 text-slate-500">Primary</span>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                      <span className="font-semibold text-slate-500 sm:w-24">Primary</span>
                       <span>{branding.primaryColor || "#f72585"}</span>
                     </div>
                   </div>
@@ -288,7 +298,7 @@ export default function AdminProfile() {
           </div>
 
           <button
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800 transition"
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white hover:bg-slate-800 transition sm:w-auto"
             onClick={() => navigate("/admin/subscription")}
           >
             Manage Subscription
@@ -300,14 +310,14 @@ export default function AdminProfile() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+            className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500">
+            <div className="flex items-start gap-3 mb-6 sm:mb-8">
+              <div className="w-10 h-10 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500">
                 <User size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">My Profile</h3>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-800">My Profile</h3>
                 <p className="text-sm text-slate-500 mt-0.5">
                   Account details and what prints at the top of Invoice Center receipts.
                 </p>
@@ -391,7 +401,7 @@ export default function AdminProfile() {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
                         Phone
                       </label>
-                      <div className="flex w-full gap-2">
+                      <div className="flex w-full flex-col gap-2 sm:flex-row">
                         <select
                           value={receiptPhoneCountryCode}
                           onChange={(e) => {
@@ -402,7 +412,7 @@ export default function AdminProfile() {
                               : "";
                             setReceiptHeader({ ...receiptHeader, phone: nextFull });
                           }}
-                          className="w-28 shrink-0 bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
+                          className="w-full sm:w-28 shrink-0 bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all"
                         >
                           <option value="+1">+1 (US)</option>
                           <option value="+44">+44 (UK)</option>
@@ -464,11 +474,11 @@ export default function AdminProfile() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex pt-2 sm:justify-end">
                 <button
                   disabled={updatingProfile}
                   type="submit"
-                  className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 sm:w-auto"
                 >
                   {updatingProfile ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                   Save Changes
@@ -481,14 +491,14 @@ export default function AdminProfile() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+            className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500">
+            <div className="flex items-start gap-3 mb-6 sm:mb-8">
+              <div className="w-10 h-10 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500">
                 <Lock size={20} />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">Account Security</h3>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-slate-800">Account Security</h3>
                 <p className="text-sm text-slate-500">Update your password without changing your profile details.</p>
               </div>
             </div>
@@ -539,9 +549,9 @@ export default function AdminProfile() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3 text-slate-500 text-sm">
-                  <AlertTriangle size={18} className="mt-1 text-amber-500" />
+                  <AlertTriangle size={18} className="mt-1 shrink-0 text-amber-500" />
                   <div>
                     <div className="font-semibold">Secure your admin account</div>
                     <p className="text-slate-400">Use a strong password and keep it private.</p>
@@ -551,7 +561,7 @@ export default function AdminProfile() {
                 <button
                   disabled={updatingPassword}
                   type="submit"
-                  className="flex items-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200 disabled:opacity-50"
+                  className="flex w-full shrink-0 items-center justify-center gap-2 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-slate-200 disabled:opacity-50 sm:w-auto"
                 >
                   {updatingPassword ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                   Change Password

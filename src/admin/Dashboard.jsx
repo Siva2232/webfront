@@ -338,8 +338,8 @@ export default function Dashboard() {
           if (!tablesFeatureEnabled) return;
           navigate(`/admin/order-summary?table=${table.id}`);
         }}
-        className={`group relative flex flex-col rounded-xl border p-2 transition-all ${tileShell} ${ringClass} ${
-          tablesFeatureEnabled ? "cursor-pointer" : "cursor-default"
+        className={`group relative flex flex-col rounded-lg sm:rounded-xl border p-1.5 sm:p-2 transition-all ${tileShell} ${ringClass} ${
+          tablesFeatureEnabled ? "cursor-pointer active:scale-[0.98]" : "cursor-default"
         }`}
         title={!tablesFeatureEnabled ? "Open full tables from Super Admin to enable Tables & QR" : undefined}
       >
@@ -385,7 +385,7 @@ export default function Dashboard() {
 
         <div className="text-center">
           <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Table</p>
-          <p className="text-xl font-black leading-none tracking-tight text-slate-900">
+          <p className="text-lg sm:text-xl font-black leading-none tracking-tight text-slate-900">
             {table.id < 10 ? `0${table.id}` : table.id}
           </p>
         </div>
@@ -473,39 +473,39 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 p-4 font-sans sm:p-6 lg:p-10">
+    <div className="relative min-h-full bg-gradient-to-b from-zinc-50/90 via-white to-zinc-50/50 p-3 font-sans sm:p-6 lg:p-10">
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_100%_50%_at_50%_-5%,rgba(24,24,27,0.04),transparent)]"
         aria-hidden
       />
-      <div className="mx-auto max-w-7xl space-y-10">
+      <div className="mx-auto max-w-7xl space-y-6 lg:space-y-10">
         
         {/* --- 1. HEADER --- */}
-        <header className="relative flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div className="space-y-2">
+        <header className="relative flex flex-col justify-between gap-4 md:flex-row md:items-end md:gap-6">
+          <div className="space-y-1.5 lg:space-y-2">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2.5 lg:gap-3"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-[0_12px_40px_-18px_rgba(24,24,27,0.35)] ring-1 ring-zinc-900/10">
-                <Zap className="text-white" size={20} fill="currentColor" />
+              <div className="flex h-9 w-9 lg:h-11 lg:w-11 items-center justify-center rounded-xl lg:rounded-2xl bg-zinc-900 text-white shadow-[0_12px_40px_-18px_rgba(24,24,27,0.35)] ring-1 ring-zinc-900/10">
+                <Zap className="text-white" size={18} fill="currentColor" />
               </div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+              <span className="text-[10px] lg:text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 Overview
               </span>
             </motion.div>
-            <h1 className="text-4xl font-black leading-tight tracking-tighter text-zinc-900 md:text-5xl">
+            <h1 className="text-3xl font-black leading-tight tracking-tighter text-zinc-900 sm:text-4xl md:text-5xl">
               Dashboard
             </h1>
           </div>
 
-          <div className="flex flex-col items-center gap-4 md:flex-row">
+          <div className="flex w-full flex-col items-stretch gap-3 sm:items-center md:w-auto md:flex-row md:gap-4">
             {isSyncing && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2"
+                className="flex w-fit items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2"
               >
                 <div className="h-2 w-2 animate-pulse rounded-full bg-zinc-700" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-700">Syncing…</span>
@@ -514,15 +514,15 @@ export default function Dashboard() {
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-4 rounded-[2.2rem] border border-zinc-200 bg-white p-2.5 pr-8 shadow-sm shadow-zinc-900/5"
+              className="flex w-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-2.5 pr-4 shadow-sm shadow-zinc-900/5 sm:gap-4 sm:rounded-[2.2rem] sm:pr-8 md:w-auto"
             >
-               <div className="rounded-[1.6rem] bg-green-900 p-3.5 text-white shadow-lg shadow-zinc-900/20">
-                  <IndianRupee size={22} strokeWidth={2.5} />
+               <div className="shrink-0 rounded-xl bg-green-900 p-3 text-white shadow-lg shadow-zinc-900/20 sm:rounded-[1.6rem] sm:p-3.5">
+                  <IndianRupee size={20} strokeWidth={2.5} className="sm:h-[22px] sm:w-[22px]" />
                </div>
-               <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Total sales</p>
-                  <p className="text-2xl font-black text-green-900">₹{totalRevenue.toLocaleString("en-IN")}</p>
-                  <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-400">
+               <div className="min-w-0 flex-1">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-500">Total sales</p>
+                  <p className="text-xl sm:text-2xl font-black text-green-900 truncate">₹{totalRevenue.toLocaleString("en-IN")}</p>
+                  <p className="mt-0.5 text-[8px] sm:text-[9px] font-semibold uppercase tracking-wide text-zinc-400 leading-snug">
                     Paid &amp; closed orders (all time)
                   </p>
                </div>
@@ -531,7 +531,7 @@ export default function Dashboard() {
         </header>
 
         {/* --- 2. STATS GRID --- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
           <StatCard 
             label="Live Inventory" 
             value={products.length} 
@@ -564,23 +564,23 @@ export default function Dashboard() {
         </div>
 
         {/* --- 2.5 MINI TABLES GRID --- */}
-        <section className="space-y-6 rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="flex items-center gap-3 text-xl font-black text-zinc-900">
-              <TableIcon className="text-zinc-700" size={24} />
+        <section className="space-y-4 lg:space-y-6 rounded-2xl lg:rounded-3xl border border-slate-200 bg-white p-3 sm:p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 lg:gap-4">
+            <h2 className="flex items-center gap-2 text-lg font-black text-zinc-900 sm:gap-3 sm:text-xl">
+              <TableIcon className="text-zinc-700 shrink-0" size={22} />
               Live Table Status
             </h2>
             {tablesFeatureEnabled && (
               <Link
                 to="/admin/tables"
-                className="border-b-2 border-zinc-900 pb-1 text-[10px] font-black uppercase tracking-widest text-zinc-800"
+                className="border-b-2 border-zinc-900 pb-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-800"
               >
                 View all tables
               </Link>
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-800">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-bold uppercase tracking-wider text-slate-800 sm:grid sm:grid-cols-3 sm:gap-3 lg:grid lg:grid-cols-6 lg:text-[11px]">
             <div className="flex items-center gap-2 text-slate-700">
               <span className="h-3 w-3 rounded-full border border-rose-500 bg-rose-300" />
               <span>Busy</span>
@@ -615,21 +615,21 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-5 lg:space-y-8">
             {tableAreaSections.map((section) => (
-              <div key={section.id} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 sm:p-4">
-                <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
-                  <Tag size={14} className="text-slate-500" />
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800">
+              <div key={section.id} className="rounded-xl lg:rounded-2xl border border-slate-100 bg-slate-50/80 p-2.5 sm:p-4">
+                <div className="mb-2.5 lg:mb-3 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+                  <Tag size={14} className="text-slate-500 shrink-0" />
+                  <h3 className="text-[11px] sm:text-xs font-black uppercase tracking-[0.2em] text-slate-800 truncate">
                     {section.name}
                   </h3>
-                  <span className="text-[10px] font-bold text-slate-500">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500">
                     {section.tables.length} table{section.tables.length !== 1 ? "s" : ""}
                   </span>
                 </div>
                 <motion.div
                   layout
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 items-start gap-2 overflow-visible p-1"
+                  className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 items-start gap-1.5 sm:gap-2 overflow-visible p-0.5 sm:p-1"
                 >
                   <AnimatePresence mode="popLayout">
                     {section.tables.map((table) => renderLiveTableTile(table))}
@@ -700,54 +700,54 @@ export default function Dashboard() {
           <motion.div 
              initial={{ opacity: 0, x: 20 }}
              animate={{ opacity: 1, x: 0 }}
-             className="relative flex flex-col justify-between overflow-hidden rounded-[3rem] bg-zinc-900 p-10 text-white shadow-2xl shadow-zinc-900/30"
+             className="relative flex flex-col justify-between gap-6 overflow-hidden rounded-2xl bg-zinc-900 p-6 text-white shadow-2xl shadow-zinc-900/30 sm:rounded-[2.5rem] sm:p-8 lg:rounded-[3rem] lg:p-10 lg:gap-0"
           >
-            <div className="absolute -right-10 -top-10 opacity-10 rotate-12">
-               <Award size={240} />
+            <div className="absolute -right-10 -top-10 opacity-10 rotate-12 pointer-events-none">
+               <Award size={160} className="sm:h-[200px] sm:w-[200px] lg:h-[240px] lg:w-[240px]" />
             </div>
             
             <div className="relative z-10">
-               <div className="h-14 w-14 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/30 mb-8">
-                 <Sparkles size={28} />
+               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-white/30 bg-white/20 backdrop-blur-xl lg:mb-8 lg:h-14 lg:w-14 lg:rounded-2xl">
+                 <Sparkles size={24} className="lg:h-7 lg:w-7" />
                </div>
-               <h3 className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Most popular item</h3>
+               <h3 className="mb-2 text-[9px] lg:text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Most popular item</h3>
                {bestSellers[0] ? (
                  <>
-                   <p className="text-5xl font-black tracking-tighter leading-none mb-4">{bestSellers[0].name}</p>
-                   <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-zinc-200">
-                     <TrendingUp size={14} />
-                     <span className="text-xs font-bold uppercase tracking-widest">{bestSellers[0].qty} units sold</span>
+                   <p className="mb-3 text-2xl font-black leading-tight tracking-tighter sm:text-4xl lg:mb-4 lg:text-5xl lg:leading-none">{bestSellers[0].name}</p>
+                   <div className="flex w-fit max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-zinc-200 lg:px-4 lg:py-2">
+                     <TrendingUp size={14} className="shrink-0" />
+                     <span className="text-[10px] lg:text-xs font-bold uppercase tracking-widest truncate">{bestSellers[0].qty} units sold</span>
                    </div>
                  </>
                ) : (
-                 <p className="text-xl font-bold">Collecting Data...</p>
+                 <p className="text-lg lg:text-xl font-bold">Collecting Data...</p>
                )}
             </div>
 
-            <Link to="/admin/products" className="relative z-10 flex items-center justify-center gap-3 rounded-2xl bg-white py-5 font-black uppercase tracking-[0.2em] text-zinc-900 text-[10px] transition-all hover:bg-zinc-100">
+            <Link to="/admin/products" className="relative z-10 flex items-center justify-center gap-2 rounded-xl bg-white py-4 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-900 transition-all hover:bg-zinc-100 sm:gap-3 sm:rounded-2xl sm:py-5 sm:text-[10px]">
                Update catalog <ArrowUpRight size={16} />
             </Link>
           </motion.div>
         </div>
 
         {/* --- 4. INVENTORY & FISCAL HEALTH SECTION --- */}
-        <div className="space-y-6">
-          <h2 className="flex items-center gap-3 text-2xl font-black text-zinc-900 md:text-3xl">
-            <ShieldCheck className="text-zinc-700" size={28} />
-            Inventory &amp; Fiscal Health
+        <div className="space-y-4 lg:space-y-6">
+          <h2 className="flex items-center gap-2 text-xl font-black text-zinc-900 sm:gap-3 sm:text-2xl md:text-3xl">
+            <ShieldCheck className="text-zinc-700 shrink-0" size={24} />
+            <span className="leading-tight">Inventory &amp; Fiscal Health</span>
           </h2>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8">
             {/* Stock Distribution */}
             <motion.div 
               whileHover={{ scale: 1.01 }}
-              className="group flex flex-col items-center justify-center rounded-3xl border border-zinc-200 bg-zinc-900 p-8 text-white shadow-2xl shadow-zinc-900/20 transition-all duration-300 hover:bg-white hover:text-zinc-900 lg:col-span-5"
+              className="group flex flex-col items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-900 p-5 text-white shadow-2xl shadow-zinc-900/20 transition-all duration-300 hover:bg-white hover:text-zinc-900 sm:rounded-3xl sm:p-8 lg:col-span-5"
             >
-              <h3 className="mb-6 text-sm font-black uppercase tracking-widest text-zinc-400 group-hover:text-zinc-700">
+              <h3 className="mb-4 text-xs sm:text-sm font-black uppercase tracking-widest text-zinc-400 group-hover:text-zinc-700 lg:mb-6">
                 Current stock status
               </h3>
               
-              <div className="h-[260px] md:h-[300px] w-full">
+              <div className="h-[220px] w-full sm:h-[260px] md:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie 
@@ -806,34 +806,72 @@ export default function Dashboard() {
             </motion.div>
 
             {/* Financial Ledger */}
-            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm shadow-zinc-900/5 md:p-10 lg:col-span-7">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 mb-8">
-                <div>
-                  <h3 className="text-base md:text-lg font-black flex items-center gap-3">
-                    <History className="text-zinc-600" size={20} />
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm shadow-zinc-900/5 sm:rounded-3xl sm:p-6 md:p-10 lg:col-span-7">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 lg:gap-5 lg:mb-8">
+                <div className="min-w-0">
+                  <h3 className="text-base md:text-lg font-black flex items-center gap-2 sm:gap-3">
+                    <History className="text-zinc-600 shrink-0" size={20} />
                     Financial ledger
                   </h3>
                   <p className="mt-1 text-xs text-zinc-600 md:text-sm">
                     Showing {products.length} products
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex w-full gap-2 sm:w-auto sm:gap-3">
                   <button 
                     onClick={() => handleExport('xlsx')} 
-                    className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-3 text-xs font-black uppercase text-zinc-800 transition-all hover:border-zinc-400 hover:bg-white md:text-sm"
+                    className="flex flex-1 sm:flex-initial items-center justify-center gap-2 rounded-xl sm:rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-[10px] font-black uppercase text-zinc-800 transition-all hover:border-zinc-400 hover:bg-white sm:px-5 sm:py-3 sm:text-xs md:text-sm"
                   >
                     <FileSpreadsheet size={16}/> Excel
                   </button>
                   <button 
                     onClick={() => handleExport('pdf')} 
-                    className="flex items-center gap-2 rounded-2xl border border-zinc-900 bg-zinc-900 px-5 py-3 text-xs font-black uppercase text-white transition-all hover:bg-zinc-800 md:text-sm"
+                    className="flex flex-1 sm:flex-initial items-center justify-center gap-2 rounded-xl sm:rounded-2xl border border-zinc-900 bg-zinc-900 px-4 py-2.5 text-[10px] font-black uppercase text-white transition-all hover:bg-zinc-800 sm:px-5 sm:py-3 sm:text-xs md:text-sm"
                   >
                     <FileText size={16}/> PDF
                   </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Mobile card list — desktop table unchanged below lg */}
+              <div className="space-y-3 lg:hidden">
+                {products.slice(0, 10).map((p, i) => {
+                  const unitPrice = Number(p.price) || 0;
+                  const unitTax = taxOnTaxableAmount(unitPrice);
+                  const lineTotal = unitPrice + unitTax;
+                  return (
+                    <div
+                      key={p._id || p.id || i}
+                      className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-bold text-sm text-zinc-900 leading-snug">{p.name}</p>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          p.isAvailable ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                        }`}>
+                          {p.isAvailable ? "Active" : "Out"}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-xl bg-white px-2 py-2 border border-zinc-100">
+                          <p className="text-[9px] font-bold uppercase text-zinc-400">Price</p>
+                          <p className="text-sm font-black text-zinc-900">₹{p.price?.toLocaleString() || "—"}</p>
+                        </div>
+                        <div className="rounded-xl bg-white px-2 py-2 border border-zinc-100">
+                          <p className="text-[9px] font-bold uppercase text-zinc-400">Tax</p>
+                          <p className="text-sm font-black text-zinc-700">₹{unitTax.toFixed(0)}</p>
+                        </div>
+                        <div className="rounded-xl bg-white px-2 py-2 border border-zinc-100">
+                          <p className="text-[9px] font-bold uppercase text-zinc-400">Total</p>
+                          <p className="text-sm font-black text-zinc-900">₹{lineTotal.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full text-left min-w-[600px]">
                   <thead>
                     <tr className="border-b border-zinc-200">
@@ -907,17 +945,17 @@ const StatCard = ({ label, value, icon: Icon, color, trend, isAlert }) => {
   return (
     <motion.div 
       whileHover={{ y: -8 }}
-      className={`group relative rounded-[2.5rem] border border-zinc-200 bg-white p-7 shadow-sm shadow-zinc-900/5 transition-all duration-500 hover:shadow-2xl ${theme.glow}`}
+      className={`group relative rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm shadow-zinc-900/5 transition-all duration-500 hover:shadow-2xl sm:rounded-[2rem] sm:p-6 lg:rounded-[2.5rem] lg:p-7 ${theme.glow}`}
     >
-      <div className={`absolute top-6 right-6 opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none`}>
-        <Icon size={100} strokeWidth={1} />
+      <div className={`absolute top-4 right-4 lg:top-6 lg:right-6 opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none`}>
+        <Icon size={72} strokeWidth={1} className="lg:h-[100px] lg:w-[100px]" />
       </div>
-      <div className="relative z-10 space-y-6">
-        <div className="flex justify-between items-center">
-          <div className={`p-4 rounded-2xl ${theme.bg} ${theme.text} transition-transform duration-500 group-hover:scale-110 shadow-sm`}>
-            <Icon size={28} strokeWidth={2} />
+      <div className="relative z-10 space-y-4 lg:space-y-6">
+        <div className="flex justify-between items-center gap-2">
+          <div className={`p-3 rounded-xl lg:p-4 lg:rounded-2xl ${theme.bg} ${theme.text} transition-transform duration-500 group-hover:scale-110 shadow-sm`}>
+            <Icon size={24} strokeWidth={2} className="lg:h-7 lg:w-7" />
           </div>
-          <div className={`rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${
+          <div className={`rounded-lg lg:rounded-xl px-2.5 py-1 lg:px-3 lg:py-1.5 text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${
             isAlert ? "animate-pulse bg-rose-500 text-white" : "border border-zinc-200 bg-zinc-50 font-bold text-zinc-600"
           }`}>
             {trend}
@@ -925,13 +963,13 @@ const StatCard = ({ label, value, icon: Icon, color, trend, isAlert }) => {
         </div>
         <div>
           <div className="flex items-baseline gap-1">
-            <h3 className="text-4xl font-black tracking-tighter text-zinc-900">{value}</h3>
-            <ArrowUpRight size={18} className="text-zinc-300 transition-colors group-hover:text-zinc-500" />
+            <h3 className="text-3xl font-black tracking-tighter text-zinc-900 lg:text-4xl">{value}</h3>
+            <ArrowUpRight size={16} className="text-zinc-300 transition-colors group-hover:text-zinc-500 lg:h-[18px] lg:w-[18px]" />
           </div>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
+          <p className="mt-1 text-[10px] lg:text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
         </div>
       </div>
-      <div className={`absolute bottom-6 left-8 right-8 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0 ${theme.accent}`} />
+      <div className={`absolute bottom-4 left-5 right-5 lg:bottom-6 lg:left-8 lg:right-8 h-1 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0 ${theme.accent}`} />
     </motion.div>
   );
 };
@@ -982,42 +1020,42 @@ const StockAlertSection = ({ items }) => (
 );
 
 const EmptyStateSection = ({ totalProducts, totalSubitems }) => (
-  <div className="flex flex-col lg:flex-row min-h-[500px]">
-    <div className="relative flex w-full flex-col justify-between overflow-hidden bg-green-900 p-12 text-white lg:w-1/2">
-      <div className="absolute right-0 top-0 p-8 opacity-10">
-         <ShieldCheck size={280} strokeWidth={1} />
+  <div className="flex flex-col lg:flex-row min-h-0 lg:min-h-[500px]">
+    <div className="relative flex w-full flex-col justify-between gap-8 overflow-hidden bg-green-900 p-6 sm:p-10 lg:p-12 text-white lg:w-1/2 lg:gap-0">
+      <div className="absolute right-0 top-0 p-4 opacity-10 pointer-events-none sm:p-8">
+         <ShieldCheck size={160} strokeWidth={1} className="sm:h-[220px] sm:w-[220px] lg:h-[280px] lg:w-[280px]" />
       </div>
-      <div className="relative z-10 space-y-6">
-        <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] border border-white/20 bg-white/10 backdrop-blur-xl">
-          <CheckCircle2 size={42} />
+      <div className="relative z-10 space-y-4 sm:space-y-6">
+        <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl lg:rounded-[2rem]">
+          <CheckCircle2 size={32} className="sm:h-[42px] sm:w-[42px]" />
         </div>
-        <h3 className="text-6xl font-black leading-[0.8] tracking-tighter">Systems <br/> nominal</h3>
-        <p className="max-w-sm text-xl font-bold leading-relaxed tracking-tight text-zinc-300 drop-shadow-sm">All {totalProducts + totalSubitems} items are synchronized across inventory.</p>
+        <h3 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-[0.85] tracking-tighter">Systems <br/> nominal</h3>
+        <p className="max-w-sm text-sm sm:text-lg lg:text-xl font-bold leading-relaxed tracking-tight text-zinc-300 drop-shadow-sm">All {totalProducts + totalSubitems} items are synchronized across inventory.</p>
       </div>
-      <div className="relative z-10 flex gap-4">
-          <div className="rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur-md">
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Products</p>
-              <p className="text-2xl font-black">{totalProducts}</p>
+      <div className="relative z-10 flex gap-3 sm:gap-4">
+          <div className="flex-1 rounded-xl sm:rounded-2xl border border-white/15 bg-white/10 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md">
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400">Products</p>
+              <p className="text-xl sm:text-2xl font-black">{totalProducts}</p>
           </div>
-          <div className="rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur-md">
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Sub-items</p>
-              <p className="text-2xl font-black">{totalSubitems}</p>
+          <div className="flex-1 rounded-xl sm:rounded-2xl border border-white/15 bg-white/10 px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md">
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-zinc-400">Sub-items</p>
+              <p className="text-xl sm:text-2xl font-black">{totalSubitems}</p>
           </div>
       </div>
     </div>
-    <div className="group flex flex-1 flex-col items-center justify-center space-y-8 bg-white p-12 text-center">
+    <div className="group flex flex-1 flex-col items-center justify-center space-y-5 sm:space-y-8 bg-white p-6 sm:p-12 text-center">
       <div className="relative">
           <div className="absolute inset-0 animate-pulse rounded-full bg-zinc-200/60 blur-[100px] opacity-40" />
-          <div className="relative flex h-40 w-40 rotate-12 items-center justify-center rounded-[3rem] border border-zinc-200 bg-zinc-50 transition-all duration-700 group-hover:rotate-0">
-             <Box size={80} className="text-zinc-300 transition-colors group-hover:text-zinc-500" strokeWidth={1} />
+          <div className="relative flex h-28 w-28 sm:h-40 sm:w-40 rotate-12 items-center justify-center rounded-[2rem] sm:rounded-[3rem] border border-zinc-200 bg-zinc-50 transition-all duration-700 group-hover:rotate-0">
+             <Box size={56} className="text-zinc-300 transition-colors group-hover:text-zinc-500 sm:h-20 sm:w-20" strokeWidth={1} />
           </div>
       </div>
-      <div className="space-y-3">
-        <h4 className="text-3xl font-black tracking-tighter text-zinc-900">Inventory synchronized</h4>
-        <p className="mx-auto max-w-xs font-medium text-zinc-500">No critical alerts. All stocks and variations are active.</p>
+      <div className="space-y-2 sm:space-y-3">
+        <h4 className="text-xl sm:text-3xl font-black tracking-tighter text-zinc-900">Inventory synchronized</h4>
+        <p className="mx-auto max-w-xs text-sm sm:text-base font-medium text-zinc-500">No critical alerts. All stocks and variations are active.</p>
       </div>
       <div className="h-[2px] w-20 bg-zinc-200" />
-      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400">Last check: just now</p>
+      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] text-zinc-400">Last check: just now</p>
     </div>
   </div>
 );
