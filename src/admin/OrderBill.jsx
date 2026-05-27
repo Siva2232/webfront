@@ -10,9 +10,9 @@ import { useCashiers } from "../hooks/useCashiers";
 import { BillCard } from "./orderBill/components/BillCard";
 import { MarkPaidModal } from "./orderBill/components/MarkPaidModal";
 import { PrintCashierModal } from "./orderBill/components/PrintCashierModal";
+import { ReceiptPrintModal } from "./orderBill/components/ReceiptPrintModal";
 import { CloseBillModal } from "./orderBill/components/CloseBillModal";
 import { OrderBillHeader } from "./orderBill/components/OrderBillHeader";
-import { printReceipt } from "./orderBill/receiptPrint";
 import { useFilteredBills } from "./orderBill/hooks/useFilteredBills";
 import { useTheme } from "../context/ThemeContext";
 import { MarkPaidConfirmModal } from "./orderBill/components/MarkPaidConfirmModal";
@@ -53,6 +53,7 @@ export default function OrderBill() {
   const [paymentData, setPaymentData] = useState({ cash: 0, bank: 0, discount: 0, balance: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [printModalOrder, setPrintModalOrder] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
   const [selectedCashier, setSelectedCashier] = useState(null);
   const [dateFilter, setDateFilter] = useState(""); // "" = all
   const [customerSearch, setCustomerSearch] = useState("");
@@ -271,31 +272,33 @@ export default function OrderBill() {
     setSelectedCashier(null);
   }, []);
 
+  const closeReceiptPreview = useCallback(() => {
+    setReceiptPreview(null);
+  }, []);
+
+  const openReceiptPreview = useCallback((order, cashierName) => {
+    setReceiptPreview({ order, cashierName });
+  }, []);
+
   const openPrintModal = useCallback(
     async (order) => {
       const list = await reloadCashiers();
       const n = Array.isArray(list) ? list.length : 0;
 
-      // Fewer than 2 POS cashiers: no modal — admin-only setup uses session name; one cashier uses their name
+      // Fewer than 2 POS cashiers: no picker — admin-only uses session name; one cashier uses their name
       if (n < 2) {
-        try {
-          const cashierName =
-            n === 1 ? list[0].name : defaultCashierLabelFromSession();
-          printReceipt(order, cashierName);
-        } catch (err) {
-          console.error(err);
-          toast.error(err?.message || "Could not open print preview");
-        }
+        const cashierName =
+          n === 1 ? list[0].name : defaultCashierLabelFromSession();
+        openReceiptPreview(order, cashierName);
         return;
       }
 
       setSelectedCashier(null);
       setPrintModalOrder(order);
     },
-    [reloadCashiers],
+    [reloadCashiers, openReceiptPreview],
   );
 
-  /* print */
   const handleConfirmPrint = useCallback(() => {
     if (!printModalOrder) return;
     const cashier = cashiers.find(
@@ -305,15 +308,9 @@ export default function OrderBill() {
       toast.error("Please select a cashier");
       return;
     }
-    try {
-      printReceipt(printModalOrder, cashier.name);
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.message || "Could not open print preview");
-    } finally {
-      closePrintModal();
-    }
-  }, [printModalOrder, selectedCashier, closePrintModal, cashiers]);
+    openReceiptPreview(printModalOrder, cashier.name);
+    closePrintModal();
+  }, [printModalOrder, selectedCashier, closePrintModal, cashiers, openReceiptPreview]);
 
   /* ─── empty / loading (same chrome as Analytics — header always present to avoid layout jump) ── */
   const billShell = (
@@ -485,16 +482,15 @@ export default function OrderBill() {
           onCancel={() => setCloseBillModal(null)}
           onConfirm={handleConfirmCloseBill}
         />
-      </AnimatePresence>
 
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; margin: 0; padding: 0; }
-          main { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-          div[id^="bill-"] { page-break-after: always; width: 80mm; margin: 0 auto !important; padding: 5mm !important; }
-        }
-      `}</style>
+        {receiptPreview && (
+          <ReceiptPrintModal
+            order={receiptPreview.order}
+            cashierName={receiptPreview.cashierName}
+            onClose={closeReceiptPreview}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

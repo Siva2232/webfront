@@ -11,6 +11,12 @@ import {
   saveReceiptHeader,
 } from "./orderBill/receiptHeaderSettings";
 import {
+  DEFAULT_POS_PRINTER,
+  loadPosPrinterForRestaurant,
+  savePosPrinterSettings,
+} from "./orderBill/posPrinterSettings";
+import { directPrintTestPage } from "./orderBill/receiptPrint";
+import {
   User,
   Mail,
   Lock,
@@ -22,6 +28,7 @@ import {
   Loader2,
   AlertTriangle,
   Store,
+  Printer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -46,6 +53,8 @@ export default function AdminProfile() {
   const [receiptHeader, setReceiptHeader] = useState(DEFAULT_RECEIPT_HEADER);
   const [receiptPhoneCountryCode, setReceiptPhoneCountryCode] = useState("+91");
   const [receiptPhoneDigits, setReceiptPhoneDigits] = useState("");
+  const [posPrinter, setPosPrinter] = useState(DEFAULT_POS_PRINTER);
+  const [testingPrinter, setTestingPrinter] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -153,7 +162,8 @@ export default function AdminProfile() {
           return;
         }
         saveReceiptHeader(rid, receiptHeader);
-        toast.success("Profile and receipt header saved.");
+        savePosPrinterSettings(rid, posPrinter);
+        toast.success("Profile, receipt header, and printer settings saved.");
       } else {
         toast.success("Profile updated — add restaurant context to save receipt header.");
       }
@@ -472,6 +482,84 @@ export default function AdminProfile() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="pt-8 border-t border-slate-100">
+                <div className="flex items-start gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
+                    <Printer size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-800">Thermal printer</h4>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      Direct print from Invoice Center (no browser print dialog). On this POS PC run{" "}
+                      <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">
+                        npm run print-bridge
+                      </code>{" "}
+                      in the webfront folder, then enter your printer&apos;s network IP.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Printer IP address
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={posPrinter.host}
+                      onChange={(e) =>
+                        setPosPrinter({ ...posPrinter, host: e.target.value.trim() })
+                      }
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      placeholder="e.g. 192.168.1.50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Port
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={65535}
+                      value={posPrinter.port}
+                      onChange={(e) =>
+                        setPosPrinter({
+                          ...posPrinter,
+                          port: Number(e.target.value) || 9100,
+                        })
+                      }
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={testingPrinter || !posPrinter.host?.trim()}
+                  onClick={async () => {
+                    const rid = getCurrentRestaurantId() || profile.restaurantId;
+                    if (rid) savePosPrinterSettings(rid, posPrinter);
+                    setTestingPrinter(true);
+                    try {
+                      await directPrintTestPage();
+                      toast.success("Test page sent to printer");
+                    } catch (err) {
+                      toast.error(err?.message || "Test print failed");
+                    } finally {
+                      setTestingPrinter(false);
+                    }
+                  }}
+                  className="mt-4 flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {testingPrinter ? (
+                    <Loader2 className="animate-spin" size={14} />
+                  ) : (
+                    <Printer size={14} />
+                  )}
+                  Test print
+                </button>
               </div>
 
               <div className="flex pt-2 sm:justify-end">

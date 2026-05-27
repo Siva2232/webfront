@@ -75,7 +75,7 @@ export function PrintCashierModal({
           disabled={!hasValidCashier}
           className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          <Printer size={16} /> Print Bill
+          <Printer size={16} /> Print bill
         </button>
       </div>
     </ModalOverlay>
