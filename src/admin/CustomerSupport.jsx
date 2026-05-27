@@ -22,12 +22,14 @@ import {
 export default function CustomerSupport() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newReply, setNewReply] = useState("");
+  const [historyError, setHistoryError] = useState("");
 
   const [formData, setFormData] = useState({
     subject: "Technical Issue",
@@ -39,7 +41,33 @@ export default function CustomerSupport() {
     fetchSupportTicketCount,
     markAllSupportTicketsRead,
     supportTicketCount,
+    restaurantSupportTickets,
   } = useUI();
+
+  useEffect(() => {
+    setTickets(Array.isArray(restaurantSupportTickets) ? restaurantSupportTickets : []);
+  }, [restaurantSupportTickets]);
+
+  useEffect(() => {
+    // Ensure ticket history is loaded even if AdminLayout isn't mounted.
+    // Also reload when user opens history view (common path for this page).
+    if (!showHistory) return;
+    let alive = true;
+    setHistoryLoading(true);
+    setHistoryError("");
+    Promise.resolve(fetchSupportTicketCount())
+      .catch((err) => {
+        if (!alive) return;
+        setHistoryError(err?.response?.data?.message || err?.message || "Failed to load tickets");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setHistoryLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [showHistory, fetchSupportTicketCount]);
 
   useEffect(() => {
     setSelectedTicket((prev) => {
@@ -151,7 +179,26 @@ export default function CustomerSupport() {
           {/* Ticket List */}
           <div className="lg:col-span-1 space-y-3 max-h-[min(40vh,20rem)] lg:max-h-[70vh] overflow-y-auto pr-0 sm:pr-2">
             <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest ml-2 mb-4">Past Tickets</h3>
-            {tickets.length === 0 ? (
+            {historyLoading ? (
+              <div className="text-center py-10 bg-slate-50 rounded-3xl">
+                <Loader2 className="animate-spin mx-auto mb-3 text-slate-400" size={18} />
+                <p className="text-slate-400 text-sm">Loading tickets…</p>
+              </div>
+            ) : historyError ? (
+              <div className="text-center py-10 bg-slate-50 rounded-3xl">
+                <p className="text-slate-500 text-sm font-bold">Couldn’t load tickets</p>
+                <p className="text-slate-400 text-xs mt-1">{historyError}</p>
+                <button
+                  onClick={() => {
+                    setShowHistory(false);
+                    setTimeout(() => setShowHistory(true), 0);
+                  }}
+                  className="mt-4 px-4 py-2 rounded-2xl bg-slate-900 text-white text-xs font-bold"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : tickets.length === 0 ? (
               <div className="text-center py-10 bg-slate-50 rounded-3xl">
                 <p className="text-slate-400 text-sm">No tickets yet</p>
               </div>
