@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { syncRestaurantCache, getRestaurantIdForTenantData, tenantKey, tenantRemove } from "../utils/tenantCache";
+import {
+  syncRestaurantCache,
+  getRestaurantIdForTenantData,
+  tenantKey,
+  tenantGet,
+  tenantSet,
+  tenantRemove,
+} from "../utils/tenantCache";
 import {
   canAddProductQty,
   getMaxLineQty,
@@ -30,7 +37,14 @@ const safeSetLocalStorage = (key, value) => {
         // Remove caches to free some space, keep cart data in memory for now.
         const _rid = getRestaurantIdForTenantData();
         tenantRemove("cachedOrders", _rid);
-        tenantRemove("cachedBills", _rid);
+        try {
+          const billsRaw = tenantGet("cachedBills", _rid);
+          if (Array.isArray(billsRaw) && billsRaw.length > 40) {
+            tenantSet("cachedBills", _rid, billsRaw.slice(0, 40));
+          }
+        } catch (_) {
+          tenantRemove("cachedBills", _rid);
+        }
         tenantRemove("cachedKitchenBills", _rid);
         tenantRemove("lastViewedProduct", _rid);
         // Retry once with reduced data if possible

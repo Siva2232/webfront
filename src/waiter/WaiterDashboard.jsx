@@ -36,32 +36,32 @@ export default function WaiterDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] font-sans">
+    <div className="bg-[#FDFDFD] font-sans">
       {/* Header */}
-      <div className="bg-white border-b border-slate-100 px-6 py-6 sm:px-10">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Utensils size={18} className="text-orange-500" />
-              <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500">Service Portal</h1>
+      <div className="border-b border-slate-100 bg-white px-4 py-5 sm:px-6 sm:py-6 lg:px-10">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center gap-2">
+              <Utensils size={18} className="shrink-0 text-orange-500" />
+              <h1 className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 sm:tracking-[0.3em]">Service Portal</h1>
             </div>
-            <p className="text-2xl font-black text-slate-900 uppercase leading-none">Waiter Dashboard</p>
+            <p className="text-xl font-black uppercase leading-none text-slate-900 sm:text-2xl">Waiter Dashboard</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
              {/* <button 
               onClick={handleLogout}
               className="p-3 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-2xl transition-all border border-slate-100"
             >
               <LogOut size={20} />
             </button> */}
-            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
-              <User size={24} />
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-xl sm:h-12 sm:w-12">
+              <User size={22} className="sm:h-6 sm:w-6" />
             </div>
           </div>
         </div>
       </div>
 
-      <main className="p-6 sm:p-10 max-w-6xl mx-auto">
+      <main className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-10">
         <div className="mb-10">
           <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Management Tools</h2>
           <div className="h-1 w-12 bg-orange-500 rounded-full" />
@@ -75,7 +75,7 @@ export default function WaiterDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
               onClick={() => navigate(item.path)}
-              className="group relative flex flex-col items-start p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-orange-100 transition-all duration-300 overflow-hidden text-left"
+              className="group relative flex flex-col items-start overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-6 text-left shadow-sm transition-all duration-300 hover:border-orange-100 hover:shadow-2xl sm:rounded-[2.5rem] sm:p-8"
             >
               {/* Bg Decoration */}
               <div className="absolute -right-4 -top-4 w-32 h-32 bg-slate-50 rounded-full scale-0 group-hover:scale-100 transition-transform duration-500" />
@@ -101,8 +101,8 @@ export default function WaiterDashboard() {
         </div>
 
         {/* Quick Stats or Footer Info */}
-        <div className="mt-12 p-8 bg-slate-900 rounded-[2.5rem] text-white overflow-hidden relative">
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="relative mt-8 overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white sm:mt-12 sm:rounded-[2.5rem] sm:p-8">
+          <div className="relative z-10 flex flex-col items-center justify-between gap-4 sm:flex-row sm:gap-6">
             <div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Status Report</p>
               <h4 className="text-lg font-bold">Kitchen is running at normal capacity</h4>

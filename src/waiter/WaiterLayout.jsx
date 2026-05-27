@@ -22,6 +22,7 @@ import {
 import toast from "react-hot-toast";
 import { useUI } from "../context/UIContext";
 import { useOrders } from "../context/OrderContext";
+import "../styles/staff-panel-mobile.css";
 
 export default function WaiterLayout() {
   const location = useLocation();
@@ -162,7 +163,10 @@ export default function WaiterLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700">
+    <div
+      data-staff-panel
+      className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700"
+    >
       {/* Mobile overlay */}
       <AnimatePresence>
         {isMobileOpen && (
@@ -185,18 +189,19 @@ export default function WaiterLayout() {
           ${isCollapsed ? "lg:w-[90px]" : "w-72"}
         `}
       >
-        <div className="h-24 flex items-center px-6 justify-between">
-          <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}>
+        <div className="flex h-20 shrink-0 items-center justify-between px-4 lg:h-24 lg:px-6">
+          <div className={`flex min-w-0 items-center gap-3 overflow-hidden ${isCollapsed && "lg:hidden"}`}>
             <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
               <Sparkles className="text-white w-6 h-6" />
             </div>
-            <span className="text-xl font-black tracking-tight text-slate-800">
+            <span className="text-lg font-black tracking-tight text-slate-800 sm:text-xl">
               Waiter<span className="text-orange-500"> Panel</span>
             </span>
           </div>
           <button
             onClick={() => (isMobileOpen ? setIsMobileOpen(false) : setIsCollapsed(!isCollapsed))}
-            className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors"
+            className="hidden shrink-0 rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-50 lg:block"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
@@ -272,17 +277,25 @@ export default function WaiterLayout() {
       {/* main content container */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header bar */}
-        <header className="h-20 flex items-center justify-between px-6 bg-white/70 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsMobileOpen(prev => !prev)} className="lg:hidden p-2 text-slate-600">
-              <Menu size={24} />
+        <header className="sticky top-0 z-50 flex h-14 min-w-0 items-center justify-between gap-2 border-b border-slate-100 bg-white/70 px-3 backdrop-blur-md sm:px-4 lg:h-20 lg:gap-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsMobileOpen((prev) => !prev)}
+              className="shrink-0 rounded-xl p-2 text-slate-600 lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
             </button>
-            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 hidden lg:block">
+            <h2 className="truncate text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 sm:text-sm sm:tracking-[0.2em] lg:hidden">
+              Waiter
+            </h2>
+            <h2 className="hidden text-sm font-black uppercase tracking-[0.2em] text-slate-400 lg:block">
               Waiter Control
             </h2>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3 lg:gap-6">
             {/* Waiter Call Notifications */}
             <div className="relative" ref={notifRef}>
               <button
@@ -307,7 +320,7 @@ export default function WaiterLayout() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden z-[100] mr-[-160px]"
+                    className="fixed inset-x-3 top-[3.75rem] z-[100] max-h-[min(70vh,24rem)] w-auto overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white shadow-2xl sm:inset-x-4 lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-4 lg:max-h-[350px] lg:w-80"
                   >
                     <div className="p-5 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -390,19 +403,20 @@ export default function WaiterLayout() {
             <Notification targetPath="/waiter/orders" />
             <div className="relative" ref={dropdownRef}>
             <button
+              type="button"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 p-1 pr-3 rounded-full hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100"
+              className="flex items-center gap-2 rounded-full border border-transparent p-1 pr-2 transition-all hover:border-slate-100 hover:bg-slate-50 sm:gap-3 sm:pr-3"
             >
-              <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border-2 border-white shadow-sm">
+              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow-sm sm:h-10 sm:w-10">
                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || 'Waiter'}`} alt="avatar" />
               </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-bold text-slate-800 leading-none">{user.name || 'Waiter User'}</p>
-                <p className="text-[10px] font-medium text-slate-400 mt-1">{user.role || 'Staff'}</p>
+              <div className="hidden text-left md:block">
+                <p className="text-sm font-bold leading-none text-slate-800">{user.name || 'Waiter User'}</p>
+                <p className="mt-1 text-[10px] font-medium text-slate-400">{user.role || 'Staff'}</p>
               </div>
               <ChevronDown
                 size={14}
-                className={`text-slate-400 transition-transform ${isProfileOpen ? "rotate-180" : ""}`}
+                className={`hidden text-slate-400 transition-transform sm:block ${isProfileOpen ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -412,7 +426,7 @@ export default function WaiterLayout() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-4 w-64 bg-white rounded-[1.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden p-2"
+                  className="absolute right-0 z-[100] mt-2 w-[min(100vw-1.5rem,16rem)] rounded-[1.5rem] border border-slate-100 bg-white p-2 shadow-2xl shadow-slate-200 sm:mt-4 sm:w-64"
                 >
                   <div className="p-4 border-b border-slate-50">
                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Account</p>
@@ -432,7 +446,7 @@ export default function WaiterLayout() {
         </header>
 
         {/* actual page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main data-staff-main className="flex-1 overflow-x-hidden overflow-y-auto">
           <Outlet />
         </main>
       </div>

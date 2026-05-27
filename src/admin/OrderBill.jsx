@@ -3,7 +3,6 @@ import { useOrders } from "../context/OrderContext";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import accApi from "../api/accApi";
-import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
 import { AnimatePresence } from "framer-motion";
 import { Receipt, RefreshCw } from "lucide-react";
 import { useCashiers } from "../hooks/useCashiers";
@@ -33,8 +32,15 @@ function defaultCashierLabelFromSession() {
 /* ─── component ───────────────────────────────────────────── */
 
 export default function OrderBill() {
-  const { bills, orders, fetchBills, markBillPaid, closeBill, isLoading, billsReady } =
-    useOrders();
+  const {
+    bills,
+    orders,
+    fetchBills,
+    markBillPaid,
+    closeBill,
+    billsLoading,
+    billsReady,
+  } = useOrders();
   const { notifications, markNotificationAsRead } = useUI();
   const { cashiers, reload: reloadCashiers } = useCashiers();
   const { features } = useTheme();
@@ -58,11 +64,16 @@ export default function OrderBill() {
   const [dateFilter, setDateFilter] = useState(""); // "" = all
   const [customerSearch, setCustomerSearch] = useState("");
   const [takeawayOnly, setTakeawayOnly] = useState(false);
-  const [displayLimit] = useState(100);
+  const [displayLimit] = useState(20);
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // Bills load globally from OrderContext (mount + socket + focus); no duplicate GET here.
+  useEffect(() => {
+    fetchBills({ force: true }).catch(() => {});
+  }, [fetchBills]);
+
+  const hasActiveFilters = Boolean(dateFilter || customerSearch.trim() || takeawayOnly);
+  const rawBillCount = (bills || []).length;
 
   const { uniqueBills } = useFilteredBills({
     bills,
@@ -98,11 +109,10 @@ export default function OrderBill() {
   const pagedBills = displayBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
   useEffect(() => { setPage(1); }, [dateFilter, takeawayOnly, customerSearch]);
 
-  /* refresh */
   const handleRefresh = useCallback(() => {
-    try { const rid = getCurrentRestaurantId(); localStorage.removeItem(tenantKey("cachedBills", rid)); } catch (_) {}
-    fetchBills();
-    toast.success("Refreshing invoices...");
+    fetchBills({ force: true })
+      .then(() => toast.success("Invoices updated"))
+      .catch(() => toast.error("Could not refresh invoices — showing cached data"));
   }, [fetchBills]);
 
   const handleGoBack = useCallback(() => {
@@ -323,7 +333,7 @@ export default function OrderBill() {
         aria-hidden
       />
       <OrderBillHeader
-        isLoading={isLoading}
+        isLoading={billsLoading}
         dateFilter={dateFilter}
         onDateChange={setDateFilter}
         onClearFilter={() => setDateFilter("")}
@@ -334,7 +344,7 @@ export default function OrderBill() {
     </div>
   );
 
-  if (!uniqueBills.length && isLoading && !billsReady) {
+  if (!uniqueBills.length && billsLoading && !billsReady) {
     return billShell("", (
       <main className="mx-auto flex max-w-7xl justify-center px-4 py-16 md:px-8">
         <RefreshCw size={28} className="animate-spin text-zinc-300" aria-hidden />
@@ -342,7 +352,7 @@ export default function OrderBill() {
     ));
   }
 
-  if (!uniqueBills.length && billsReady) {
+  if (!uniqueBills.length && !hasActiveFilters && rawBillCount === 0 && billsReady && !billsLoading) {
     return billShell("", (
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-10 text-center md:px-8">
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-zinc-200 bg-white shadow-sm shadow-zinc-900/5">
@@ -378,7 +388,7 @@ export default function OrderBill() {
         aria-hidden
       />
       <OrderBillHeader
-        isLoading={isLoading}
+        isLoading={billsLoading}
         dateFilter={dateFilter}
         onDateChange={setDateFilter}
         onClearFilter={() => setDateFilter("")}
@@ -406,6 +416,12 @@ export default function OrderBill() {
           className="w-full min-w-0 flex-1 sm:max-w-md rounded-xl border border-zinc-200 bg-white px-4 py-2.5 sm:py-2 text-sm font-medium outline-none focus:border-zinc-400"
         />
       </div>
+
+      {displayBills.length === 0 && uniqueBills.length > 0 && (
+        <p className="mx-auto max-w-7xl px-3 text-center text-sm font-medium text-zinc-500 sm:px-4 md:px-8">
+          No invoices match your filters. Clear search or filters to see all bills.
+        </p>
+      )}
 
       {/* Bills Grid */}
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-3 pb-10 pt-5 sm:grid-cols-2 sm:gap-8 sm:px-4 sm:pb-12 sm:pt-8 md:px-8 lg:grid-cols-3 xl:grid-cols-4">

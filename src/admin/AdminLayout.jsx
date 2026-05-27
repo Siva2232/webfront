@@ -637,7 +637,8 @@ export default function AdminLayout() {
       {/* fixed on lg too — sticky scrolled away with the page; fixed keeps nav + footer anchored */}
       <aside
         className={`
-          fixed top-0 left-0 z-[70] h-screen flex flex-col overflow-hidden
+          fixed top-0 left-0 bottom-0 z-[70] flex flex-col overflow-hidden
+          max-lg:h-[100dvh] max-lg:max-h-[100dvh] lg:top-0 lg:bottom-auto lg:h-screen
           border-r border-slate-200 transition-all duration-150 ease-out
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           w-[min(18rem,88vw)] lg:w-72 ${isCollapsed ? "lg:w-[90px]" : ""}
@@ -703,7 +704,8 @@ export default function AdminLayout() {
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 lg:px-4 space-y-1 mt-2 lg:mt-4 pb-4 no-scrollbar">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 lg:px-4 space-y-1 mt-2 lg:mt-4 pb-3 no-scrollbar">
           {navMenuItems.map((item) => {
             // Shared classes for both Disabled and Active states to maintain visual harmony
             const baseClasses =
@@ -954,10 +956,20 @@ export default function AdminLayout() {
             );
           })}
         </nav>
+        </div>
 
+        {/* Mobile-safe footer: subscription alert + brand — never scrolled off-screen */}
+        <div
+          className="shrink-0 flex flex-col border-t border-slate-200/80 max-lg:shadow-[0_-12px_28px_rgba(15,23,42,0.08)] max-lg:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-0"
+          style={{
+            borderColor:
+              "color-mix(in srgb, var(--sidebar-text) 14%, var(--sidebar-bg))",
+            backgroundColor: "var(--sidebar-bg)",
+          }}
+        >
         {/* Billing countdown — last 5 days (trial / plan) or expired */}
         {subscriptionSidebarAlert && (
-          <div className="shrink-0 px-3 pb-2">
+          <div className="shrink-0 px-3 pt-2 pb-1 max-lg:pt-2.5">
             <button
               type="button"
               onClick={() => navigate("/admin/subscription")}
@@ -1016,15 +1028,9 @@ export default function AdminLayout() {
         )}
 
         {/* Bottom brand — Powered by (flat, no logo plate / gradient) */}
-        <div
-          className="shrink-0 border-t border-slate-200/80 px-3 py-3"
-          style={{
-            borderColor:
-              "color-mix(in srgb, var(--sidebar-text) 14%, var(--sidebar-bg))",
-          }}
-        >
+        <div className="shrink-0 px-3 py-3 max-lg:py-2.5">
           <div
-            className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"}`}
+            className={`flex items-center max-lg:gap-3 ${isCollapsed ? "lg:justify-center lg:gap-0" : "gap-3"}`}
             title="Powered by Flow Diner"
           >
             <img
@@ -1034,44 +1040,45 @@ export default function AdminLayout() {
               height={56}
               className={
                 isCollapsed
-                  ? "h-10 w-10 shrink-0 object-contain opacity-90"
+                  ? "h-10 w-auto max-w-[140px] shrink-0 object-contain object-left opacity-90 max-lg:max-w-[140px] lg:h-10 lg:w-10 lg:max-w-none"
                   : "h-10 w-auto max-w-[140px] shrink-0 object-contain object-left opacity-90 sm:max-w-[160px]"
               }
               loading="lazy"
               decoding="async"
             />
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1">
-                <p
-                  className="text-[8px] font-bold uppercase tracking-[0.2em] leading-none"
-                  style={{
-                    color:
-                      "color-mix(in srgb, var(--sidebar-text) 48%, var(--sidebar-bg))",
-                  }}
-                >
-                  Powered by
-                </p>
-                <p
-                  className="mt-0.5 text-xs font-black tracking-tight"
-                  style={{ color: "var(--sidebar-text)" }}
-                >
-                  Flow Diner
-                </p>
-                <p
-                  className="mt-0.5 text-[9px] font-medium leading-snug"
-                  style={{
-                    color:
-                      "color-mix(in srgb, var(--sidebar-text) 42%, var(--sidebar-bg))",
-                  }}
-                >
-                  Restaurant platform
-                </p>
-              </div>
-            )}
+            <div
+              className={`min-w-0 flex-1 ${isCollapsed ? "max-lg:block lg:hidden" : "block"}`}
+            >
+              <p
+                className="text-[8px] font-bold uppercase tracking-[0.2em] leading-none"
+                style={{
+                  color:
+                    "color-mix(in srgb, var(--sidebar-text) 48%, var(--sidebar-bg))",
+                }}
+              >
+                Powered by
+              </p>
+              <p
+                className="mt-0.5 text-xs font-black tracking-tight"
+                style={{ color: "var(--sidebar-text)" }}
+              >
+                Flow Diner
+              </p>
+              <p
+                className="mt-0.5 text-[9px] font-medium leading-snug"
+                style={{
+                  color:
+                    "color-mix(in srgb, var(--sidebar-text) 42%, var(--sidebar-bg))",
+                }}
+              >
+                Restaurant platform
+              </p>
+            </div>
             {isCollapsed && (
-              <span className="sr-only">Powered by Flow Diner</span>
+              <span className="sr-only max-lg:hidden">Powered by Flow Diner</span>
             )}
           </div>
+        </div>
         </div>
       </aside>
 

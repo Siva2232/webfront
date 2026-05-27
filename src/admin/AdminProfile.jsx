@@ -17,6 +17,12 @@ import {
 } from "./orderBill/posPrinterSettings";
 import { directPrintTestPage } from "./orderBill/receiptPrint";
 import {
+  DEFAULT_KITCHEN_PRINTER,
+  loadKitchenPrinterForRestaurant,
+  saveKitchenPrinterSettings,
+} from "./kitchenBill/kitchenPrinterSettings";
+import { directPrintKitchenTestPage } from "./kitchenBill/kitchenPrint";
+import {
   User,
   Mail,
   Lock,
@@ -54,7 +60,9 @@ export default function AdminProfile() {
   const [receiptPhoneCountryCode, setReceiptPhoneCountryCode] = useState("+91");
   const [receiptPhoneDigits, setReceiptPhoneDigits] = useState("");
   const [posPrinter, setPosPrinter] = useState(DEFAULT_POS_PRINTER);
-  const [testingPrinter, setTestingPrinter] = useState(false);
+  const [kitchenPrinter, setKitchenPrinter] = useState(DEFAULT_KITCHEN_PRINTER);
+  const [testingInvoicePrinter, setTestingInvoicePrinter] = useState(false);
+  const [testingKitchenPrinter, setTestingKitchenPrinter] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -64,6 +72,8 @@ export default function AdminProfile() {
     const rid = getCurrentRestaurantId() || profile.restaurantId;
     if (!rid) return;
     setReceiptHeader(loadReceiptHeaderForRestaurant(rid));
+    setPosPrinter(loadPosPrinterForRestaurant(rid));
+    setKitchenPrinter(loadKitchenPrinterForRestaurant(rid));
   }, [profile.restaurantId]);
 
   useEffect(() => {
@@ -163,6 +173,7 @@ export default function AdminProfile() {
         }
         saveReceiptHeader(rid, receiptHeader);
         savePosPrinterSettings(rid, posPrinter);
+        saveKitchenPrinterSettings(rid, kitchenPrinter);
         toast.success("Profile, receipt header, and printer settings saved.");
       } else {
         toast.success("Profile updated — add restaurant context to save receipt header.");
@@ -490,9 +501,9 @@ export default function AdminProfile() {
                     <Printer size={20} />
                   </div>
                   <div>
-                    <h4 className="text-base font-bold text-slate-800">Thermal printer</h4>
+                    <h4 className="text-base font-bold text-slate-800">Invoice / POS printer</h4>
                     <p className="text-sm text-slate-500 mt-0.5">
-                      Direct print from Invoice Center (no browser print dialog). On this POS PC run{" "}
+                      Direct print from Invoice Center (no browser dialog). On this POS PC run{" "}
                       <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">
                         npm run print-bridge
                       </code>{" "}
@@ -537,28 +548,103 @@ export default function AdminProfile() {
                 </div>
                 <button
                   type="button"
-                  disabled={testingPrinter || !posPrinter.host?.trim()}
+                  disabled={testingInvoicePrinter || !posPrinter.host?.trim()}
                   onClick={async () => {
                     const rid = getCurrentRestaurantId() || profile.restaurantId;
                     if (rid) savePosPrinterSettings(rid, posPrinter);
-                    setTestingPrinter(true);
+                    setTestingInvoicePrinter(true);
                     try {
                       await directPrintTestPage();
-                      toast.success("Test page sent to printer");
+                      toast.success("Test page sent to invoice printer");
                     } catch (err) {
                       toast.error(err?.message || "Test print failed");
                     } finally {
-                      setTestingPrinter(false);
+                      setTestingInvoicePrinter(false);
                     }
                   }}
                   className="mt-4 flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  {testingPrinter ? (
+                  {testingInvoicePrinter ? (
                     <Loader2 className="animate-spin" size={14} />
                   ) : (
                     <Printer size={14} />
                   )}
-                  Test print
+                  Test invoice printer
+                </button>
+              </div>
+
+              <div className="pt-8 border-t border-slate-100">
+                <div className="flex items-start gap-3 mb-6">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
+                    <Printer size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-slate-800">Kitchen / KOT printer</h4>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      Separate printer for Kitchen Bill tickets. Use the same RestoPrint bridge; enter
+                      your kitchen printer&apos;s network IP (often different from the invoice printer).
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Kitchen printer IP
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={kitchenPrinter.host}
+                      onChange={(e) =>
+                        setKitchenPrinter({ ...kitchenPrinter, host: e.target.value.trim() })
+                      }
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                      placeholder="e.g. 192.168.1.51"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">
+                      Port
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={65535}
+                      value={kitchenPrinter.port}
+                      onChange={(e) =>
+                        setKitchenPrinter({
+                          ...kitchenPrinter,
+                          port: Number(e.target.value) || 9100,
+                        })
+                      }
+                      className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 transition-all font-mono"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={testingKitchenPrinter || !kitchenPrinter.host?.trim()}
+                  onClick={async () => {
+                    const rid = getCurrentRestaurantId() || profile.restaurantId;
+                    if (rid) saveKitchenPrinterSettings(rid, kitchenPrinter);
+                    setTestingKitchenPrinter(true);
+                    try {
+                      await directPrintKitchenTestPage();
+                      toast.success("Test page sent to kitchen printer");
+                    } catch (err) {
+                      toast.error(err?.message || "Kitchen test print failed");
+                    } finally {
+                      setTestingKitchenPrinter(false);
+                    }
+                  }}
+                  className="mt-4 flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {testingKitchenPrinter ? (
+                    <Loader2 className="animate-spin" size={14} />
+                  ) : (
+                    <Printer size={14} />
+                  )}
+                  Test kitchen printer
                 </button>
               </div>
 

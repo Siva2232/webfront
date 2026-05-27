@@ -94,12 +94,12 @@ export default function WaiterProducts() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="flex min-h-0 flex-col bg-slate-50 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm px-6 py-4">
-        <div className="max-w-7xl mx-auto flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white px-3 py-3 shadow-sm sm:px-6 sm:py-4">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <button 
                 onClick={() => navigate("/waiter/tables")}
                 className="p-2 hover:bg-slate-100 rounded-full transition-colors"
@@ -109,23 +109,25 @@ export default function WaiterProducts() {
               </button>
               <div>
                 <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500">Waiter Tool</h1>
-                <p className="text-lg font-black text-slate-900 uppercase leading-none">
+                <p className="truncate text-base font-black uppercase leading-none text-slate-900 sm:text-lg">
                   {isTakeaway ? "Takeaway Order" : `Table ${table || urlTable}`}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <button 
+                type="button"
                 onClick={() => navigate(`/waiter/order-summary?table=${table || urlTable}`)}
-                className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm hover:bg-slate-50 transition-colors"
+                className="rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition-colors hover:bg-slate-50 sm:p-3"
                 title="View Active Bill"
               >
                 <ReceiptText size={20} className="text-slate-600" />
               </button>
               <button 
+                type="button"
                 onClick={() => navigate("/waiter/panel")}
-                className="relative p-3 bg-slate-900 text-white rounded-2xl shadow-xl active:scale-95 transition-all"
+                className="relative rounded-2xl bg-slate-900 p-2.5 text-white shadow-xl transition-all active:scale-95 sm:p-3"
               >
                 <ShoppingCart size={20} />
                 {totalItems > 0 && (
@@ -167,8 +169,9 @@ export default function WaiterProducts() {
             </div>
             
             <button 
+              type="button"
               onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className="px-4 py-3 bg-white border border-slate-100 rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-tight shadow-sm"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-100 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-tight shadow-sm sm:gap-2 sm:px-4 sm:text-xs"
             >
               <Filter size={16} />
               Menu
@@ -203,7 +206,7 @@ export default function WaiterProducts() {
       </header>
 
       {/* Product List Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-8 pb-32">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3 py-6 pb-28 sm:px-6 sm:py-8 sm:pb-32">
         {totalMatches === 0 ? (
           <div className="text-center py-24 bg-white rounded-2xl border border-slate-100 shadow-sm">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
@@ -252,10 +255,11 @@ export default function WaiterProducts() {
 
       {/* Fixed bottom checkout indicator */}
       {totalItems > 0 && (
-         <div className="fixed bottom-6 inset-x-0 px-6 z-50">
+         <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-6 sm:px-6">
             <button 
+                type="button"
                 onClick={() => navigate("/waiter/panel")}
-                className="max-w-md mx-auto w-full bg-slate-900 text-white h-16 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex items-center justify-between px-8 hover:scale-[0.98] transition-transform active:scale-95"
+                className="mx-auto flex h-14 w-full max-w-md items-center justify-between rounded-3xl bg-slate-900 px-5 text-white shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] transition-transform hover:scale-[0.98] active:scale-95 sm:h-16 sm:px-8 font-black uppercase text-[10px] tracking-[0.15em] sm:text-xs sm:tracking-[0.2em]"
             >
                 <div className="flex items-center gap-4">
                     <span className="bg-orange-500 w-8 h-8 rounded-xl flex items-center justify-center text-[10px] shadow-lg border-2 border-slate-900/30">

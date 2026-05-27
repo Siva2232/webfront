@@ -1,0 +1,39 @@
+/* Waiter + Kitchen panels — mobile/tablet only (lg+ desktop unchanged) */
+@media (max-width: 1023px) {
+  [data-staff-panel] {
+    overflow-x: hidden;
+  }
+
+  [data-staff-panel] [data-staff-main] {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  /* Avoid nested min-h-screen forcing double scroll inside layout main */
+  [data-staff-panel] [data-staff-main] > * .min-h-screen:first-child {
+    min-height: auto;
+  }
+
+  [data-staff-panel] [data-staff-main] .max-w-7xl,
+  [data-staff-panel] [data-staff-main] .max-w-6xl,
+  [data-staff-panel] [data-staff-main] .max-w-3xl {
+    max-width: 100%;
+  }
+
+  [data-staff-panel] table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-staff-panel] .fixed.bottom-0,
+  [data-staff-panel] .fixed.bottom-6 {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  [data-staff-panel] .fixed.inset-x-0.px-6 {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}

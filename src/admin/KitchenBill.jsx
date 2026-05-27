@@ -1,28 +1,61 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useOrders } from "../context/OrderContext";
-import { useNavigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import { KitchenBillHeader } from "./kitchenBill/components/KitchenBillHeader";
 import KitchenBillEmptyState from "./kitchenBill/components/KitchenBillEmptyState";
 import KitchenBillCard from "./kitchenBill/components/KitchenBillCard";
+import { KitchenReceiptPrintModal } from "./kitchenBill/components/KitchenReceiptPrintModal";
 import { statusColors } from "./kitchenBill/utils/statusColors";
-import { printKitchenBillReceipt } from "./kitchenBill/utils/printKitchenBillReceipt";
 import { isTakeawayOrder } from "./kitchenBill/utils/isTakeawayOrder";
+import { getKitchenPrintMode, setKitchenPrintMode } from "./kitchenBill/kitchenPrintMode";
+import { directPrintKitchenReceipt } from "./kitchenBill/kitchenPrint";
+
+const KITCHEN_BILL_ROUTE = /^\/(admin\/kitchen-bill|kitchen\/bill)(\/|$)/;
 
 export default function KitchenBill({ embedded = false }) {
-  const { kitchenBills, fetchActiveKitchenBills, updateKitchenBillStatus, isLoading } = useOrders();
-  const navigate = useNavigate();
+  const { kitchenBills, fetchActiveKitchenBills, isLoading } = useOrders();
+  const location = useLocation();
   const [dateFilter, setDateFilter] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [takeawayOnly, setTakeawayOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [printMode, setPrintModeState] = useState(() => getKitchenPrintMode());
+  const [printPreviewKb, setPrintPreviewKb] = useState(null);
+  const printedIdsRef = useRef(new Set());
+  const printModeRef = useRef(printMode);
+  printModeRef.current = printMode;
   const PER_PAGE = 15;
 
-  // Active kitchen bills load globally from OrderContext (mount + socket + focus).
+  const handlePrintModeChange = useCallback((mode) => {
+    setPrintModeState(mode);
+    setKitchenPrintMode(mode);
+  }, []);
 
-  const handlePrintSingle = (billId) => {
-    const kb = kitchenBills.find((bill) => (bill._id || bill.id) === billId);
-    printKitchenBillReceipt({ kb });
-  };
+  const openPrintPreview = useCallback((kb) => {
+    if (!kb) return;
+    setPrintPreviewKb(kb);
+  }, []);
+
+  useEffect(() => {
+    const onCreated = (e) => {
+      if (printModeRef.current !== "auto") return;
+      if (!KITCHEN_BILL_ROUTE.test(location.pathname)) return;
+      const kb = e.detail;
+      const id = String(kb?._id || kb?.id || "");
+      if (!id || printedIdsRef.current.has(id)) return;
+      printedIdsRef.current.add(id);
+      if (printedIdsRef.current.size > 200) {
+        printedIdsRef.current = new Set([...printedIdsRef.current].slice(-100));
+      }
+      void directPrintKitchenReceipt(kb)
+        .then(() => toast.success("KOT sent to kitchen printer"))
+        .catch((err) => toast.error(err?.message || "Auto print failed"));
+    };
+    window.addEventListener("kitchenBillCreated", onCreated);
+    return () => window.removeEventListener("kitchenBillCreated", onCreated);
+  }, [location.pathname]);
 
   const sortedBills = [...kitchenBills].sort((a, b) => {
     if (a.status === "Served" && b.status !== "Served") return 1;
@@ -56,16 +89,41 @@ export default function KitchenBill({ embedded = false }) {
     return list;
   }, [sortedBills, dateFilter, takeawayOnly, customerSearch]);
 
-  useEffect(() => { setPage(1); }, [dateFilter, takeawayOnly, customerSearch]);
+  useEffect(() => {
+    setPage(1);
+  }, [dateFilter, takeawayOnly, customerSearch]);
   const totalPages = Math.max(1, Math.ceil(filteredBills.length / PER_PAGE));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const pagedBills = filteredBills.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
 
-  if ((!filteredBills || filteredBills.length === 0) && embedded) {
-    return <KitchenBillEmptyState embedded />;
-  }
-
   const recordCount = filteredBills?.length ?? 0;
+
+  const headerEl = (
+    <KitchenBillHeader
+      compact={embedded}
+      isLoading={isLoading}
+      recordCount={recordCount}
+      dateFilter={dateFilter}
+      onDateChange={setDateFilter}
+      onClearFilter={() => setDateFilter("")}
+      onRefresh={fetchActiveKitchenBills}
+      customerSearch={customerSearch}
+      onCustomerSearchChange={setCustomerSearch}
+      takeawayOnly={takeawayOnly}
+      onTakeawayOnlyChange={setTakeawayOnly}
+      printMode={printMode}
+      onPrintModeChange={handlePrintModeChange}
+    />
+  );
+
+  if ((!filteredBills || filteredBills.length === 0) && embedded) {
+    return (
+      <div className="relative pb-8 font-sans text-zinc-900">
+        {headerEl}
+        <KitchenBillEmptyState embedded />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -79,42 +137,36 @@ export default function KitchenBill({ embedded = false }) {
           aria-hidden
         />
       )}
-      {!embedded && (
-        <KitchenBillHeader
-          isLoading={isLoading}
-          recordCount={recordCount}
-          dateFilter={dateFilter}
-          onDateChange={setDateFilter}
-          onClearFilter={() => setDateFilter("")}
-          onRefresh={fetchActiveKitchenBills}
-          customerSearch={customerSearch}
-          onCustomerSearchChange={setCustomerSearch}
-          takeawayOnly={takeawayOnly}
-          onTakeawayOnlyChange={setTakeawayOnly}
-        />
-      )}
+      {headerEl}
 
       {(!filteredBills || filteredBills.length === 0) && !embedded ? (
         <KitchenBillEmptyState embedded={false} />
       ) : (
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-5 px-4 pb-12 pt-8 sm:grid-cols-2 md:px-8 lg:grid-cols-3 xl:grid-cols-4">
-        {pagedBills.map((kb, index) => {
-          const batchTotal = kb.batchTotal || kb.items?.reduce((sum, i) => sum + (i.price * i.qty), 0) || 0;
-          const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
-          const colors = statusColors[kb.status] || statusColors.Pending;
+        <main
+          className={`mx-auto grid max-w-7xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4 ${
+            embedded ? "px-3 pb-8 pt-4 sm:px-4 md:px-6" : "px-3 pb-12 pt-6 sm:px-4 sm:pt-8 md:px-8"
+          }`}
+        >
+          {pagedBills.map((kb, index) => {
+            const batchTotal =
+              kb.batchTotal ||
+              kb.items?.reduce((sum, i) => sum + i.price * i.qty, 0) ||
+              0;
+            const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
+            const colors = statusColors[kb.status] || statusColors.Pending;
 
-          return (
-            <KitchenBillCard
-              key={kb._id || index}
-              kb={kb}
-              colors={colors}
-              batchTotal={batchTotal}
-              billTimestamp={billTimestamp}
-              onPrint={() => handlePrintSingle(kb._id || index)}
-            />
-          );
-        })}
-      </main>
+            return (
+              <KitchenBillCard
+                key={kb._id || index}
+                kb={kb}
+                colors={colors}
+                batchTotal={batchTotal}
+                billTimestamp={billTimestamp}
+                onPrint={() => openPrintPreview(kb)}
+              />
+            );
+          })}
+        </main>
       )}
 
       {!embedded && filteredBills.length > PER_PAGE && (
@@ -138,6 +190,16 @@ export default function KitchenBill({ embedded = false }) {
           </button>
         </div>
       )}
+
+      <AnimatePresence>
+        {printPreviewKb && (
+          <KitchenReceiptPrintModal
+            kb={printPreviewKb}
+            onClose={() => setPrintPreviewKb(null)}
+            autoPrintOnOpen={printMode === "auto"}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

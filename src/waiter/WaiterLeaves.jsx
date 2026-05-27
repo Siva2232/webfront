@@ -43,7 +43,7 @@ export default function WaiterLeaves() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">My Leave Requests</h1>

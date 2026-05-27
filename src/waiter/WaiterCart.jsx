@@ -112,9 +112,9 @@ export default function WaiterCart() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans mb-32">
-       <nav className="sticky top-0 z-[60] bg-white border-b border-slate-100 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="flex flex-col bg-slate-50 font-sans pb-36 sm:pb-32">
+       <nav className="sticky top-0 z-[60] border-b border-slate-100 bg-white px-3 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-100 rounded-full">
             <ChevronLeft size={24} />
           </button>
@@ -126,7 +126,7 @@ export default function WaiterCart() {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pt-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-3 pt-6 sm:px-6 sm:pt-8">
         {cart.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag size={64} className="mx-auto text-slate-200 mb-4" />
@@ -137,8 +137,8 @@ export default function WaiterCart() {
           <div className="space-y-6">
             <div className="space-y-4">
               {cart.map((item) => (
-                <div key={item.cartKey} className="bg-white p-4 rounded-3xl border border-slate-100 flex gap-4">
-                  <img src={item.image} className="w-20 h-20 rounded-2xl object-cover" alt="" />
+                <div key={item.cartKey} className="flex gap-3 rounded-3xl border border-slate-100 bg-white p-3 sm:gap-4 sm:p-4">
+                  <img src={item.image} className="h-16 w-16 shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20" alt="" />
                   <div className="flex-1">
                     <h3 className="font-black text-slate-900 text-sm uppercase">{item.name}</h3>
                     <p className="text-xs text-slate-400 font-bold mt-1">₹{item.price} x {item.qty}</p>
@@ -181,7 +181,7 @@ export default function WaiterCart() {
       </main>
 
       {cart.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 p-6 bg-white border-t border-slate-100">
+        <div className="fixed inset-x-0 bottom-0 border-t border-slate-100 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6">
            <div className="max-w-md mx-auto">
             <div 
               ref={containerRef}

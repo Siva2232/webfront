@@ -59,9 +59,9 @@ export default function WaiterOrderSummary() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <nav className="sticky top-0 z-[60] bg-white border-b border-slate-100 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="flex flex-col bg-slate-50 font-sans">
+      <nav className="sticky top-0 z-[60] border-b border-slate-100 bg-white px-3 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-slate-100 rounded-full">
             <ChevronLeft size={24} />
           </button>
@@ -75,9 +75,9 @@ export default function WaiterOrderSummary() {
         </div>
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 pt-8 pb-32">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-3 pt-6 pb-28 sm:px-6 sm:pt-8 sm:pb-32">
         {currentOrders.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm px-10">
+          <div className="rounded-[2rem] border border-slate-100 bg-white px-4 py-16 text-center shadow-sm sm:rounded-[2.5rem] sm:px-10 sm:py-20">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
               <ShoppingBag size={24} className="text-slate-300" />
             </div>

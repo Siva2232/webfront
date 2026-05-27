@@ -5,6 +5,51 @@ import { TAKEAWAY_TABLE } from "./CartContext";
 import { getRestaurantIdForTenantData, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
+
+/** Invoice Center needs more than POS order list page size */
+const BILLS_FETCH_LIMIT = 20;
+const BILLS_CACHE_MAX = 250;
+
+function isBillPendingUpdate(bill, now = Date.now()) {
+  const pu = bill?._pendingUpdate;
+  if (pu == null) return false;
+  if (pu > now) return true;
+  return now - pu < 20_000;
+}
+
+function mergeBillsFromServer(prev, serverList) {
+  const now = Date.now();
+  const map = new Map();
+  const serverKeys = new Set();
+
+  for (const p of prev || []) {
+    const k = billIdentityKey(p);
+    if (k) map.set(k, p);
+  }
+
+  for (const s of serverList || []) {
+    const k = billIdentityKey(s);
+    if (!k) continue;
+    serverKeys.add(k);
+    const local = map.get(k);
+    if (local && isBillPendingUpdate(local, now)) continue;
+    map.set(k, s);
+  }
+
+  for (const p of prev || []) {
+    const k = billIdentityKey(p);
+    if (!k || serverKeys.has(k)) continue;
+    const status = normalizeStatus(p.status);
+    if (status !== "closed" || isBillPendingUpdate(p, now)) {
+      map.set(k, p);
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0)
+  );
+}
 import { computeGstFromSubtotal } from "../utils/gstRates";
 
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
@@ -67,6 +112,7 @@ export const OrderProvider = ({ children }) => {
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [billsLoading, setBillsLoading] = useState(false);
   const [billsReady, setBillsReady] = useState(() => {
     try {
       const cached = _tGet('cachedBills');
@@ -185,55 +231,45 @@ export const OrderProvider = ({ children }) => {
   };
 
   // fetch bills (invoices) - for admin billing screen
-  const fetchBills = useCallback(async () => {
+  const fetchBills = useCallback(async (options = {}) => {
+    const { force = false } = options;
     const token = localStorage.getItem("token");
     if (!token || isSuperAdminSession()) return;
     if (billsFetchDedupeRef.current) return billsFetchDedupeRef.current;
 
     const run = async () => {
-      const cachedData = _tGet('cachedBills');
-      if (Array.isArray(cachedData) && cachedData.length > 0) {
+      const cachedData = _tGet("cachedBills");
+      if (!force && Array.isArray(cachedData) && cachedData.length > 0) {
         setBills(cachedData);
         setBillsReady(true);
       }
 
+      setBillsLoading(true);
+
       try {
-        const { data } = await API.get(`/bills?limit=${LIST_FETCH_LIMIT}`);
+        const { data } = await API.get(`/bills?limit=${BILLS_FETCH_LIMIT}`);
         if (!Array.isArray(data)) {
+          console.warn("fetchBills: unexpected response", data);
           return;
         }
 
         setBills((prev) => {
-          const now = Date.now();
-          const prevMap = new Map();
-          prev.forEach((p) => {
-            const key = billIdentityKey(p);
-            if (key) prevMap.set(key, p);
-          });
-
-          data.forEach((serverBill) => {
-            const key = billIdentityKey(serverBill);
-            if (!key) return;
-
-            const localBill = prevMap.get(key);
-            if (localBill?._pendingUpdate && (now - localBill._pendingUpdate < 15000)) {
-              return;
-            }
-            prevMap.set(key, serverBill);
-          });
-
-          const final = Array.from(prevMap.values())
-            .sort((a,b) => new Date(b.billedAt || b.createdAt || 0) - new Date(a.billedAt || a.createdAt || 0))
-            .slice(0, 120);
-
-          try { _tSet('cachedBills', final); } catch (_) {}
-          return final;
+          const merged = mergeBillsFromServer(prev, data).slice(0, BILLS_CACHE_MAX);
+          try {
+            _tSet("cachedBills", merged);
+          } catch (_) {}
+          return merged;
         });
+        setBillsReady(true);
       } catch (error) {
         console.error("fetchBills err:", error);
+        if (Array.isArray(cachedData) && cachedData.length > 0) {
+          setBills(cachedData);
+          setBillsReady(true);
+        }
+        throw error;
       } finally {
-        setBillsReady(true);
-        setIsLoading(false);
+        setBillsLoading(false);
       }
     };
 
@@ -260,7 +296,7 @@ export const OrderProvider = ({ children }) => {
           paymentStatus: "paid", 
           paymentSessions: updatedSessions,
           status: b.status === "Closed" ? "Closed" : "Paid",
-          _pendingUpdate: Date.now() + 10000 // Flag prevents socket/poll from reverting for 10s
+          _pendingUpdate: Date.now(),
         };
       });
       // persist optimistic state to localStorage so a refresh keeps it
@@ -629,8 +665,10 @@ export const OrderProvider = ({ children }) => {
       const r = localStorage.getItem('restaurantId');
       if (r) socket.emit('joinRoom', { restaurantId: r, token: localStorage.getItem('token') || undefined });
       const t = localStorage.getItem("token");
-      // Reconnect sync: one light orders pull (bills/kitchen load on their routes)
-      if (t) fetchOrders();
+      if (t) {
+        fetchOrders();
+        fetchBills();
+      }
     });
 
     socket.on("connect_error", (err) => {
@@ -686,10 +724,11 @@ export const OrderProvider = ({ children }) => {
           next = [bill, ...prev];
         }
         try {
-          _tSet("cachedBills", next.slice(0, 100));
+          _tSet("cachedBills", next.slice(0, BILLS_CACHE_MAX));
         } catch (_) {}
         return next;
       });
+      setBillsReady(true);
     });
 
     // listen for "Add More Items" so admin panel can show notification
@@ -715,8 +754,8 @@ export const OrderProvider = ({ children }) => {
         
         // Merge logic: protect local pending updates from being overwritten by 
         // stale socket messages for 15 seconds (matching markBillPaid logic)
-        if (exists?._pendingUpdate && (Date.now() - exists._pendingUpdate < 15000)) {
-           return prev;
+        if (isBillPendingUpdate(exists)) {
+          return prev;
         }
 
         let next;
@@ -730,9 +769,10 @@ export const OrderProvider = ({ children }) => {
           next = [updatedBill, ...prev];
         }
 
-        try { _tSet('cachedBills', next.slice(0, 100)); } catch (_) {}
+        try { _tSet("cachedBills", next.slice(0, BILLS_CACHE_MAX)); } catch (_) {}
         return next;
       });
+      setBillsReady(true);
     });
 
     // Handle bill deletions
@@ -752,6 +792,11 @@ export const OrderProvider = ({ children }) => {
         const parsed = _tGet('cachedKitchenBills');
         _tSet('cachedKitchenBills', [kitchenBill, ...(Array.isArray(parsed) ? parsed : [])]);
       } catch (e) {}
+      try {
+        window.dispatchEvent(
+          new CustomEvent("kitchenBillCreated", { detail: kitchenBill })
+        );
+      } catch (_) {}
     });
 
     socket.on("kitchenBillUpdated", (updatedKitchenBill) => {
@@ -840,9 +885,10 @@ export const OrderProvider = ({ children }) => {
         setOrders(Array.isArray(cachedOrders) ? cachedOrders : []);
         setBills(Array.isArray(cachedBills) ? cachedBills : []);
         setKitchenBills(Array.isArray(cachedKB) ? cachedKB : []);
-        setBillsReady(false);
+        setBillsReady(Array.isArray(cachedBills) && cachedBills.length > 0);
         lastWindowFocusFetchRef.current = 0;
         fetchOrders();
+        fetchBills({ force: true });
         return;
       }
 
@@ -874,6 +920,7 @@ export const OrderProvider = ({ children }) => {
         markBillPaid,
         closeBill,
         isLoading,
+        billsLoading,
         billsReady,
       }}
     >

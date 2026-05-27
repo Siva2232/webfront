@@ -22,15 +22,19 @@ export const BillCard = React.memo(function BillCard({
   onMarkPaid,
 }) {
   const {
+    grandTotal,
     unpaidAmount: rawUnpaidAmount,
     hasUnpaidCod: rawHasUnpaidCod,
     allCodPaid: rawAllCodPaid,
   } = useMemo(() => computeBillStats(order), [order]);
 
   const isActuallyClosed = isClosed || order.status === "Closed";
+  /** Actions use true unpaid; display shows bill total when settled so UI never shows ₹0 for a real bill */
   const unpaidAmount = isMarkedPaid || isActuallyClosed ? 0 : rawUnpaidAmount;
   const hasUnpaidCod = isMarkedPaid || isActuallyClosed ? false : rawHasUnpaidCod;
   const allCodPaid = isMarkedPaid || isActuallyClosed ? true : rawAllCodPaid;
+  const settledForDisplay = isMarkedPaid || isActuallyClosed;
+  const displayTotal = settledForDisplay ? grandTotal : rawUnpaidAmount;
 
   const ts = order.createdAt || order.billedAt;
   const orderTimestamp = ts ? new Date(ts) : new Date();
@@ -152,10 +156,19 @@ export const BillCard = React.memo(function BillCard({
 
         {/* Total Section */}
         <div className="mx-4 mb-4 p-4 bg-slate-900 text-white rounded-2xl mt-auto">
-          <div className="flex justify-between items-center">
-            <span className="uppercase text-xs tracking-widest text-slate-400">Total Due</span>
-            <span className="text-2xl font-bold tracking-tight">
-              ₹{unpaidAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          <div className="flex justify-between items-center gap-2">
+            <div className="min-w-0">
+              <span className="block uppercase text-xs tracking-widest text-slate-400">
+                {settledForDisplay ? "Bill total" : "Total Due"}
+              </span>
+              {settledForDisplay && (
+                <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-emerald-400/90">
+                  Settled
+                </span>
+              )}
+            </div>
+            <span className="text-2xl font-bold tracking-tight shrink-0 tabular-nums">
+              ₹{displayTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
