@@ -60,6 +60,8 @@ import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 /** Customer menu brand — `webfront/src/assets/flowdiner-mini-logo.png` */
 import flowDinerBrandLogo from "../assets/flowdiner-mini-logo.png";
+import KitchenAutoPrintListener from "./kitchenBill/KitchenAutoPrintListener";
+import PrinterSettingsHydrator from "./printing/PrinterSettingsHydrator";
 
 /** Match `/admin/{segment}` exactly or a nested route — avoids `includes()` bugs (e.g. `bill` vs `manual-bill`). */
 function adminChildPathActive(pathname, childPath) {
@@ -619,6 +621,8 @@ export default function AdminLayout() {
         fontFamily: `'${branding.fontFamily || "Inter"}', sans-serif`,
       }}
     >
+      <KitchenAutoPrintListener />
+      <PrinterSettingsHydrator />
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobileOpen && (

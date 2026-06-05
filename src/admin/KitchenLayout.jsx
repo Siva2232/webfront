@@ -21,6 +21,8 @@ import toast from "react-hot-toast";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import "../styles/staff-panel-mobile.css";
+import KitchenAutoPrintListener from "./kitchenBill/KitchenAutoPrintListener";
+import PrinterSettingsHydrator from "./printing/PrinterSettingsHydrator";
 
 export default function KitchenLayout() {
   const location = useLocation();
@@ -108,6 +110,8 @@ export default function KitchenLayout() {
       data-staff-panel
       className="min-h-screen bg-[#F8FAFC] flex font-sans selection:bg-indigo-100 selection:text-indigo-700"
     >
+      <KitchenAutoPrintListener />
+      <PrinterSettingsHydrator />
       {/* Mobile overlay */}
       <AnimatePresence>
         {isMobileOpen && (

@@ -23,6 +23,10 @@ import {
 } from "./kitchenBill/kitchenPrinterSettings";
 import { directPrintKitchenTestPage } from "./kitchenBill/kitchenPrint";
 import {
+  fetchPrinterSettingsFromServer,
+  savePrinterSettingsToServer,
+} from "./printing/printerSettingsSync";
+import {
   User,
   Mail,
   Lock,
@@ -126,6 +130,19 @@ export default function AdminProfile() {
         } catch (_) {
           // Branding is optional; local receipt cache still applies
         }
+        try {
+          const synced = await fetchPrinterSettingsFromServer(rid);
+          if (synced?.invoice) {
+            setPosPrinter(synced.invoice);
+            savePosPrinterSettings(rid, synced.invoice);
+          }
+          if (synced?.kitchen) {
+            setKitchenPrinter(synced.kitchen);
+            saveKitchenPrinterSettings(rid, synced.kitchen);
+          }
+        } catch (_) {
+          // Server printer settings optional; local cache still applies
+        }
       }
     } catch (error) {
       toast.error("Failed to load profile");
@@ -172,6 +189,15 @@ export default function AdminProfile() {
           return;
         }
         saveReceiptHeader(rid, receiptHeader);
+        try {
+          await savePrinterSettingsToServer(rid, {
+            invoice: posPrinter,
+            kitchen: kitchenPrinter,
+          });
+        } catch (err) {
+          toast.error(err.response?.data?.message || "Printer settings could not be saved to server");
+          return;
+        }
         savePosPrinterSettings(rid, posPrinter);
         saveKitchenPrinterSettings(rid, kitchenPrinter);
         toast.success("Profile, receipt header, and printer settings saved.");

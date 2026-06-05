@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useOrders } from "../context/OrderContext";
 import { AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import { KitchenBillHeader } from "./kitchenBill/components/KitchenBillHeader";
 import KitchenBillEmptyState from "./kitchenBill/components/KitchenBillEmptyState";
 import KitchenBillCard from "./kitchenBill/components/KitchenBillCard";
@@ -10,22 +8,15 @@ import { KitchenReceiptPrintModal } from "./kitchenBill/components/KitchenReceip
 import { statusColors } from "./kitchenBill/utils/statusColors";
 import { isTakeawayOrder } from "./kitchenBill/utils/isTakeawayOrder";
 import { getKitchenPrintMode, setKitchenPrintMode } from "./kitchenBill/kitchenPrintMode";
-import { directPrintKitchenReceipt } from "./kitchenBill/kitchenPrint";
-
-const KITCHEN_BILL_ROUTE = /^\/(admin\/kitchen-bill|kitchen\/bill)(\/|$)/;
 
 export default function KitchenBill({ embedded = false }) {
   const { kitchenBills, fetchActiveKitchenBills, isLoading } = useOrders();
-  const location = useLocation();
   const [dateFilter, setDateFilter] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [takeawayOnly, setTakeawayOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [printMode, setPrintModeState] = useState(() => getKitchenPrintMode());
   const [printPreviewKb, setPrintPreviewKb] = useState(null);
-  const printedIdsRef = useRef(new Set());
-  const printModeRef = useRef(printMode);
-  printModeRef.current = printMode;
   const PER_PAGE = 15;
 
   const handlePrintModeChange = useCallback((mode) => {
@@ -37,25 +28,6 @@ export default function KitchenBill({ embedded = false }) {
     if (!kb) return;
     setPrintPreviewKb(kb);
   }, []);
-
-  useEffect(() => {
-    const onCreated = (e) => {
-      if (printModeRef.current !== "auto") return;
-      if (!KITCHEN_BILL_ROUTE.test(location.pathname)) return;
-      const kb = e.detail;
-      const id = String(kb?._id || kb?.id || "");
-      if (!id || printedIdsRef.current.has(id)) return;
-      printedIdsRef.current.add(id);
-      if (printedIdsRef.current.size > 200) {
-        printedIdsRef.current = new Set([...printedIdsRef.current].slice(-100));
-      }
-      void directPrintKitchenReceipt(kb)
-        .then(() => toast.success("KOT sent to kitchen printer"))
-        .catch((err) => toast.error(err?.message || "Auto print failed"));
-    };
-    window.addEventListener("kitchenBillCreated", onCreated);
-    return () => window.removeEventListener("kitchenBillCreated", onCreated);
-  }, [location.pathname]);
 
   const sortedBills = [...kitchenBills].sort((a, b) => {
     if (a.status === "Served" && b.status !== "Served") return 1;

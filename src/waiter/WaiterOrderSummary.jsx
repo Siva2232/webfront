@@ -1,27 +1,30 @@
 import { useOrders } from "../context/OrderContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { 
   ChevronLeft, Clock, ShoppingBag, 
   MapPin, CheckCircle2, AlertCircle, RefreshCcw, 
-  ReceiptText, ArrowRight, MessageSquare, UtensilsCrossed, Plus 
+  ReceiptText, ArrowRight, MessageSquare, UtensilsCrossed, Plus, Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import { directPrintKitchenReceipt } from "../admin/kitchenBill/kitchenPrint";
 
 export default function WaiterOrderSummary() {
-  const { orders, fetchOrders, fetchTableOrders } = useOrders();
+  const { orders, kitchenBills, fetchOrders, fetchTableOrders, fetchActiveKitchenBills } = useOrders();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tableId = searchParams.get("table");
+  const [printingKot, setPrintingKot] = useState(false);
 
   // On mount: fetch this table's specific orders from server
   useEffect(() => {
     if (!tableId) return;
-    // Fetch both the global list and the specific table orders
     fetchOrders();
     fetchTableOrders(tableId);
-  }, [tableId]);
+    fetchActiveKitchenBills();
+  }, [tableId, fetchOrders, fetchTableOrders, fetchActiveKitchenBills]);
 
   // Use memoization to avoid filtering logic on every single re-render
   const currentOrders = useMemo(() => {
@@ -39,6 +42,37 @@ export default function WaiterOrderSummary() {
       return isMatchingTable && isActiveStatus;
     });
   }, [orders, tableId]);
+
+  const latestKitchenBill = useMemo(() => {
+    if (!tableId || !kitchenBills?.length) return null;
+    const target = String(tableId);
+    const orderIds = new Set(currentOrders.map((o) => String(o._id || o.id || "")));
+    const matches = kitchenBills.filter((kb) => {
+      const kbTable = String(kb.table ?? "");
+      const orderRef = String(kb.orderRef ?? "");
+      return kbTable === target || orderIds.has(orderRef);
+    });
+    if (!matches.length) return null;
+    return [...matches].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    )[0];
+  }, [kitchenBills, tableId, currentOrders]);
+
+  const handlePrintKot = useCallback(async () => {
+    if (!latestKitchenBill) {
+      toast.error("No kitchen ticket found for this table yet.");
+      return;
+    }
+    setPrintingKot(true);
+    try {
+      await directPrintKitchenReceipt(latestKitchenBill);
+      toast.success("KOT sent to kitchen printer");
+    } catch (err) {
+      toast.error(err?.message || "Failed to print KOT");
+    } finally {
+      setPrintingKot(false);
+    }
+  }, [latestKitchenBill]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -161,11 +195,18 @@ export default function WaiterOrderSummary() {
                 <Plus size={18} strokeWidth={3} />
                 Add More Items
             </button>
-            <button 
-                className="w-16 h-16 bg-white border border-slate-100 rounded-3xl flex items-center justify-center shadow-lg hover:bg-slate-50 transition-colors"
+            <button
+                type="button"
+                onClick={() => void handlePrintKot()}
+                disabled={printingKot}
+                className="w-16 h-16 bg-white border border-slate-100 rounded-3xl flex items-center justify-center shadow-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
                 title="Print KOT"
             >
-                <ReceiptText size={22} className="text-slate-600" />
+                {printingKot ? (
+                  <Loader2 size={22} className="text-slate-600 animate-spin" />
+                ) : (
+                  <ReceiptText size={22} className="text-slate-600" />
+                )}
             </button>
          </div>
        )}
