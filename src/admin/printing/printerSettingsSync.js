@@ -86,3 +86,19 @@ export async function savePrinterSettingsToServer(restaurantId, { invoice, kitch
   });
   return data?.printerSettings ?? data;
 }
+
+/** Fetch how many print connectors are online for this restaurant. */
+export async function fetchPrintConnectorStatus(restaurantId) {
+  const rid = (restaurantId || getCurrentRestaurantId() || "").toUpperCase().trim();
+  if (!rid) return { online: false, onlineCount: 0 };
+
+  try {
+    const { data } = await API.get(`/restaurants/${rid}/print-connector-status`);
+    return {
+      online: Boolean(data?.online),
+      onlineCount: Number(data?.onlineCount) || 0,
+    };
+  } catch (_) {
+    return { online: false, onlineCount: 0 };
+  }
+}

@@ -25,6 +25,7 @@ import { directPrintKitchenTestPage } from "./kitchenBill/kitchenPrint";
 import {
   fetchPrinterSettingsFromServer,
   savePrinterSettingsToServer,
+  fetchPrintConnectorStatus,
 } from "./printing/printerSettingsSync";
 import {
   User,
@@ -67,6 +68,7 @@ export default function AdminProfile() {
   const [kitchenPrinter, setKitchenPrinter] = useState(DEFAULT_KITCHEN_PRINTER);
   const [testingInvoicePrinter, setTestingInvoicePrinter] = useState(false);
   const [testingKitchenPrinter, setTestingKitchenPrinter] = useState(false);
+  const [connectorStatus, setConnectorStatus] = useState({ online: false, onlineCount: 0 });
 
   useEffect(() => {
     fetchProfile();
@@ -78,6 +80,7 @@ export default function AdminProfile() {
     setReceiptHeader(loadReceiptHeaderForRestaurant(rid));
     setPosPrinter(loadPosPrinterForRestaurant(rid));
     setKitchenPrinter(loadKitchenPrinterForRestaurant(rid));
+    void fetchPrintConnectorStatus(rid).then(setConnectorStatus);
   }, [profile.restaurantId]);
 
   useEffect(() => {
@@ -522,6 +525,41 @@ export default function AdminProfile() {
               </div>
 
               <div className="pt-8 border-t border-slate-100">
+                <div
+                  className={`mb-6 flex items-start gap-3 rounded-2xl border px-4 py-3 ${
+                    connectorStatus.online
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-amber-200 bg-amber-50"
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                      connectorStatus.online ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm font-bold ${
+                        connectorStatus.online ? "text-emerald-900" : "text-amber-900"
+                      }`}
+                    >
+                      {connectorStatus.online
+                        ? `${connectorStatus.onlineCount} print connector(s) online`
+                        : "Print connector offline"}
+                    </p>
+                    <p
+                      className={`mt-1 text-xs leading-relaxed ${
+                        connectorStatus.online ? "text-emerald-800" : "text-amber-800"
+                      }`}
+                    >
+                      {connectorStatus.online
+                        ? "Mobile and tablet staff can print bills. Any tablet may send jobs; 1–3 tablets can run RestoPrint in the background."
+                        : "For mobile/tablet printing, start RestoPrint on at least one restaurant tablet (see docs/mobile-tablet-printing.md)."}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-3 mb-6">
                   <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
                     <Printer size={20} />
@@ -529,11 +567,12 @@ export default function AdminProfile() {
                   <div>
                     <h4 className="text-base font-bold text-slate-800">Invoice / POS printer</h4>
                     <p className="text-sm text-slate-500 mt-0.5">
-                      Direct print from Invoice Center (no browser dialog). On this POS PC run{" "}
+                      Direct print from Invoice Center (no browser dialog). On a POS PC or counter
+                      tablet run{" "}
                       <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono">
                         npm run print-bridge
                       </code>{" "}
-                      in the webfront folder, then enter your printer&apos;s network IP.
+                      in the print-bridge folder, then enter your printer&apos;s network IP.
                     </p>
                   </div>
                 </div>

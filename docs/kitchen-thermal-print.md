@@ -4,7 +4,7 @@ Kitchen Bill (KOT) uses the same direct-print stack as Invoice Center, but targe
 
 ## Requirements
 
-1. **Print Connector** running on the restaurant POS PC (required for mobile + hosted webapp):
+1. **Print Connector** running on at least one restaurant device (POS PC or counter tablet — required for mobile + hosted webapp):
 
    ```bash
    cd print-bridge
@@ -15,7 +15,7 @@ Kitchen Bill (KOT) uses the same direct-print stack as Invoice Center, but targe
    - `RestoPrint bridge listening on http://127.0.0.1:17881`
    - `Print Connector online for restaurant RESTO001`
 
-   See `print-bridge/print-bridge/PRINT_BRIDGE_INSTALLATION.md` for token setup.
+   See `print-bridge/print-bridge/PRINT_BRIDGE_INSTALLATION.md` for token setup. For **multi-tablet** restaurants (no desktop PC), see [`mobile-tablet-printing.md`](mobile-tablet-printing.md).
 
 2. **Two printers** (recommended setup):
    - **Invoice / POS printer** — customer bills from Invoice Center
@@ -38,17 +38,19 @@ Set in Netlify / `.env` (default: `auto`):
 
 | Mode | Behavior |
 |------|----------|
-| `auto` | Desktop: try local bridge first, then cloud relay. Mobile: cloud relay directly. |
-| `cloud` | Always send jobs via `POST /api/print-jobs` → Print Connector on POS PC. |
-| `local` | Same PC only — `http://127.0.0.1:17881/print` (no mobile). |
+| `auto` | Desktop: try local bridge first, then cloud relay. Mobile: cloud relay (or LAN bridge if `bridgeUrl` set). |
+| `cloud` | Always send jobs via `POST /api/print-jobs` → any online print connector. |
+| `local` | Same PC/tablet only — `http://127.0.0.1:17881/print` (or LAN `bridgeUrl`). |
 
 ```
 Mobile / Netlify webapp
   → POST /api/print-jobs (authenticated)
   → Render backend
-  → Socket.IO → Print Connector on POS PC
+  → Socket.IO → Print Connector (any online tablet/PC)
   → LAN thermal printer
 ```
+
+Admin Profile shows **connector online count**. Queued jobs print when any connector comes online.
 
 ## Kitchen Bill — Auto vs Manual
 
@@ -69,8 +71,8 @@ Kitchen printing does **not** use `window.print()` or Chrome’s print preview. 
 
 | Issue | Fix |
 |-------|-----|
-| “Cannot reach RestoPrint” | Run `npm run print-bridge` in `print-bridge` on the POS PC. |
-| “Print Connector is offline (job queued)” | Keep print-bridge running; verify `RESTO_CONNECTOR_TOKEN` matches Render `PRINT_CONNECTOR_TOKEN`. |
+| “Cannot reach RestoPrint” | Run `npm run print-bridge` on a POS PC or restaurant tablet. |
+| “Print Connector is offline (job queued)” | Start connector on any tablet; jobs queue and print when a connector is online. |
 | “Kitchen printer IP not set” | Admin Profile → Kitchen / KOT printer → Save Changes. |
 | “Please log in again to print” | Session expired; log in and retry. |
 | Auto print not firing | Enable **Auto print** on Kitchen Bill header. |

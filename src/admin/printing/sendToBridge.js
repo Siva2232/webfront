@@ -25,6 +25,19 @@ function isProbablyMobile() {
   }
 }
 
+/** True when bridge URL points to a LAN device (not this device's localhost). */
+export function isLanBridgeUrl(url) {
+  const raw = String(url || "").trim().toLowerCase();
+  if (!raw) return false;
+  try {
+    const host = new URL(raw).hostname;
+    if (host === "127.0.0.1" || host === "localhost" || host === "::1") return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function mapCloudError(err) {
   const status = err?.response?.status;
   const msg = err?.response?.data?.message || err?.message || "";
@@ -34,6 +47,9 @@ function mapCloudError(err) {
   if (msg) return new Error(msg);
   return new Error("Print relay failed. Check internet and try again.");
 }
+
+const CONNECTOR_OFFLINE_MSG =
+  "Print connector is offline (job queued). Start RestoPrint on any restaurant tablet — see Admin Profile → Printing setup.";
 
 async function sendViaCloudRelay(text, settings, options = {}) {
   const label = options.printerLabel || "thermal";
@@ -53,9 +69,7 @@ async function sendViaCloudRelay(text, settings, options = {}) {
     });
 
     if (data?.queued) {
-      throw new Error(
-        "Print Connector is offline for this restaurant (job queued). Start the connector on the POS PC and try again."
-      );
+      throw new Error(CONNECTOR_OFFLINE_MSG);
     }
     return data;
   } catch (err) {
@@ -105,6 +119,29 @@ async function sendViaLocalBridge(text, settings) {
   }
 }
 
+function localBridgeError(err, isMobile) {
+  if (err?.name === "AbortError") {
+    return new Error(
+      isMobile
+        ? "Print timed out. Check the tablet running RestoPrint is on the same Wi‑Fi."
+        : "Print timed out. Start RestoPrint on this PC: npm run print-bridge (in print-bridge folder)."
+    );
+  }
+  const msg = err?.message || "";
+  if (
+    msg.includes("Failed to fetch") ||
+    msg.includes("NetworkError") ||
+    msg.includes("Load failed")
+  ) {
+    return new Error(
+      isMobile
+        ? "Cannot reach RestoPrint on your restaurant network. Start the connector on a tablet (Admin Profile → Printing setup)."
+        : "Cannot reach RestoPrint on this computer. Run: npm run print-bridge — then try again."
+    );
+  }
+  return err;
+}
+
 /**
  * Send ESC/POS payload to RestoPrint bridge → network thermal printer.
  * @param {string} text
@@ -121,36 +158,46 @@ export async function sendToBridge(text, settings, options = {}) {
   }
 
   const mode = getPrintMode(settings);
+  const mobile = isProbablyMobile();
+  const lanBridge = isLanBridgeUrl(settings?.bridgeUrl || bridgeBaseUrl(settings));
 
-  if (mode === "cloud" || (mode === "auto" && isProbablyMobile())) {
+  if (mode === "cloud") {
     return await sendViaCloudRelay(text, settings, options);
   }
 
-  if (mode === "local" || mode === "auto") {
+  if (mode === "local") {
     try {
       return await sendViaLocalBridge(text, settings);
     } catch (err) {
-      if (mode === "auto" && isLocalBridgeUnreachable(err)) {
-        return await sendViaCloudRelay(text, settings, options);
-      }
-      if (err?.name === "AbortError") {
-        throw new Error(
-          "Print timed out. Start RestoPrint on this PC: npm run print-bridge (in webfront folder)."
-        );
-      }
-      const msg = err?.message || "";
-      if (
-        msg.includes("Failed to fetch") ||
-        msg.includes("NetworkError") ||
-        msg.includes("Load failed")
-      ) {
-        throw new Error(
-          "Cannot reach RestoPrint on this computer. Run: npm run print-bridge — then try again."
-        );
-      }
-      throw err;
+      throw localBridgeError(err, mobile);
     }
   }
 
-  return await sendViaCloudRelay(text, settings, options);
+  // auto mode
+  const tryLocalFirst = !mobile || lanBridge;
+
+  if (tryLocalFirst) {
+    try {
+      return await sendViaLocalBridge(text, settings);
+    } catch (err) {
+      if (isLocalBridgeUnreachable(err)) {
+        return await sendViaCloudRelay(text, settings, options);
+      }
+      throw localBridgeError(err, mobile);
+    }
+  }
+
+  // Mobile without LAN bridge URL: cloud relay directly
+  try {
+    return await sendViaCloudRelay(text, settings, options);
+  } catch (err) {
+    if (lanBridge && isLocalBridgeUnreachable(err)) {
+      try {
+        return await sendViaLocalBridge(text, settings);
+      } catch (localErr) {
+        throw localBridgeError(localErr, mobile);
+      }
+    }
+    throw err;
+  }
 }

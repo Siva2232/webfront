@@ -116,7 +116,16 @@ export function ThermalReceiptPrintModal({
           {printState === "error" && (
             <>
               <AlertCircle size={14} className="shrink-0" />
-              <span className="min-w-0">{printError}</span>
+              <span className="min-w-0">
+                {printError}
+                {(printError.includes("connector offline") ||
+                  printError.includes("job queued") ||
+                  printError.includes("RestoPrint")) && (
+                  <span className="mt-1 block font-medium normal-case tracking-normal text-red-700/90">
+                    Tip: open Admin Profile → Printing and start RestoPrint on a restaurant tablet.
+                  </span>
+                )}
+              </span>
             </>
           )}
           {printState === "idle" &&
