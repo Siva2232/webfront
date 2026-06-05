@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   CalendarCheck2, Search, Loader2,
   CheckCircle2, Clock, Users, Save,
   ChevronLeft, ChevronRight, RefreshCw, MapPin, Navigation,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon, Cloud, CloudOff
 } from "lucide-react";
-import { getAllStaff, getAttendance, markAttendance, getAttendanceLocation, setAttendanceLocation } from "../../api/hrApi";
+import { getAllStaff, getAttendance, markAttendance, updateAttendance, getAttendanceLocation, setAttendanceLocation } from "../../api/hrApi";
 import toast from "react-hot-toast";
 import { STATUS_MAP } from "./attendance/utils/statusMap";
+import AttendanceCalendarTab from "./attendance/AttendanceCalendarTab";
 import StickyPageHeader from "../components/StickyPageHeader";
 
 export default function AdminAttendance() {
@@ -22,6 +23,15 @@ export default function AdminAttendance() {
   const [locConfig, setLocConfig] = useState({ lat: "", lng: "", radius: 100, label: "" });
   const [locConfigSaving, setLocConfigSaving] = useState(false);
   const [fetchingGPS, setFetchingGPS] = useState(false);
+  const [syncState, setSyncState] = useState("idle"); // idle | syncing | synced | error
+
+  const attendanceMapRef = useRef({});
+  const syncTimersRef = useRef({});
+  const syncingIdsRef = useRef(new Set());
+  const dirtyIdsRef = useRef(new Set());
+  const syncStateTimerRef = useRef(null);
+
+  attendanceMapRef.current = attendanceMap;
 
   const loadStaff = useCallback(async () => {
     try {
@@ -32,17 +42,36 @@ export default function AdminAttendance() {
     }
   }, []);
 
-  const loadAttendance = useCallback(async (d) => {
-    setLoading(true);
+  const mergeRecordIntoMap = useCallback((map, record) => {
+    const sid = record.staff?._id || record.staff;
+    if (!sid) return map;
+    return {
+      ...map,
+      [sid]: {
+        _id: record._id,
+        status: record.status,
+        checkIn: record.checkIn || "",
+        checkOut: record.checkOut || "",
+        note: record.note || "",
+        selfie: record.selfie,
+        location: record.location,
+      },
+    };
+  }, []);
+
+  const loadAttendance = useCallback(async (d, { silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
-      const res = await getAttendance({ date: d });
+      const res = await getAttendance({ date: d, limit: 300 });
       const list = res.data?.records || res.data || [];
       setAttendance(list);
 
-      const map = {};
-      list.forEach(a => {
-        const sid = a.staff?._id || a.staff;
-        if (sid) {
+      setAttendanceMap((prev) => {
+        const map = { ...prev };
+        list.forEach((a) => {
+          const sid = a.staff?._id || a.staff;
+          if (!sid) return;
+          if (dirtyIdsRef.current.has(String(sid)) || syncingIdsRef.current.has(String(sid))) return;
           map[sid] = {
             _id: a._id,
             status: a.status,
@@ -50,21 +79,107 @@ export default function AdminAttendance() {
             checkOut: a.checkOut || "",
             note: a.note || "",
             selfie: a.selfie,
-            location: a.location
+            location: a.location,
           };
-        }
+        });
+        return map;
       });
-      setAttendanceMap(map);
     } catch (err) {
-      toast.error("Failed to load attendance records");
+      if (!silent) toast.error("Failed to load attendance records");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
+  const setSyncIndicator = useCallback((state) => {
+    setSyncState(state);
+    if (syncStateTimerRef.current) clearTimeout(syncStateTimerRef.current);
+    if (state === "synced") {
+      syncStateTimerRef.current = setTimeout(() => setSyncState("idle"), 2500);
+    }
+  }, []);
+
+  const persistStaff = useCallback(async (staffId) => {
+    const sid = String(staffId);
+    const entry = attendanceMapRef.current[sid] || attendanceMapRef.current[staffId];
+    if (!entry) return;
+
+    syncingIdsRef.current.add(sid);
+    setSyncIndicator("syncing");
+
+    const payload = {
+      staff: staffId,
+      date,
+      status: entry.status || "absent",
+      checkIn: entry.checkIn || undefined,
+      checkOut: entry.checkOut || undefined,
+      note: entry.note || undefined,
+    };
+
+    try {
+      let record;
+      if (entry._id) {
+        const res = await updateAttendance(entry._id, payload);
+        record = res.data;
+      } else {
+        const res = await markAttendance([payload]);
+        record = Array.isArray(res.data) ? res.data[0] : res.data;
+      }
+
+      if (record) {
+        setAttendanceMap((prev) => mergeRecordIntoMap(prev, record));
+      }
+      dirtyIdsRef.current.delete(sid);
+      setSyncIndicator("synced");
+    } catch (err) {
+      setSyncIndicator("error");
+      toast.error(err.response?.data?.message || "Auto-sync failed");
+    } finally {
+      syncingIdsRef.current.delete(sid);
+    }
+  }, [date, mergeRecordIntoMap, setSyncIndicator]);
+
+  const scheduleAutoSync = useCallback((staffId) => {
+    const sid = String(staffId);
+    dirtyIdsRef.current.add(sid);
+    if (syncTimersRef.current[sid]) clearTimeout(syncTimersRef.current[sid]);
+    syncTimersRef.current[sid] = setTimeout(() => {
+      delete syncTimersRef.current[sid];
+      persistStaff(staffId);
+    }, 500);
+  }, [persistStaff]);
+
+  const flushPendingSyncs = useCallback(async () => {
+    Object.keys(syncTimersRef.current).forEach((sid) => {
+      clearTimeout(syncTimersRef.current[sid]);
+      delete syncTimersRef.current[sid];
+    });
+    const pending = [...dirtyIdsRef.current];
+    await Promise.all(pending.map((sid) => persistStaff(sid)));
+  }, [persistStaff]);
+
+  const changeDate = useCallback(async (newDate) => {
+    await flushPendingSyncs();
+    setDate(newDate);
+  }, [flushPendingSyncs]);
+
   // Load initial data
   useEffect(() => { loadStaff(); }, [loadStaff]);
-  useEffect(() => { loadAttendance(date); }, [date, loadAttendance]);
+  useEffect(() => {
+    loadAttendance(date);
+  }, [date, loadAttendance]);
+
+  // Realtime sync when staff mark via GPS / selfie / other admin sessions
+  useEffect(() => {
+    const onRemoteUpdate = () => loadAttendance(date, { silent: true });
+    window.addEventListener("attendanceUpdated", onRemoteUpdate);
+    return () => window.removeEventListener("attendanceUpdated", onRemoteUpdate);
+  }, [date, loadAttendance]);
+
+  useEffect(() => () => {
+    Object.values(syncTimersRef.current).forEach(clearTimeout);
+    if (syncStateTimerRef.current) clearTimeout(syncStateTimerRef.current);
+  }, []);
 
   // Load location config
   useEffect(() => {
@@ -164,43 +279,72 @@ export default function AdminAttendance() {
       s.department?.toLowerCase().includes(q);
   });
 
+  const currentLocalTime = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const updateStaffField = (staffId, patch) => {
+    setAttendanceMap((prev) => ({
+      ...prev,
+      [staffId]: { ...(prev[staffId] || {}), ...patch },
+    }));
+    scheduleAutoSync(staffId);
+  };
+
   const setStaffStatus = (staffId, status) => {
     const apiStatus = STATUS_MAP[status]?.apiValue || status;
-    setAttendanceMap(prev => ({
-      ...prev,
-      [staffId]: { ...(prev[staffId] || {}), status: apiStatus }
-    }));
+    const prev = attendanceMapRef.current[staffId] || {};
+    const patch = { status: apiStatus };
+    if (apiStatus === "present" && !prev.checkIn) {
+      patch.checkIn = currentLocalTime();
+    }
+    updateStaffField(staffId, patch);
   };
 
-  const markAll = (status) => {
+  const markAll = async (status) => {
     const apiStatus = STATUS_MAP[status]?.apiValue || status;
-    const map = { ...attendanceMap };
-    staff.forEach(s => {
-      map[s._id] = { ...(map[s._id] || {}), status: apiStatus };
+    const nowTime = currentLocalTime();
+    const map = { ...attendanceMapRef.current };
+    staff.forEach((s) => {
+      const prev = map[s._id] || {};
+      map[s._id] = {
+        ...prev,
+        status: apiStatus,
+        ...(apiStatus === "present" && !prev.checkIn ? { checkIn: nowTime } : {}),
+      };
+      dirtyIdsRef.current.add(String(s._id));
     });
     setAttendanceMap(map);
-    toast.success(`Marked all as ${status}`);
-  };
 
-  const handleSave = async () => {
     setSaving(true);
+    setSyncIndicator("syncing");
     try {
-      const payloads = staff.map(s => {
-        const entry = attendanceMap[s._id] || {};
+      const payloads = staff.map((s) => {
+        const entry = map[s._id] || {};
         return {
           staff: s._id,
           date,
-          status: entry.status || "absent",
+          status: entry.status || apiStatus,
           checkIn: entry.checkIn || undefined,
           checkOut: entry.checkOut || undefined,
-          note: entry.note || undefined
+          note: entry.note || undefined,
         };
       });
-
-      await markAttendance(payloads);
-      toast.success("Attendance updated successfully");
-      loadAttendance(date);
+      const res = await markAttendance(payloads);
+      const records = Array.isArray(res.data) ? res.data : [res.data];
+      setAttendanceMap((prev) => {
+        let next = { ...prev };
+        records.forEach((r) => {
+          if (r) next = mergeRecordIntoMap(next, r);
+        });
+        return next;
+      });
+      dirtyIdsRef.current.clear();
+      setSyncIndicator("synced");
+      toast.success(`All staff marked ${status} — synced`);
     } catch (err) {
+      setSyncIndicator("error");
       toast.error(err.response?.data?.message || "Failed to sync attendance");
     } finally {
       setSaving(false);
@@ -223,9 +367,9 @@ export default function AdminAttendance() {
         icon={CalendarCheck2}
         eyebrow="HR"
         title="Attendance"
-        subtitle="Attendance & location setup"
+        subtitle="Daily marking, calendar insights & location setup"
         rightAddon={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
             <button
               type="button"
               onClick={() => setActiveTab("attendance")}
@@ -235,7 +379,18 @@ export default function AdminAttendance() {
                   : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
               }`}
             >
-              Attendance
+              Daily
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("calendar")}
+              className={`w-full rounded-xl px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors sm:w-auto ${
+                activeTab === "calendar"
+                  ? "bg-zinc-900 text-white"
+                  : "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              Calendar
             </button>
             <button
               type="button"
@@ -263,7 +418,7 @@ export default function AdminAttendance() {
               onClick={() => {
                 const d = new Date(date);
                 d.setDate(d.getDate() - 1);
-                setDate(d.toISOString().split("T")[0]);
+                changeDate(d.toISOString().split("T")[0]);
               }}
               className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
             >
@@ -276,7 +431,7 @@ export default function AdminAttendance() {
                 type="date"
                 value={date}
                 max={new Date().toISOString().split("T")[0]}
-                onChange={e => setDate(e.target.value)}
+                onChange={(e) => changeDate(e.target.value)}
                 className="text-sm font-bold text-slate-700 outline-none bg-transparent cursor-pointer"
               />
             </div>
@@ -285,7 +440,7 @@ export default function AdminAttendance() {
               onClick={() => {
                 const d = new Date(date);
                 d.setDate(d.getDate() + 1);
-                if (d <= new Date()) setDate(d.toISOString().split("T")[0]);
+                if (d <= new Date()) changeDate(d.toISOString().split("T")[0]);
               }}
               disabled={date >= new Date().toISOString().split("T")[0]}
               className="p-2 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
@@ -380,13 +535,13 @@ export default function AdminAttendance() {
                         <input
                           type="time"
                           value={att.checkIn || ""}
-                          onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], checkIn: e.target.value } }))}
+                          onChange={(e) => updateStaffField(s._id, { checkIn: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold"
                         />
                         <input
                           type="time"
                           value={att.checkOut || ""}
-                          onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], checkOut: e.target.value } }))}
+                          onChange={(e) => updateStaffField(s._id, { checkOut: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold"
                         />
                       </div>
@@ -394,7 +549,7 @@ export default function AdminAttendance() {
                         type="text"
                         placeholder="Remarks..."
                         value={att.note || ""}
-                        onChange={(e) => setAttendanceMap((prev) => ({ ...prev, [s._id]: { ...prev[s._id], note: e.target.value } }))}
+                        onChange={(e) => updateStaffField(s._id, { note: e.target.value })}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium"
                       />
                     </div>
@@ -460,7 +615,7 @@ export default function AdminAttendance() {
                                 <input
                                   type="time"
                                   value={att.checkIn || ""}
-                                  onChange={e => setAttendanceMap(p => ({ ...p, [s._id]: { ...p[s._id], checkIn: e.target.value } }))}
+                                  onChange={(e) => updateStaffField(s._id, { checkIn: e.target.value })}
                                   className="pl-7 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 w-28"
                                 />
                               </div>
@@ -468,7 +623,7 @@ export default function AdminAttendance() {
                               <input
                                 type="time"
                                 value={att.checkOut || ""}
-                                onChange={e => setAttendanceMap(p => ({ ...p, [s._id]: { ...p[s._id], checkOut: e.target.value } }))}
+                                onChange={(e) => updateStaffField(s._id, { checkOut: e.target.value })}
                                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 w-28"
                               />
                             </div>
@@ -478,7 +633,7 @@ export default function AdminAttendance() {
                               type="text"
                               value={att.note || ""}
                               placeholder="Add comment..."
-                              onChange={e => setAttendanceMap(p => ({ ...p, [s._id]: { ...p[s._id], note: e.target.value } }))}
+                              onChange={(e) => updateStaffField(s._id, { note: e.target.value })}
                               className="bg-transparent text-xs font-medium text-slate-600 outline-none w-full placeholder-slate-300 border-b border-transparent focus:border-indigo-200 pb-1"
                             />
                           </td>
@@ -492,23 +647,52 @@ export default function AdminAttendance() {
             )}
           </div>
 
-          {/* Save Button */}
-          <div className="flex items-center justify-between bg-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-indigo-100">
-            <div className="hidden md:block">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Review complete?</p>
-              <p className="text-sm font-medium text-slate-300 mt-0.5">Ensure all times are accurate before committing.</p>
+          {/* Auto-sync status */}
+          <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              {syncState === "error" ? (
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100">
+                  <CloudOff className="h-5 w-5 text-rose-600" />
+                </div>
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+                  <Cloud className="h-5 w-5 text-emerald-600" />
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-500">Auto-sync enabled</p>
+                <p className="text-sm font-medium text-slate-700">
+                  {syncState === "syncing" || saving
+                    ? "Saving changes…"
+                    : syncState === "synced"
+                    ? "All changes saved"
+                    : syncState === "error"
+                    ? "Sync error — check connection and retry"
+                    : "Changes save automatically · live updates from staff check-ins"}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={handleSave}
-              disabled={saving || filteredStaff.length === 0}
-              className="w-full md:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl text-sm font-black transition-all active:scale-95 disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              SYNC ATTENDANCE
-            </button>
+            <div className="flex items-center gap-2">
+              {(syncState === "syncing" || saving) && (
+                <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+              )}
+              {syncState === "synced" && (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              )}
+              <button
+                type="button"
+                onClick={() => loadAttendance(date)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-slate-600 hover:bg-slate-50"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
         </>
       )}
+
+      {/* ==================== CALENDAR TAB ==================== */}
+      {activeTab === "calendar" && <AttendanceCalendarTab />}
 
       {/* ==================== LOCATION SETUP TAB ==================== */}
       {activeTab === "location" && (

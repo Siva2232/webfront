@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { TAKEAWAY_TABLE } from "../../context/CartContext";
 import { computeBillStats } from "./billUtils";
 import { getReceiptHeader, escapeReceiptHtml } from "./receiptHeaderSettings";
@@ -7,6 +6,9 @@ import {
   receiptPad as pad,
   formatManifestItems,
   formatTakeawayReceiptLines,
+  formatReceiptDateTime,
+  receiptItemsHeaderLine,
+  RECEIPT_DASH_LINE,
 } from "./receiptPrintCore";
 import {
   isTakeawayTableOrder,
@@ -51,10 +53,7 @@ export function buildReceiptModel(order, cashierName = "N/A") {
     orderRef: `#${(order._id || "").slice(-8)}`,
     tableLabel: isTakeawayOrder ? "TAKEAWAY" : `TBL-${order.table}`,
     takeawayMeta,
-    placedAt: format(
-      new Date(order.createdAt || order.billedAt),
-      "dd/MM/yyyy • hh:mm a"
-    ),
+    placedAt: formatReceiptDateTime(order.createdAt || order.billedAt),
     hasTakeawayItemsInDineIn,
     itemsManifest: formatManifestItems(receiptItems),
     subtotal,
@@ -80,50 +79,51 @@ export function buildReceiptBodyHtml(order, cashierName = "N/A") {
   const itemsText = formatManifestItems(receiptItems);
   const isPaid = order.paymentStatus === "paid";
 
+  const metaBlock = [
+    pad("Order Ref", "#" + (order._id || "").slice(-8)),
+    pad("Table", isTakeawayOrder ? "TAKEAWAY" : "TBL-" + order.table),
+    formatTakeawayReceiptLines(order, pad).trim(),
+    pad("Placed At", formatReceiptDateTime(order.createdAt || order.billedAt)),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const totalsBlock = [
+    pad("Subtotal", "Rs." + subtotal.toFixed(2)),
+    pad("Tax (GST " + GST_TOTAL_PCT_LABEL + ")", "Rs." + tax.toFixed(2)),
+  ].join("\n");
+
+  const summaryBlock = [
+    pad("Method", (order.paymentMethod || "cod").toUpperCase()),
+    pad("Status", isPaid ? "COMPLETED" : "DUE"),
+    pad("Total", "Rs." + total.toFixed(2)),
+  ].join("\n");
+
+  const dueBlock = isPaid
+    ? `PAID IN FULL\nRs.${total.toFixed(2)}`
+    : `Total Unpaid (Collect Cash)\nRs.${total.toFixed(2)}`;
+
   return `<div class="header">${headerHtml}</div>
 <div class="text-center bold">${isPaid ? "PAID" : "Collect Cash"}</div>
 <div class="text-center">Cashier: ${safeCashier}</div>
 <div class="line"></div>
-
-${pad("Order Ref", "#" + (order._id || "").slice(-8))}
-${pad("Table", isTakeawayOrder ? "TAKEAWAY" : "TBL-" + order.table)}
-${formatTakeawayReceiptLines(order, pad)}${pad(
-    "Placed At",
-    format(new Date(order.createdAt || order.billedAt), "dd/MM/yyyy • hh:mm a")
-  )}
+<pre class="receipt-pre">${metaBlock}</pre>
 ${
     hasTakeawayItemsInDineIn
-      ? `\n<div class="text-center bold">TAKEAWAY ITEMS INCLUDED</div>`
+      ? `<div class="text-center bold">TAKEAWAY ITEMS INCLUDED</div>`
       : ""
   }
-
 <div class="line"></div>
 <div class="bold">Itemized Manifest</div>
+<pre class="receipt-pre">${receiptItemsHeaderLine()}\n${RECEIPT_DASH_LINE}\n${itemsText}</pre>
 <div class="line"></div>
-${itemsText}
-
-<div class="line"></div>
-${pad("Subtotal", "Rs." + subtotal.toFixed(2))}
-${pad("Tax (GST " + GST_TOTAL_PCT_LABEL + ")", "Rs." + tax.toFixed(2))}
-
+<pre class="receipt-pre">${totalsBlock}</pre>
 <div class="line"></div>
 <div class="bold">Total Summary</div>
-${pad("Method", (order.paymentMethod || "cod").toUpperCase())}
-<div class="bold text-center">${isPaid ? "✔ COMPLETED" : "⚠️ DUE"}</div>
-${pad("Total", "Rs." + total.toFixed(2))}
+<pre class="receipt-pre">${summaryBlock}</pre>
 <div class="line"></div>
-
-${
-    isPaid
-      ? `<div class="text-center bold">PAID IN FULL\nRs.${total.toFixed(2)}</div>`
-      : `<div class="text-center bold">Total Unpaid (Collect Cash)\nRs.${total.toFixed(
-          2
-        )}</div>`
-  }
-
+<pre class="receipt-pre text-center bold">${dueBlock}</pre>
 <div class="line"></div>
-<div class="text-center bold">${
-    isPaid ? "Payment Confirmed" : "Mark Paid"
-  }</div>
+<div class="text-center bold">${isPaid ? "Payment Confirmed" : "Mark Paid"}</div>
 <div class="text-center">THANK YOU</div>`;
 }

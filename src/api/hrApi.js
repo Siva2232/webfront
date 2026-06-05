@@ -22,6 +22,7 @@ export const markAttendance = (data) => API.post('/hr/attendance', data);
 export const updateAttendance = (id, data) => API.put(`/hr/attendance/${id}`, data);
 export const deleteAttendance = (id) => API.delete(`/hr/attendance/${id}`);
 export const getAttendanceSummary = (staffId, params) => API.get(`/hr/attendance/summary/${staffId}`, { params });
+export const getAttendanceCalendarOverview = (params) => API.get('/hr/attendance/calendar-overview', { params });
 export const getMyAttendance = (params) => API.get('/hr/attendance/mine', { params });
 export const locationAttendance = (data) => API.post('/hr/attendance/location', data);
 export const getAttendanceLocation = () => API.get('/hr/attendance/location-config');

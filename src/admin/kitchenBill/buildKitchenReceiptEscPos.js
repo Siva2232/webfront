@@ -1,13 +1,11 @@
-import { format } from "date-fns";
 import {
   receiptPad as pad,
   formatKitchenManifestItems,
   formatTakeawayReceiptLines,
+  RECEIPT_DASH_LINE as DASH,
 } from "../orderBill/receiptPrintCore";
 import { escInit, escAlign, escBold, escCut, escFeed } from "../orderBill/escposCommands";
 import { buildKitchenReceiptModel } from "./buildKitchenReceiptModel";
-
-const DASH = "-".repeat(32);
 
 function writeln(out, text, { center = false, bold = false } = {}) {
   out.value += center ? escAlign(1) : escAlign(0);
@@ -20,15 +18,16 @@ export function buildKitchenReceiptEscPos(kb) {
   const m = buildKitchenReceiptModel(kb);
   if (!m) return escInit();
 
-  const billTimestamp = kb.createdAt ? new Date(kb.createdAt) : new Date();
   const itemsText = formatKitchenManifestItems(kb.items || []);
   const out = { value: escInit() };
 
-  const headerName = m.restaurantName;
-  if (headerName) writeln(out, headerName, { center: true, bold: true });
-
-  writeln(out, DASH);
-  writeln(out, "KITCHEN", { center: true, bold: true });
+  const headerName = String(m.restaurantName || "").trim();
+  const genericKitchen =
+    !headerName || /^kitchen$/i.test(headerName);
+  if (!genericKitchen) {
+    writeln(out, headerName, { center: true, bold: true });
+  }
+  writeln(out, "Kitchen Ticket", { center: true, bold: genericKitchen });
   writeln(out, DASH);
 
   writeln(out, pad("Order Ref", m.orderRef.replace(/^#/, "#")));
@@ -41,7 +40,7 @@ export function buildKitchenReceiptEscPos(kb) {
     }
   }
 
-  writeln(out, pad("Placed At", format(billTimestamp, "dd/MM/yyyy • hh:mm a")));
+  writeln(out, pad("Placed At", m.placedAt));
   writeln(out, DASH);
   writeln(out, "Itemized Manifest", { bold: true });
   writeln(out, DASH);

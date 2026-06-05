@@ -1,6 +1,5 @@
-import { format } from "date-fns";
 import { getReceiptHeader } from "../orderBill/receiptHeaderSettings";
-import { formatKitchenManifestItems } from "../orderBill/receiptPrintCore";
+import { formatKitchenManifestItems, formatReceiptDateTime } from "../orderBill/receiptPrintCore";
 import { isTakeawayOrder } from "./utils/isTakeawayOrder";
 import { takeawayCustomerDisplayName } from "../../utils/takeawayCustomer";
 
@@ -25,7 +24,7 @@ export function buildKitchenReceiptModel(kb) {
     orderRef: `#${(kb.orderRef || kb._id || "").toString().slice(-8)}`,
     tableLabel: isTakeawayOrder(kb) ? "TAKEAWAY" : `TBL-${kb.table}`,
     takeawayMeta,
-    placedAt: format(billTimestamp, "dd/MM/yyyy • hh:mm a"),
+    placedAt: formatReceiptDateTime(billTimestamp),
     itemsManifest: formatKitchenManifestItems(kb.items || []),
     notes: kb.notes ? String(kb.notes).trim() : "",
     status: kb.status || "Pending",

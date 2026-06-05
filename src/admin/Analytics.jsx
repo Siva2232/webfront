@@ -46,6 +46,11 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useSalesMetrics } from "./analytics/useSalesMetrics";
+import { useOperationsAnalytics } from "./analytics/useOperationsAnalytics";
+import { mergeZeroSaleProducts } from "./analytics/operationsMetrics";
+import OperationsInsightsSection from "./analytics/OperationsInsightsSection";
+import ForecastSection from "./analytics/ForecastSection";
+import LowPerformersSection from "./analytics/LowPerformersSection";
 import { parseLocalYMD, getOrderGross, getOrderTax } from "./analytics/salesMetrics";
 
 const PIE_COLORS = ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8"];
@@ -348,6 +353,21 @@ export default function Analytics() {
 
   const sales = useSalesMetrics({ orders, products, dateRange, dishSearch });
 
+  const {
+    insights: operationsInsights,
+    loading: opsLoading,
+    error: opsError,
+    retry: retryOps,
+  } = useOperationsAnalytics({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  });
+
+  const lowPerformingMenu = useMemo(
+    () => mergeZeroSaleProducts(operationsInsights.lowPerformingMenu, products, 8),
+    [operationsInsights.lowPerformingMenu, products],
+  );
+
   const catalogSnapshot = useMemo(() => {
     const filtered = products.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(catalogSearch.toLowerCase());
@@ -426,6 +446,32 @@ export default function Analytics() {
       });
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows), "Orders_in_range");
 
+      const ops = operationsInsights.summary || {};
+      const fc = operationsInsights.forecast || {};
+      const opsRows = [
+        {
+          "Busiest day": ops.busiestDay?.label || "",
+          "Busiest day orders": ops.busiestDay?.orders ?? "",
+          "Busiest hour": ops.busiestHour?.label || "",
+          "Avg customer spend (₹)": ops.avgCustomerSpend ?? "",
+          "Unique customers": ops.uniqueCustomers ?? "",
+          "Avg dining duration (min)": ops.avgDiningDurationMinutes ?? "",
+          "Top customer": ops.topCustomer?.name || "",
+          "Top customer orders": ops.topCustomer?.orders ?? "",
+          "Quietest day": ops.quietestDay?.label || "",
+          "Expected orders (7d)": fc.expectedOrders ?? "",
+          "Expected revenue (7d, ₹)": fc.expectedRevenue ?? "",
+        },
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(opsRows), "Operations");
+
+      const lowRows = lowPerformingMenu.map((row) => ({
+        Item: row.name,
+        Units: row.qty,
+        "Line revenue (₹)": Math.round(row.revenue),
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lowRows), "Low_menu");
+
       XLSX.writeFile(wb, `${fileBase}.xlsx`);
       return;
     }
@@ -461,6 +507,25 @@ export default function Analytics() {
       startY: y,
       head: [["Date", "Gross (₹)"]],
       body: dailySales.map((d) => [d.dateKey, String(d.sales)]),
+    });
+    y = doc.lastAutoTable.finalY + 10;
+    const ops = operationsInsights.summary || {};
+    const fc = operationsInsights.forecast || {};
+    doc.text("Operations insights", 14, y);
+    y += 6;
+    doc.autoTable({
+      startY: y,
+      head: [["Metric", "Value"]],
+      body: [
+        ["Busiest day", ops.busiestDay?.label || "—"],
+        ["Busiest hour", ops.busiestHour?.label || "—"],
+        ["Avg customer spend", ops.uniqueCustomers > 0 ? fmtINR(ops.avgCustomerSpend) : "—"],
+        ["Avg dining duration", ops.avgDiningDurationMinutes != null ? `${ops.avgDiningDurationMinutes} min` : "—"],
+        ["Top customer", ops.topCustomer?.name || "—"],
+        ["Quietest day", ops.quietestDay?.label || "—"],
+        ["Expected orders (7d)", String(fc.expectedOrders ?? "—")],
+        ["Expected revenue (7d)", fmtINR(fc.expectedRevenue)],
+      ],
     });
     doc.save(`${fileBase}.pdf`);
   };
@@ -653,6 +718,48 @@ export default function Analytics() {
                 </Motion.div>
               );
             })}
+          </div>
+
+          {/* ── Operations insights (API-backed, full history) ── */}
+          <div className="space-y-6">
+            <div>
+              <h2 className="flex items-center gap-3 text-lg font-black tracking-tight text-zinc-900 md:text-xl">
+                <Clock className="text-zinc-700" size={22} />
+                Operations insights
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                Busiest periods, customer behavior, dining duration, and menu underperformers — from full order history in range.
+              </p>
+            </div>
+
+            {opsError ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                <span>{opsError}</span>
+                <button
+                  type="button"
+                  onClick={retryOps}
+                  className="rounded-lg bg-rose-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-rose-800"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
+
+            <OperationsInsightsSection
+              summary={operationsInsights.summary}
+              hourlyBreakdown={operationsInsights.hourlyBreakdown}
+              loading={opsLoading}
+              primary={primary}
+            />
+
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+              <div className="lg:col-span-3">
+                <LowPerformersSection items={lowPerformingMenu} loading={opsLoading} />
+              </div>
+              <div className="lg:col-span-2">
+                <ForecastSection forecast={operationsInsights.forecast} loading={opsLoading} />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

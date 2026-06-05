@@ -1,11 +1,10 @@
-function MetaRow({ label, value }) {
+import { receiptPad, receiptItemsHeaderLine, RECEIPT_DASH_LINE } from "../receiptPrintCore";
+
+function PaddedRow({ line }) {
   return (
-    <div className="flex justify-between gap-3 text-[11px] leading-snug text-zinc-700">
-      <span className="shrink-0 font-semibold uppercase tracking-wide text-zinc-500">
-        {label}
-      </span>
-      <span className="text-right font-mono font-medium text-zinc-900">{value}</span>
-    </div>
+    <pre className="whitespace-pre font-mono text-[10px] leading-snug text-zinc-800">
+      {line}
+    </pre>
   );
 }
 
@@ -45,13 +44,13 @@ export function OrderReceiptPreview({ model }) {
 
       <DashedRule />
 
-      <div className="space-y-1.5">
-        <MetaRow label="Order ref" value={model.orderRef} />
-        <MetaRow label="Table" value={model.tableLabel} />
+      <div className="space-y-0.5">
+        <PaddedRow line={receiptPad("Order Ref", model.orderRef)} />
+        <PaddedRow line={receiptPad("Table", model.tableLabel)} />
         {model.takeawayMeta.map((row) => (
-          <MetaRow key={row.label} label={row.label} value={row.value} />
+          <PaddedRow key={row.label} line={receiptPad(row.label, row.value)} />
         ))}
-        <MetaRow label="Placed at" value={model.placedAt} />
+        <PaddedRow line={receiptPad("Placed At", model.placedAt)} />
       </div>
 
       {model.hasTakeawayItemsInDineIn ? (
@@ -65,30 +64,24 @@ export function OrderReceiptPreview({ model }) {
       <p className="text-[10px] font-black uppercase tracking-wide text-zinc-800">
         Itemized manifest
       </p>
-      <pre className="mt-2 whitespace-pre-wrap break-words text-[10px] leading-snug text-zinc-800">
-        {model.itemsManifest || "—"}
+      <pre className="mt-2 whitespace-pre font-mono text-[10px] leading-snug text-zinc-800">
+        {`${receiptItemsHeaderLine()}\n${RECEIPT_DASH_LINE}\n${model.itemsManifest || "—"}`}
       </pre>
 
       <DashedRule />
 
-      <div className="space-y-1">
-        <MetaRow label="Subtotal" value={`Rs.${model.subtotal.toFixed(2)}`} />
-        <MetaRow label={model.taxLabel} value={`Rs.${model.tax.toFixed(2)}`} />
+      <div className="space-y-0.5">
+        <PaddedRow line={receiptPad("Subtotal", `Rs.${model.subtotal.toFixed(2)}`)} />
+        <PaddedRow line={receiptPad(model.taxLabel, `Rs.${model.tax.toFixed(2)}`)} />
       </div>
 
       <DashedRule />
 
       <p className="text-[10px] font-black uppercase tracking-wide text-zinc-800">Total summary</p>
-      <div className="mt-2 space-y-1">
-        <MetaRow label="Method" value={model.paymentMethod} />
-        <div
-          className={`py-1 text-center text-[10px] font-black uppercase tracking-widest ${
-            model.isPaid ? "text-emerald-700" : "text-amber-700"
-          }`}
-        >
-          {model.paymentStatusText}
-        </div>
-        <MetaRow label="Total" value={`Rs.${model.total.toFixed(2)}`} />
+      <div className="mt-2 space-y-0.5">
+        <PaddedRow line={receiptPad("Method", model.paymentMethod)} />
+        <PaddedRow line={receiptPad("Status", model.paymentStatusText)} />
+        <PaddedRow line={receiptPad("Total", `Rs.${model.total.toFixed(2)}`)} />
       </div>
 
       <DashedRule />

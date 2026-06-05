@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { getReceiptHeader, escapeReceiptHtml } from "./receiptHeaderSettings";
 import {
   isTakeawayTableOrder,
@@ -8,12 +9,21 @@ import {
  * Single source of truth for 80mm thermal print layout (matches customer bill receipt).
  */
 export const RECEIPT_PRINT_CSS = `@page{size:80mm auto;margin:0}
-body{font-family:'Courier New',Courier,monospace;white-space:pre;font-size:13px;width:80mm;margin:0;padding:5mm;box-sizing:border-box}
-.header{text-align:center;font-weight:bold;margin-bottom:2mm}
-.line{border-bottom:1px dashed #000;margin:2mm 0}
-.text-center{text-align:center}.text-right{text-align:right}.bold{font-weight:bold}`;
+body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margin:0;padding:4mm;box-sizing:border-box}
+.header{text-align:center;font-weight:bold;margin-bottom:2mm;white-space:pre-wrap}
+.receipt-pre{white-space:pre;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.35;margin:0;width:100%}
+.line{border-bottom:1px dashed #000;margin:2mm 0;height:0}
+.text-center{text-align:center}.bold{font-weight:bold}`;
 
-const RECEIPT_TEXT_WIDTH = 32;
+export const RECEIPT_TEXT_WIDTH = 32;
+export const RECEIPT_DASH_LINE = "-".repeat(RECEIPT_TEXT_WIDTH);
+
+/** ASCII-only datetime — avoid bullet/special chars that break ESC/POS code pages */
+export function formatReceiptDateTime(input) {
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return "--";
+  return format(d, "dd/MM/yyyy hh:mm a");
+}
 
 function wrapReceiptText(input, width = RECEIPT_TEXT_WIDTH) {
   const raw = String(input ?? "").replace(/\s+/g, " ").trim();
@@ -70,9 +80,28 @@ export function getKitchenReceiptHeaderBlock() {
   return escapeReceiptHtml(hdr.restaurantName || "").trim() || "Kitchen";
 }
 
-export function receiptPad(l, r, width = 32) {
-  const sp = width - String(l).length - String(r).length;
-  return String(l) + " ".repeat(sp > 0 ? sp : 1) + String(r);
+export function receiptPad(l, r, width = RECEIPT_TEXT_WIDTH) {
+  const left = String(l ?? "");
+  let right = String(r ?? "");
+  const gap = 1;
+
+  const maxRightWithFullLeft = width - left.length - gap;
+  if (right.length > maxRightWithFullLeft) {
+    const maxLeft = Math.max(4, Math.floor(width * 0.35));
+    const leftBudget = Math.min(left.length, maxLeft);
+    const maxRight = width - leftBudget - gap;
+    if (right.length > maxRight) {
+      right = right.slice(0, Math.max(4, maxRight));
+    }
+  }
+
+  const maxLeft = width - right.length - gap;
+  const leftTrim =
+    left.length > maxLeft
+      ? left.slice(0, Math.max(1, maxLeft - 2)) + ".."
+      : left;
+  const sp = width - leftTrim.length - right.length;
+  return leftTrim + " ".repeat(sp > 0 ? sp : gap) + right;
 }
 
 /** Takeaway-only: Customer + Token lines for thermal receipts (newline-terminated, or ""). */
@@ -91,13 +120,28 @@ export function formatTakeawayReceiptLines(order, padFn = receiptPad) {
   return lines.length ? `${lines.join("\n")}\n` : "";
 }
 
-/** Same column layout as main receipt: 18 + 4 + 10 monospace columns */
+const ITEM_NAME_COL = 18;
+const ITEM_QTY_COL = 4;
+const ITEM_AMT_COL = RECEIPT_TEXT_WIDTH - ITEM_NAME_COL - ITEM_QTY_COL;
+
+/** Column layout: name (18) + qty (4) + amount (10) = 32 chars */
 export function receiptItemLine(name, qty, lineTotal) {
-  const n = String(name).length > 18 ? String(name).substring(0, 18) : String(name);
+  const n =
+    String(name).length > ITEM_NAME_COL
+      ? String(name).substring(0, ITEM_NAME_COL)
+      : String(name);
   return (
-    n.padEnd(18) +
-    String(qty).padStart(4) +
-    Number(lineTotal).toFixed(2).padStart(10)
+    n.padEnd(ITEM_NAME_COL) +
+    String(qty).padStart(ITEM_QTY_COL) +
+    Number(lineTotal).toFixed(2).padStart(ITEM_AMT_COL)
+  );
+}
+
+export function receiptItemsHeaderLine() {
+  return (
+    "Item".padEnd(ITEM_NAME_COL) +
+    "Qty".padStart(ITEM_QTY_COL) +
+    "Amount".padStart(ITEM_AMT_COL)
   );
 }
 
@@ -131,17 +175,15 @@ export function formatManifestItems(items) {
     .join("\n");
 }
 
-const KITCHEN_PAD_WIDTH = 32;
-
-/** One line: dish name (left) · Qty n (right), monospace columns like order meta. */
+/** One line: dish name (left) + Qty n (right), 32-char monospace row */
 function kitchenNameQtyLine(name, qty) {
-  const right = "Qty " + String(qty ?? "");
+  const right = `Qty ${String(qty ?? "")}`;
   let left = String(name || "").trim();
-  const maxLeft = Math.max(4, KITCHEN_PAD_WIDTH - right.length - 1);
+  const maxLeft = Math.max(4, RECEIPT_TEXT_WIDTH - right.length - 1);
   if (left.length > maxLeft) {
     left = left.slice(0, Math.max(1, maxLeft - 2)) + (maxLeft > 5 ? ".." : "");
   }
-  return receiptPad(left, right, KITCHEN_PAD_WIDTH);
+  return receiptPad(left, right, RECEIPT_TEXT_WIDTH);
 }
 
 /**

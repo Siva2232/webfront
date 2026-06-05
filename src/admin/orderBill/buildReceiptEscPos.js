@@ -3,10 +3,10 @@ import {
   receiptPad as pad,
   formatManifestItems,
   formatTakeawayReceiptLines,
+  receiptItemsHeaderLine,
+  RECEIPT_DASH_LINE as DASH,
 } from "./receiptPrintCore";
 import { escInit, escAlign, escBold, escCut, escFeed } from "./escposCommands";
-
-const DASH = "-".repeat(32);
 
 function writeln(out, text, { center = false, bold = false } = {}) {
   out.value += center ? escAlign(1) : escAlign(0);
@@ -65,7 +65,7 @@ export function buildReceiptEscPos(order, cashierName = "N/A") {
   writeln(out, DASH);
   writeln(out, "Total Summary", { bold: true });
   writeln(out, pad("Method", m.paymentMethod));
-  writeln(out, m.isPaid ? "COMPLETED" : "DUE", { center: true, bold: true });
+  writeln(out, pad("Status", m.isPaid ? "COMPLETED" : "DUE"));
   writeln(out, pad("Total", `Rs.${m.total.toFixed(2)}`));
   writeln(out, DASH);
 
