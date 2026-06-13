@@ -5,13 +5,13 @@ Print bills and kitchen tickets from **any staff tablet or phone** — no Window
 ## How it works
 
 ```
-Staff tablet (any)  →  Hosted API  →  Print connector (1–3 tablets)  →  Thermal printer (LAN)
+Staff tablet (any)  →  Hosted API  →  RestoPrint Android app  →  Thermal printer (LAN)
 ```
 
 - **Any tablet** logged into the webapp can tap **Print** on a bill or KOT.
-- **One or more tablets** at the restaurant run **RestoPrint** in the background (the print connector).
+- **One or more tablets** at the restaurant run **RestoPrint** in the background.
 - The connector receives jobs over the internet and sends them to your printer on the local Wi‑Fi (port 9100).
-- You do **not** need a dedicated desktop PC. With 5+ order tablets, run the connector on **2–3** of them for redundancy — not every device.
+- You do **not** need a dedicated desktop PC. With 5+ order tablets, run RestoPrint on **2–3** of them for redundancy.
 
 ## One-time setup
 
@@ -22,69 +22,43 @@ Staff tablet (any)  →  Hosted API  →  Print connector (1–3 tablets)  →  
 3. Enter each thermal printer's network IP (port **9100**).
 4. Save changes.
 
-### 2. Connector token (SaaS / backend)
+### 2. Pair RestoPrint tablet(s)
 
-Your backend needs `PRINT_CONNECTOR_TOKEN` set (same value on every connector device). See `print-bridge/print-bridge/PRINT_BRIDGE_INSTALLATION.md`.
+1. Install the **RestoPrint** Android app on 1–3 restaurant tablets.
+2. In **Admin Profile** → **Pair RestoPrint Tablet**, click **Generate Pair Code**.
+3. On the tablet, open RestoPrint and scan the QR code (or enter the 6-digit code).
+4. In RestoPrint → **Printer Settings**, enter and validate each printer IP.
+5. Keep RestoPrint running — it uses a foreground service to stay connected.
 
-### 3. Run RestoPrint on restaurant tablet(s)
+### 3. Verify
 
-**Windows tablet / PC (same as before)**
-
-```bash
-cd print-bridge
-npm install
-# copy .env with RESTO_CONNECTOR_API_BASE, RESTO_CONNECTOR_RESTAURANT_ID, RESTO_CONNECTOR_TOKEN
-npm run print-bridge
-```
-
-**Android tablet (Termux)**
-
-1. Install [Termux](https://termux.dev/) from F-Droid.
-2. Install Node.js: `pkg install nodejs-lts`
-3. Copy the `print-bridge` folder to the tablet (or clone your repo).
-4. Create `print-bridge/.env`:
-
-```
-RESTO_CONNECTOR_API_BASE=https://your-backend.onrender.com
-RESTO_CONNECTOR_RESTAURANT_ID=RESTO001
-RESTO_CONNECTOR_TOKEN=<same-as-PRINT_CONNECTOR_TOKEN>
-```
-
-5. Run: `cd print-bridge && npm install && npm run print-bridge`
-6. Keep Termux session alive (disable battery optimization for Termux).
-
-**Optional — LAN bridge from other tablets**
-
-If one tablet runs the bridge with `PRINT_BRIDGE_BIND=0.0.0.0`, other tablets on the same Wi‑Fi can set `bridgeUrl` to that tablet's LAN IP (e.g. `http://192.168.1.20:17881`) in local printer settings for faster on-site printing.
+1. Admin Profile shows **"X print connector(s) online"** (green).
+2. From a **different** tablet, open Invoice Center → Print on a bill.
+3. Receipt prints without a browser dialog.
 
 ## Multi-tablet restaurants (5+ devices)
 
 | Role | What to do |
 |------|------------|
 | Order tablets (all) | Use webapp normally; tap Print when needed |
-| Connector tablets (2–3 recommended) | Run `npm run print-bridge` with connector `.env` |
+| Connector tablets (2–3 recommended) | Run RestoPrint with pairing completed |
 | Admin | Check **Admin Profile** → connector status (green = online) |
 
-When a connector is offline, jobs are **queued** and print automatically when any connector comes back online (polls every 30 seconds).
-
-## Verify
-
-1. Admin Profile shows **"X print connector(s) online"** (green).
-2. From a **different** tablet, open Invoice Center → Print on a bill.
-3. Receipt prints without a browser dialog.
+When a connector is offline, jobs are **queued** and print automatically when any connector comes back online.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| "Print connector offline (job queued)" | Start RestoPrint on at least one restaurant tablet |
+| "Print connector offline (job queued)" | Open RestoPrint on at least one restaurant tablet |
 | "Please log in again to print" | Staff session expired — log in and retry |
 | "Printer IP not set" | Admin Profile → enter printer IP → Save |
-| Job queued but never prints | Check connector token matches backend; tablet has internet |
-| Duplicate prints | Should not happen — only one connector handles each job |
+| Job queued but never prints | Re-pair RestoPrint; check tablet has internet + same Wi‑Fi as printer |
+| Duplicate prints | Should not happen — print lock ensures one connector per job |
 
 ## Related files
 
 - `src/admin/printing/sendToBridge.js` — routes mobile → cloud relay
-- `print-bridge/server.mjs` — connector + optional local bridge
+- `src/admin/printing/RestoPrintPairing.jsx` — Admin pairing QR UI
+- `restoprint/` — Android RestoPrint connector app
 - `docs/kitchen-thermal-print.md` — kitchen auto-print modes

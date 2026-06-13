@@ -361,9 +361,11 @@ export const UIProvider = ({ children }) => {
 
     // Add server socket for immediate notification updates
     // Strip /api suffix from the URL since socket.io connects to the base server URL
-    const backendURL = import.meta.env.PROD
-      ? (import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api").replace(/\/api\/?$/, "")
-      : (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5000").replace(/\/api\/?$/, "");
+    const backendURL = import.meta.env.VITE_API_URL
+      ? String(import.meta.env.VITE_API_URL).replace(/\/api\/?$/, "")
+      : import.meta.env.PROD
+        ? (import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api").replace(/\/api\/?$/, "")
+        : (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "");
 
     const socket = socketIOClient(backendURL, {
       transports: ["websocket", "polling"],

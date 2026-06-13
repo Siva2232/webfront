@@ -51,13 +51,42 @@ function mapCloudError(err) {
 const CONNECTOR_OFFLINE_MSG =
   "Print connector is offline (job queued). Start RestoPrint on any restaurant tablet — see Admin Profile → Printing setup.";
 
+async function sendStructuredViaCloudRelay(payload, options = {}) {
+  try {
+    const { data } = await API.post("/print-jobs", {
+      type: options.type,
+      printerType: options.printerType,
+      payload,
+      printerTarget: options.printerTarget || options.printerType,
+    });
+
+    if (data?.queued) {
+      throw new Error(CONNECTOR_OFFLINE_MSG);
+    }
+    return data;
+  } catch (err) {
+    throw mapCloudError(err);
+  }
+}
+
+/**
+ * Send structured print payload for RestoPrint app ESC/POS generation.
+ */
+export async function sendStructuredPrintJob(payload, options = {}) {
+  return sendStructuredViaCloudRelay(payload, options);
+}
+
 async function sendViaCloudRelay(text, settings, options = {}) {
   const label = options.printerLabel || "thermal";
   const host = String(settings?.host || "").trim();
-  if (!host) {
+  if (!host && !options.structuredPayload) {
     throw new Error(
       `${label} printer IP not set. Open Admin Profile and enter the ${label.toLowerCase()} printer IP.`
     );
+  }
+
+  if (options.structuredPayload) {
+    return sendStructuredViaCloudRelay(options.structuredPayload, options);
   }
 
   try {

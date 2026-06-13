@@ -1,22 +1,21 @@
+import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute() {
+  const { user, logout } = useAuth();
   const isLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
   const token = localStorage.getItem("token");
+  const isSuperAdmin = user?.role === "superadmin";
+  const allowed = isLoggedIn && token && user && !isSuperAdmin;
 
-  // Extra guard: if the stored user is a super-admin, they should not pass
-  // through the restaurant admin ProtectedRoute even if isAdminLoggedIn was
-  // left over from a previous session.
-  let isSuperAdmin = false;
-  try {
-    const stored = localStorage.getItem("userInfo");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      isSuperAdmin = parsed?.role === "superadmin";
+  useEffect(() => {
+    if (!allowed && (token || isLoggedIn)) {
+      logout();
     }
-  } catch (_) {}
+  }, [allowed, token, isLoggedIn, logout]);
 
-  if (!isLoggedIn || !token || isSuperAdmin) {
+  if (!allowed) {
     return <Navigate to="/login" replace />;
   }
 

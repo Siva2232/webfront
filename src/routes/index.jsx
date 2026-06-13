@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 
 /* Feature Guard — blocks direct URL access to disabled features (after branding/features load). */
 const FeatureGuard = ({ feature, children }) => {
@@ -120,14 +121,22 @@ import TakeawayCart from "../customer/TakeawayCart";
 
 /* Optional: Prevent logged-in users from seeing login */
 const ProtectedLogin = ({ children }) => {
+  const { user } = useAuth();
+  const token = localStorage.getItem("token");
   const isAdminLoggedIn = localStorage.getItem("isAdminLoggedIn") === "true";
   const isKitchenLoggedIn =
     localStorage.getItem("isKitchenLoggedIn") === "true";
   const isWaiterLoggedIn = localStorage.getItem("isWaiterLoggedIn") === "true";
 
-  if (isAdminLoggedIn) return <Navigate to="/admin/dashboard" replace />;
-  if (isKitchenLoggedIn) return <Navigate to="/kitchen/dashboard" replace />;
-  if (isWaiterLoggedIn) return <Navigate to="/waiter/dashboard" replace />;
+  if (isAdminLoggedIn && token && user && user.role !== "superadmin") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  if (isKitchenLoggedIn && token && user) {
+    return <Navigate to="/kitchen/dashboard" replace />;
+  }
+  if (isWaiterLoggedIn && token && user) {
+    return <Navigate to="/waiter/dashboard" replace />;
+  }
 
   return children;
 };

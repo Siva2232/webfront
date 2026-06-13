@@ -1780,7 +1780,7 @@ export default function AdminLayout() {
                     />
                   ) : (
                     <img
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name || "Admin"}`}
+                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || "Admin"}`}
                       alt="avatar"
                       className="h-full w-full object-cover"
                     />
@@ -1788,10 +1788,10 @@ export default function AdminLayout() {
                 </div>
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-bold text-slate-800 leading-none">
-                    {user.name || "Alex Rivera"}
+                    {user?.name || "Alex Rivera"}
                   </p>
                   <p className="text-[10px] font-medium text-slate-400 mt-1">
-                    {user.role === "superadmin" ? "Admin" : (user.role || "Admin")}
+                    {user?.role === "superadmin" ? "Admin" : (user?.role || "Admin")}
                   </p>
                 </div>
                 <ChevronDown
@@ -1814,7 +1814,7 @@ export default function AdminLayout() {
                         Account
                       </p>
                       <p className="text-sm font-bold text-slate-800">
-                        {user.email || "admin@luxehub.com"}
+                        {user?.email || "admin@luxehub.com"}
                       </p>
                     </div>
 

@@ -24,9 +24,11 @@ import StickyPageHeader from "./components/StickyPageHeader";
 
 const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
-    : "http://localhost:5000");
+  (!import.meta.env.PROD
+    ? (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "")
+    : import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+      : "https://backend-res-ikeb.onrender.com");
 
 export default function Token() {
   const navigate = useNavigate();

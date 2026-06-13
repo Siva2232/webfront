@@ -27,6 +27,7 @@ import {
   savePrinterSettingsToServer,
   fetchPrintConnectorStatus,
 } from "./printing/printerSettingsSync";
+import RestoPrintPairing from "./printing/RestoPrintPairing";
 import {
   User,
   Mail,
@@ -560,7 +561,9 @@ export default function AdminProfile() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 mb-6">
+                <RestoPrintPairing restaurantId={getCurrentRestaurantId() || profile.restaurantId} />
+
+                <div className="flex items-start gap-3 mb-6 mt-8">
                   <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
                     <Printer size={20} />
                   </div>

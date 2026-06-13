@@ -62,9 +62,11 @@ const LIST_FETCH_LIMIT = 15;
 // fall back to the same host as the REST API by trimming any trailing /api segment
 const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
-    : "http://localhost:5000");
+  (!import.meta.env.PROD
+    ? (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "")
+    : import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+      : "https://backend-res-ikeb.onrender.com");
 
 // shared socket instance so we don't reconnect on every render
 const socket = io(SOCKET_URL, {

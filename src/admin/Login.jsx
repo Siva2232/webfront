@@ -21,7 +21,7 @@ import {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const { loadBranding } = useTheme();
 
   const [email, setEmail] = useState("");
@@ -43,7 +43,7 @@ export default function Login() {
     // when a logout flag is present, avoid automatically redirecting
     // into the *other* panel.  we allow navigation if the same role remains
     // logged in.
-    if (token) {
+    if (token && user) {
       if (adminLogged && !kitchenLogoutFlag && !adminLogoutFlag && !waiterLogoutFlag) {
         navigate("/admin/dashboard", { replace: true });
       } else if (kitchenLogged && !adminLogoutFlag && !waiterLogoutFlag) {
@@ -54,7 +54,7 @@ export default function Login() {
     }
     // keep any logout flags on the URL until user submits the form or leaves
     // so that the redirection logic continues to respect them.
-  }, [navigate, location]);
+  }, [navigate, location, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

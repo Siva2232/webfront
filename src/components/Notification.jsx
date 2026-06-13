@@ -21,9 +21,11 @@ import {
 // Direct socket connection for notifications (backup to window events)
 const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
-  (import.meta.env.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
-    : "http://localhost:5000");
+  (!import.meta.env.PROD
+    ? (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "")
+    : import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
+      : "https://backend-res-ikeb.onrender.com");
 
 // MODULE-LEVEL SINGLETONS — created once, never recreated on component re-mount
 // This prevents creating new socket/audio on every navigation
