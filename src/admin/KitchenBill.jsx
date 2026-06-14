@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { useOrders } from "../context/OrderContext";
+import { useAuth } from "../context/AuthContext";
 import { AnimatePresence } from "framer-motion";
 import { KitchenBillHeader } from "./kitchenBill/components/KitchenBillHeader";
 import KitchenBillEmptyState from "./kitchenBill/components/KitchenBillEmptyState";
@@ -7,10 +9,17 @@ import KitchenBillCard from "./kitchenBill/components/KitchenBillCard";
 import { KitchenReceiptPrintModal } from "./kitchenBill/components/KitchenReceiptPrintModal";
 import { statusColors } from "./kitchenBill/utils/statusColors";
 import { isTakeawayOrder } from "./kitchenBill/utils/isTakeawayOrder";
-import { getKitchenPrintMode, setKitchenPrintMode } from "./kitchenBill/kitchenPrintMode";
+import {
+  getKitchenPrintMode,
+  setKitchenPrintMode,
+  KITCHEN_PRINT_MODE_CHANGED_EVENT,
+} from "./kitchenBill/kitchenPrintMode";
+import { getCurrentRestaurantId } from "../utils/tenantCache";
 
 export default function KitchenBill({ embedded = false }) {
   const { kitchenBills, fetchActiveKitchenBills, isLoading } = useOrders();
+  const { user } = useAuth();
+  const restaurantId = user?.restaurantId || getCurrentRestaurantId();
   const [dateFilter, setDateFilter] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
   const [takeawayOnly, setTakeawayOnly] = useState(false);
@@ -19,10 +28,33 @@ export default function KitchenBill({ embedded = false }) {
   const [printPreviewKb, setPrintPreviewKb] = useState(null);
   const PER_PAGE = 15;
 
-  const handlePrintModeChange = useCallback((mode) => {
-    setPrintModeState(mode);
-    setKitchenPrintMode(mode);
-  }, []);
+  useEffect(() => {
+    setPrintModeState(getKitchenPrintMode(restaurantId));
+
+    const syncPrintMode = () => {
+      setPrintModeState(getKitchenPrintMode(restaurantId));
+    };
+
+    window.addEventListener(KITCHEN_PRINT_MODE_CHANGED_EVENT, syncPrintMode);
+    window.addEventListener("storage", syncPrintMode);
+    return () => {
+      window.removeEventListener(KITCHEN_PRINT_MODE_CHANGED_EVENT, syncPrintMode);
+      window.removeEventListener("storage", syncPrintMode);
+    };
+  }, [restaurantId]);
+
+  const handlePrintModeChange = useCallback(
+    (mode) => {
+      const saved = setKitchenPrintMode(mode, restaurantId);
+      if (saved) {
+        setPrintModeState(mode);
+        toast.success(mode === "auto" ? "Auto print enabled" : "Manual print enabled");
+        return;
+      }
+      toast.error("Could not save print mode. Try again.");
+    },
+    [restaurantId]
+  );
 
   const openPrintPreview = useCallback((kb) => {
     if (!kb) return;

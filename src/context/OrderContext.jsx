@@ -5,6 +5,8 @@ import { TAKEAWAY_TABLE } from "./CartContext";
 import { getRestaurantIdForTenantData, tenantKey, tenantGet, tenantSet, tenantRemove } from "../utils/tenantCache";
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
+import { useAuth } from "./AuthContext";
+import { maybeAutoPrintKitchenBill, scheduleAutoPrintForOrder } from "../admin/kitchenBill/kitchenAutoPrint";
 
 /** Invoice Center needs more than POS order list page size */
 const BILLS_FETCH_LIMIT = 20;
@@ -77,6 +79,7 @@ const socket = io(SOCKET_URL, {
 const OrderContext = createContext();
 
 export const OrderProvider = ({ children }) => {
+  const { user } = useAuth();
   // namespaced cache helpers — each restaurant stores data in its own slot
   const _rid = getRestaurantIdForTenantData();
   const _mountedRid = useRef(_rid);
@@ -596,6 +599,7 @@ export const OrderProvider = ({ children }) => {
         }
         return [data, ...prev];
       });
+      scheduleAutoPrintForOrder(data?._id || data?.id);
       return data;
     } catch (error) {
       console.error("Error adding manual order:", error);
@@ -653,19 +657,26 @@ export const OrderProvider = ({ children }) => {
   useEffect(() => {
     if (isSuperAdminSession()) return () => {};
 
+    const joinRestaurantRoom = () => {
+      const rid = user?.restaurantId || getRestaurantIdForTenantData();
+      const token = localStorage.getItem("token");
+      if (!rid) return;
+      if (!socket.connected) socket.connect();
+      socket.emit("joinRoom", {
+        restaurantId: String(rid).toUpperCase().trim(),
+        token: token || undefined,
+      });
+    };
+
     // reconnect socket once when provider mounts
     socket.connect();
     console.log("OrderContext: Socket initializing...");
-
-    // Join restaurant-specific room for scoped events
-    const rid = localStorage.getItem('restaurantId');
-    if (rid) socket.emit('joinRoom', { restaurantId: rid, token: localStorage.getItem('token') || undefined });
+    joinRestaurantRoom();
 
     // Re-fetch bills when socket reconnects (covers missed events during disconnect)
     socket.on("connect", () => {
       console.log("OrderContext: Socket connected successfully");
-      const r = localStorage.getItem('restaurantId');
-      if (r) socket.emit('joinRoom', { restaurantId: r, token: localStorage.getItem('token') || undefined });
+      joinRestaurantRoom();
       const t = localStorage.getItem("token");
       if (t) {
         fetchOrders();
@@ -687,6 +698,7 @@ export const OrderProvider = ({ children }) => {
         try { _tSet('cachedOrders', next); } catch {}
         return next;
       });
+      scheduleAutoPrintForOrder(order?._id || order?.id);
     });
     socket.on("orderUpdated", (order) => {
       setOrders((prev) => {
@@ -794,6 +806,7 @@ export const OrderProvider = ({ children }) => {
         const parsed = _tGet('cachedKitchenBills');
         _tSet('cachedKitchenBills', [kitchenBill, ...(Array.isArray(parsed) ? parsed : [])]);
       } catch (e) {}
+      void maybeAutoPrintKitchenBill(kitchenBill);
       try {
         window.dispatchEvent(
           new CustomEvent("kitchenBillCreated", { detail: kitchenBill })
@@ -863,7 +876,7 @@ export const OrderProvider = ({ children }) => {
       socket.off("kitchenBillUpdated");
       socket.disconnect();
     };
-  }, []);
+  }, [user?.restaurantId]);
 
   // Single hydrate + fetch on mount. Cache was already loaded via useState
   // initialisers above, so we only need to fire the network requests once.
