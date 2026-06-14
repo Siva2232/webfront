@@ -24,9 +24,17 @@ export function ThermalReceiptPrintModal({
     setPrintState("printing");
     setPrintError("");
     try {
-      await onPrint();
+      const result = await onPrint();
       setPrintState("done");
-      toast.success(successToast);
+      if (result?.queued) {
+        toast.success(
+          result.message ||
+            "Print job queued — your restaurant tablet will print when the connector is online.",
+          { duration: 5000 }
+        );
+      } else {
+        toast.success(successToast);
+      }
     } catch (err) {
       const msg = err?.message || "Could not print";
       setPrintState("error");

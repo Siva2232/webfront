@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import API from "../../api/axios";
+import { getCurrentRestaurantId } from "../../utils/tenantCache";
 import { getKitchenPrintMode } from "./kitchenPrintMode";
 import { directPrintKitchenReceipt } from "./kitchenPrint";
 
@@ -20,7 +21,7 @@ function trimPrintedIds() {
  * Dedupes by kitchen bill id so socket + listener cannot double-print.
  */
 export async function maybeAutoPrintKitchenBill(kb, { showToast = true } = {}) {
-  if (getKitchenPrintMode() !== "auto") return false;
+  if (getKitchenPrintMode(getCurrentRestaurantId()) !== "auto") return false;
   const id = kitchenBillId(kb);
   if (!id || printedIds.has(id)) return false;
 
@@ -33,7 +34,13 @@ export async function maybeAutoPrintKitchenBill(kb, { showToast = true } = {}) {
     return true;
   } catch (err) {
     printedIds.delete(id);
-    if (showToast) toast.error(err?.message || "Auto print failed");
+    if (showToast) {
+      if (err?.queued) {
+        toast.success(err.message || "KOT queued — connector will print shortly", { duration: 5000 });
+        return true;
+      }
+      toast.error(err?.message || "Auto print failed");
+    }
     throw err;
   }
 }
@@ -42,7 +49,7 @@ export async function maybeAutoPrintKitchenBill(kb, { showToast = true } = {}) {
  * Fallback when socket delivery is slow: poll kitchen bills for an order and auto-print.
  */
 export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalMs = 500 } = {}) {
-  if (getKitchenPrintMode() !== "auto") return () => {};
+  if (getKitchenPrintMode(getCurrentRestaurantId()) !== "auto") return () => {};
   const id = String(orderId || "").trim();
   if (!id) return () => {};
 

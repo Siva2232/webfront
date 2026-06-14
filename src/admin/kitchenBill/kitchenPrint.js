@@ -7,6 +7,7 @@ export async function directPrintKitchenReceipt(kb) {
   if (!kb) throw new Error("No kitchen ticket to print");
   const settings = getKitchenPrinterSettings();
   const structuredPayload = buildKotPrintPayload(kb);
+  if (!structuredPayload) throw new Error("Invalid kitchen ticket — cannot build print data");
   const text = buildKitchenReceiptEscPos(kb);
   return sendToBridge(text, settings, {
     printerLabel: "Kitchen",
