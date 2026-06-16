@@ -1,4 +1,4 @@
-import { receiptPad, receiptItemsHeaderLine, RECEIPT_DASH_LINE } from "../receiptPrintCore";
+import { receiptPad, receiptItemsHeaderLine } from "../receiptPrintCore";
 
 function PaddedRow({ line }) {
   return (
@@ -9,7 +9,7 @@ function PaddedRow({ line }) {
 }
 
 function DashedRule() {
-  return <div className="my-3 border-b border-dashed border-zinc-300" aria-hidden />;
+  return <div className="my-1.5 border-b border-dashed border-zinc-300" aria-hidden />;
 }
 
 export function OrderReceiptPreview({ model }) {
@@ -17,7 +17,7 @@ export function OrderReceiptPreview({ model }) {
   const { header } = model;
 
   return (
-    <div className="mx-auto w-full max-w-[320px] rounded-sm border border-zinc-200/80 bg-white px-4 py-5 font-mono text-[11px] leading-relaxed text-zinc-900 shadow-md shadow-zinc-900/10">
+    <div className="mx-auto w-full max-w-[320px] rounded-sm border border-zinc-200/80 bg-white px-4 py-3 font-mono text-[11px] leading-snug text-zinc-900 shadow-md shadow-zinc-900/10">
       <div className="text-center">
         <p className="text-sm font-black uppercase tracking-tight">{header.restaurantName}</p>
         {header.address ? (
@@ -61,11 +61,9 @@ export function OrderReceiptPreview({ model }) {
 
       <DashedRule />
 
-      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-800">
-        Itemized manifest
-      </p>
-      <pre className="mt-2 whitespace-pre font-mono text-[10px] leading-snug text-zinc-800">
-        {`${receiptItemsHeaderLine()}\n${RECEIPT_DASH_LINE}\n${model.itemsManifest || "—"}`}
+      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-800">Items</p>
+      <pre className="mt-1 whitespace-pre font-mono text-[10px] leading-snug text-zinc-800">
+        {`${receiptItemsHeaderLine()}\n${model.itemsManifest || "—"}`}
       </pre>
 
       <DashedRule />
@@ -73,35 +71,13 @@ export function OrderReceiptPreview({ model }) {
       <div className="space-y-0.5">
         <PaddedRow line={receiptPad("Subtotal", `Rs.${model.subtotal.toFixed(2)}`)} />
         <PaddedRow line={receiptPad(model.taxLabel, `Rs.${model.tax.toFixed(2)}`)} />
-      </div>
-
-      <DashedRule />
-
-      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-800">Total summary</p>
-      <div className="mt-2 space-y-0.5">
-        <PaddedRow line={receiptPad("Method", model.paymentMethod)} />
-        <PaddedRow line={receiptPad("Status", model.paymentStatusText)} />
         <PaddedRow line={receiptPad("Total", `Rs.${model.total.toFixed(2)}`)} />
+        {!model.isPaid ? (
+          <PaddedRow line={receiptPad("DUE", `Rs.${model.total.toFixed(2)}`)} />
+        ) : (
+          <PaddedRow line={receiptPad("PAID", `Rs.${model.total.toFixed(2)}`)} />
+        )}
       </div>
-
-      <DashedRule />
-
-      <p
-        className={`text-center text-[11px] font-black uppercase leading-snug ${
-          model.isPaid ? "text-emerald-800" : "text-amber-800"
-        }`}
-      >
-        {model.amountDueLabel}
-      </p>
-
-      <DashedRule />
-
-      <p className="text-center text-[10px] font-black uppercase tracking-wide text-zinc-700">
-        {model.footerLabel}
-      </p>
-      <p className="mt-2 text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-        Thank you
-      </p>
     </div>
   );
 }

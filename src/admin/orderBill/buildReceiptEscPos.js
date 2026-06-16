@@ -2,7 +2,6 @@ import { buildReceiptModel, prepareReceiptItems } from "./buildReceiptModel";
 import {
   receiptPad as pad,
   formatManifestItems,
-  formatTakeawayReceiptLines,
   receiptItemsHeaderLine,
   RECEIPT_DASH_LINE as DASH,
 } from "./receiptPrintCore";
@@ -30,9 +29,7 @@ export function buildReceiptEscPos(order, cashierName = "N/A") {
 
   writeln(out, DASH);
   writeln(out, m.statusLabel, { center: true, bold: true });
-  writeln(out, `Cashier: ${m.cashierName}`, { center: true });
-  writeln(out, DASH);
-
+  writeln(out, `Cashier: ${m.cashierName}`);
   writeln(out, pad("Order Ref", m.orderRef.replace(/^#/, "#")));
   writeln(out, pad("Table", m.tableLabel));
   for (const row of m.takeawayMeta) {
@@ -45,43 +42,24 @@ export function buildReceiptEscPos(order, cashierName = "N/A") {
   }
 
   writeln(out, DASH);
-  writeln(out, "Itemized Manifest", { bold: true });
-  writeln(out, DASH);
-
-  const takeawayBlock = formatTakeawayReceiptLines(order, pad);
-  if (takeawayBlock) {
-    for (const line of takeawayBlock.trim().split("\n")) {
-      if (line) writeln(out, line);
-    }
-  }
+  writeln(out, receiptItemsHeaderLine());
 
   for (const line of (itemsText || "—").split("\n")) {
-    writeln(out, line);
+    if (line) writeln(out, line);
   }
 
   writeln(out, DASH);
   writeln(out, pad("Subtotal", `Rs.${m.subtotal.toFixed(2)}`));
-  writeln(out, pad(m.taxLabel, `Rs.${m.tax.toFixed(2)}`));
-  writeln(out, DASH);
-  writeln(out, "Total Summary", { bold: true });
-  writeln(out, pad("Method", m.paymentMethod));
-  writeln(out, pad("Status", m.isPaid ? "COMPLETED" : "DUE"));
-  writeln(out, pad("Total", `Rs.${m.total.toFixed(2)}`));
-  writeln(out, DASH);
+  writeln(out, pad("Tax", `Rs.${m.tax.toFixed(2)}`));
+  writeln(out, pad("Total", `Rs.${m.total.toFixed(2)}`), { bold: true });
 
   if (m.isPaid) {
-    writeln(out, `PAID IN FULL`, { center: true, bold: true });
-    writeln(out, `Rs.${m.total.toFixed(2)}`, { center: true, bold: true });
+    writeln(out, pad("PAID", `Rs.${m.total.toFixed(2)}`), { bold: true });
   } else {
-    writeln(out, "Total Unpaid (Collect Cash)", { center: true, bold: true });
-    writeln(out, `Rs.${m.total.toFixed(2)}`, { center: true, bold: true });
+    writeln(out, pad("DUE", `Rs.${m.total.toFixed(2)}`), { bold: true });
   }
 
-  writeln(out, DASH);
-  writeln(out, m.footerLabel.toUpperCase(), { center: true, bold: true });
-  writeln(out, "THANK YOU", { center: true });
-
-  out.value += escFeed(4);
+  out.value += escFeed(2);
   out.value += escCut();
   return out.value;
 }

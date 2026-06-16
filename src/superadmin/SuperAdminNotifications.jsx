@@ -193,6 +193,11 @@ export default function SuperAdminNotifications() {
                       
                       {/* Meta details */}
                       <div className="flex flex-wrap gap-3 mt-2">
+                        {notif.restaurantName && (
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
+                            {notif.restaurantName}
+                          </span>
+                        )}
                         {notif.restaurantId && (
                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
                             {notif.restaurantId}
@@ -206,6 +211,16 @@ export default function SuperAdminNotifications() {
                         {notif.planName && (
                           <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/5 px-2 py-0.5 rounded-lg border border-indigo-500/15">
                             {notif.planName}
+                          </span>
+                        )}
+                        {notif.meta?.razorpayPaymentId && (
+                          <span className="text-[9px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800 max-w-[180px] truncate" title={notif.meta.razorpayPaymentId}>
+                            {notif.meta.razorpayPaymentId}
+                          </span>
+                        )}
+                        {notif.meta?.expiry && (
+                          <span className="text-[9px] font-black text-amber-400/90 uppercase tracking-widest bg-amber-500/5 px-2 py-0.5 rounded-lg border border-amber-500/15">
+                            Until {new Date(notif.meta.expiry).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                           </span>
                         )}
                       </div>

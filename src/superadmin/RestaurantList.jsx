@@ -137,6 +137,7 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
         setForm({
           ...BLANK_FORM,
           ...initial,
+          ownerPassword: "",
           features: mergedFeatures,
           subscriptionPlan: pid,
           logoBase64: "",
@@ -232,9 +233,12 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
         });
         await updateRestaurant(initial.restaurantId, {
           name: form.name,
-          ownerEmail: form.ownerEmail, ownerPhone: form.ownerPhone,
+          ownerName: form.ownerName,
+          ownerEmail: form.ownerEmail,
+          ownerPhone: form.ownerPhone,
           address: form.address,
           subscriptionStatus: form.subscriptionStatus,
+          ...(form.ownerPassword?.trim() ? { ownerPassword: form.ownerPassword } : {}),
         });
         const selectedPlanId = String(form.subscriptionPlan || "").trim();
         const initialPlanId = String(
@@ -396,13 +400,21 @@ const RestaurantDrawer = ({ open, onClose, initial, plans = [], onSaved, restaur
                        <input type="email" value={form.ownerEmail} onChange={(e) => set("ownerEmail", e.target.value)}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50" />
                     </div>
-                    {!isEdit && (
+                    {!isEdit ? (
                       <div className="col-span-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Owner Security Password</label>
                         <input type="password" value={form.ownerPassword} onChange={(e) => set("ownerPassword", e.target.value)}
                           placeholder="Min 6 characters required"
                           className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all font-mono" />
                         <p className="text-[10px] text-slate-600 font-bold mt-2 ml-1">REQUIRED FOR INITIAL OWNER ACCOUNT CREATION</p>
+                      </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 mb-2 block">Reset Owner Password (optional)</label>
+                        <input type="password" value={form.ownerPassword} onChange={(e) => set("ownerPassword", e.target.value)}
+                          placeholder="Leave blank to keep current password"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50 transition-all font-mono" />
+                        <p className="text-[10px] text-slate-600 font-bold mt-2 ml-1">UPDATES LOGIN PASSWORD WHEN OWNER EMAIL IS CHANGED</p>
                       </div>
                     )}
                   </div>

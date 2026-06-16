@@ -29,12 +29,21 @@ export function buildKotPrintPayload(kb) {
   const model = buildKitchenReceiptModel(kb);
   if (!model) return null;
 
-  const items = (kb.items || []).map((item) => ({
-    qty: item.quantity ?? item.qty ?? 1,
-    name: item.name || item.productName || "Item",
-    notes: item.notes || item.specialInstructions || "",
-    modifiers: item.modifiers || "",
-  }));
+  const items = (kb.items || []).map((item) => {
+    const mods = [];
+    if (item.selectedPortion) mods.push(String(item.selectedPortion));
+    if (item.selectedAddons?.length) {
+      item.selectedAddons.forEach((a) => {
+        if (a?.name) mods.push(String(a.name));
+      });
+    }
+    return {
+      qty: item.quantity ?? item.qty ?? 1,
+      name: item.name || item.productName || "Item",
+      notes: item.notes || item.specialInstructions || "",
+      modifiers: mods.join(", ") || item.modifiers || "",
+    };
+  });
 
   return {
     kotNumber: model.orderRef,

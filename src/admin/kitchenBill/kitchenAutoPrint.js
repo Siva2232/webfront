@@ -5,6 +5,7 @@ import { getKitchenPrintMode } from "./kitchenPrintMode";
 import { directPrintKitchenReceipt } from "./kitchenPrint";
 
 const printedIds = new Set();
+const scheduledOrderIds = new Set();
 
 function kitchenBillId(kb) {
   return String(kb?._id || kb?.id || "").trim();
@@ -52,6 +53,8 @@ export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalM
   if (getKitchenPrintMode(getCurrentRestaurantId()) !== "auto") return () => {};
   const id = String(orderId || "").trim();
   if (!id) return () => {};
+  if (scheduledOrderIds.has(id)) return () => {};
+  scheduledOrderIds.add(id);
 
   let attempts = 0;
   let cancelled = false;
@@ -60,6 +63,7 @@ export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalM
   const stop = () => {
     cancelled = true;
     if (timerId != null) window.clearInterval(timerId);
+    scheduledOrderIds.delete(id);
   };
 
   const tick = async () => {

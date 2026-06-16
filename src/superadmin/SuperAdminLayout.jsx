@@ -5,16 +5,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Building2, CreditCard, BarChart3,
   Shield, LogOut, Settings, ChevronRight, ChevronDown,
-  Bell, User, CreditCard as CardIcon, MessageSquare
+  Bell, User, CreditCard as CardIcon, MessageSquare, Wallet, History, Bot
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getSANotifications, markAllSANotificationsRead } from "../api/restaurantApi";
+import {
+  getSANotifications,
+  markAllSANotificationsRead,
+  markSANotificationRead,
+  deleteSANotification,
+} from "../api/restaurantApi";
 
 const nav = [
   { label: "Dashboard",     icon: LayoutDashboard, to: "/superadmin/dashboard" },
   { label: "Restaurants",   icon: Building2,       to: "/superadmin/restaurants" },
   { label: "Plans",         icon: CreditCard,      to: "/superadmin/plans" },
+  { label: "Payment Settings", icon: Wallet,       to: "/superadmin/payment-settings" },
+  { label: "Payment History",  icon: History,      to: "/superadmin/payment-history" },
   { label: "Analytics",     icon: BarChart3,       to: "/superadmin/analytics" },
+  { label: "Analytics Robot", icon: Bot,           to: "/superadmin/analyze-robot" },
   { label: "Support Team",  icon: User,            to: "/superadmin/support-team" },
   { label: "Notifications", icon: Bell,            to: "/superadmin/notifications" },
   { label: "Support",       icon: MessageSquare,   to: "/superadmin/support" },
@@ -25,7 +33,11 @@ export default function SuperAdminLayout() {
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
 
   // Guard BEFORE rendering any UI — avoid one-frame flash of the dark sidebar
   // when a non–super-admin lands on a /superadmin/* URL.
@@ -52,16 +64,121 @@ export default function SuperAdminLayout() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsProfileOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const fetchNotifications = async () => {
+    setNotifLoading(true);
+    try {
+      const { data } = await getSANotifications();
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+    } catch {
+      toast.error("Failed to load notifications");
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const toggleNotifications = async () => {
+    setIsNotifOpen((prev) => !prev);
+    // load on open (or refresh if already loaded)
+    if (!isNotifOpen) {
+      await fetchNotifications();
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await markSANotificationRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // silent
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const notif = notifications.find((n) => n._id === id);
+      await deleteSANotification(id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      if (notif && !notif.isRead) setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      toast.error("Failed to delete notification");
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllSANotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      toast.success("All notifications marked as read");
+    } catch {
+      toast.error("Failed to mark all read");
+    }
+  };
+
+  const notificationTarget = (n) => {
+    const type = n?.type || "system";
+    if (type === "payment") return "/superadmin/payment-history";
+    if (type === "support_ticket") return "/superadmin/support";
+    if (type === "new_restaurant") return "/superadmin/restaurants";
+    if (type === "subscription_expiry") return "/superadmin/restaurants";
+    if (type === "suspension") return "/superadmin/restaurants";
+    return "/superadmin/notifications";
+  };
+
+  const handleNotificationOpen = async (n) => {
+    if (!n) return;
+    // mark read first (best effort)
+    if (!n.isRead) {
+      await handleMarkRead(n._id);
+    }
+    setIsNotifOpen(false);
+    navigate(notificationTarget(n), {
+      state: {
+        restaurantId: n.restaurantId || "",
+        notificationId: n._id,
+        notificationType: n.type,
+      },
+    });
+  };
+
   const handleLogout = () => {
-    logout();
-    toast.success("Logged out");
-    // Hard reload ensures all context state resets cleanly
-    window.location.href = '/superadmin/login';
+    setIsProfileOpen(false);
+    const logoutToastId = toast.loading(
+      <div className="flex flex-col items-center">
+        <p className="mb-2">Are you sure you want to sign out?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              toast.dismiss(logoutToastId);
+              logout();
+              toast.success("Logged out");
+              window.location.href = "/superadmin/login";
+            }}
+            className="px-4 py-2 bg-rose-500 text-white rounded-lg"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => toast.dismiss(logoutToastId)}
+            className="px-4 py-2 bg-slate-200 rounded-lg"
+          >
+            No
+          </button>
+        </div>
+      </div>,
+    );
   };
 
   return (
@@ -140,7 +257,7 @@ export default function SuperAdminLayout() {
             {/* Quick Actions */}
             <div className="hidden sm:flex items-center gap-3 pr-6 border-r border-slate-800/50">
                <button 
-                 onClick={() => navigate("/superadmin/notifications")}
+                 onClick={toggleNotifications}
                  className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all relative"
                >
                  <Bell size={20} />
@@ -150,9 +267,138 @@ export default function SuperAdminLayout() {
                    </span>
                  )}
                </button>
-               <button className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all">
+               <button
+                 onClick={() => navigate("/superadmin/payment-settings")}
+                 className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all"
+                 title="Payment settings"
+               >
                  <Settings size={20} />
                </button>
+            </div>
+
+            {/* Notifications Popup */}
+            <div className="relative" ref={notifRef}>
+              <AnimatePresence>
+                {isNotifOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 top-14 z-50 w-[22rem] overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50"
+                  >
+                    <div className="flex items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Notifications
+                        </p>
+                        <p className="mt-1 text-sm font-black text-white">
+                          {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={fetchNotifications}
+                          className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
+                        >
+                          Refresh
+                        </button>
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleMarkAllRead}
+                            className="rounded-xl bg-pink-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white hover:bg-pink-500"
+                          >
+                            Read all
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="max-h-[26rem] overflow-auto">
+                      {notifLoading ? (
+                        <div className="flex items-center justify-center py-10 text-slate-400">
+                          Loading...
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="px-5 py-10 text-center">
+                          <p className="text-sm font-bold text-slate-500">No notifications</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-800/60">
+                          {notifications.slice(0, 12).map((n) => (
+                            <div
+                              key={n._id}
+                              className={`px-5 py-4 transition hover:bg-slate-800/30 ${
+                                n.isRead ? "opacity-70" : ""
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleNotificationOpen(n)}
+                                  className="min-w-0 flex-1 text-left"
+                                >
+                                  <p className="text-sm font-black text-white truncate">
+                                    {n.title}
+                                  </p>
+                                  <p className="mt-1 text-xs text-slate-400 line-clamp-2">
+                                    {n.message}
+                                  </p>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {n.restaurantId ? (
+                                      <span className="rounded-lg border border-slate-800 bg-slate-950/40 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                        {n.restaurantId}
+                                      </span>
+                                    ) : null}
+                                    {n.amount > 0 ? (
+                                      <span className="rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400">
+                                        ₹{Number(n.amount).toLocaleString("en-IN")}
+                                      </span>
+                                    ) : null}
+                                    {n.planName ? (
+                                      <span className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-300">
+                                        {n.planName}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </button>
+
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                  {!n.isRead && (
+                                    <span className="mt-1 h-2 w-2 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(n._id)}
+                                    className="rounded-lg border border-slate-800 bg-slate-950/40 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-400"
+                                  >
+                                    Del
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-800/60 px-5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          navigate("/superadmin/notifications");
+                        }}
+                        className="w-full rounded-2xl bg-slate-950/60 py-3 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-950"
+                      >
+                        View all notifications
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Profile Dropdown */}
@@ -195,9 +441,26 @@ export default function SuperAdminLayout() {
                     </div>
                     
                     <div className="mt-2 space-y-1">
-                      <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-2xl transition-all group">
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-2xl transition-all group"
+                        onClick={() => { navigate("/superadmin/profile"); setIsProfileOpen(false); }}
+                      >
                         <User size={18} className="text-slate-500 group-hover:text-pink-400" />
                         <span>Security Profile</span>
+                      </button>
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-2xl transition-all group"
+                        onClick={() => { navigate("/superadmin/payment-settings"); setIsProfileOpen(false); }}
+                      >
+                        <Wallet size={18} className="text-slate-500 group-hover:text-pink-400" />
+                        <span>Payment Settings</span>
+                      </button>
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-2xl transition-all group"
+                        onClick={() => { navigate("/superadmin/payment-history"); setIsProfileOpen(false); }}
+                      >
+                        <History size={18} className="text-slate-500 group-hover:text-pink-400" />
+                        <span>Payment History</span>
                       </button>
                       <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-2xl transition-all group" onClick={() => navigate("/superadmin/plans")}>
                         <CardIcon size={18} className="text-slate-500 group-hover:text-pink-400" />

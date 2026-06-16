@@ -1,7 +1,5 @@
 import {
-  receiptPad as pad,
   formatKitchenManifestItems,
-  formatTakeawayReceiptLines,
   RECEIPT_DASH_LINE as DASH,
 } from "../orderBill/receiptPrintCore";
 import { escInit, escAlign, escBold, escCut, escFeed } from "../orderBill/escposCommands";
@@ -21,44 +19,23 @@ export function buildKitchenReceiptEscPos(kb) {
   const itemsText = formatKitchenManifestItems(kb.items || []);
   const out = { value: escInit() };
 
-  const headerName = String(m.restaurantName || "").trim();
-  const genericKitchen =
-    !headerName || /^kitchen$/i.test(headerName);
-  if (!genericKitchen) {
-    writeln(out, headerName, { center: true, bold: true });
-  }
-  writeln(out, "Kitchen Ticket", { center: true, bold: genericKitchen });
-  writeln(out, DASH);
-
-  writeln(out, pad("Order Ref", m.orderRef.replace(/^#/, "#")));
-  writeln(out, pad("Table", m.tableLabel));
-
-  const takeawayBlock = formatTakeawayReceiptLines(kb, pad);
-  if (takeawayBlock) {
-    for (const line of takeawayBlock.trim().split("\n")) {
-      if (line) writeln(out, line);
-    }
-  }
-
-  writeln(out, pad("Placed At", m.placedAt));
-  writeln(out, DASH);
-  writeln(out, "Itemized Manifest", { bold: true });
+  writeln(out, "KITCHEN ORDER", { center: true, bold: true });
+  writeln(out, m.orderRef, { center: true });
+  writeln(out, `Table: ${m.tableLabel}`, { center: true });
+  writeln(out, `Time: ${m.placedAt}`, { center: true });
   writeln(out, DASH);
 
   for (const line of (itemsText || "—").split("\n")) {
-    writeln(out, line);
+    if (!line) continue;
+    writeln(out, line, { bold: /^\d+x/.test(line.trim()) });
   }
 
   if (m.notes) {
     writeln(out, DASH);
-    writeln(out, "Notes:", { bold: true });
-    for (const line of m.notes.split("\n")) {
-      writeln(out, line);
-    }
+    writeln(out, `Note: ${m.notes}`);
   }
 
-  writeln(out, DASH);
-  out.value += escFeed(4);
+  out.value += escFeed(2);
   out.value += escCut();
   return out.value;
 }

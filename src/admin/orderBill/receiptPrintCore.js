@@ -9,10 +9,10 @@ import {
  * Single source of truth for 80mm thermal print layout (matches customer bill receipt).
  */
 export const RECEIPT_PRINT_CSS = `@page{size:80mm auto;margin:0}
-body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margin:0;padding:4mm;box-sizing:border-box}
-.header{text-align:center;font-weight:bold;margin-bottom:2mm;white-space:pre-wrap}
-.receipt-pre{white-space:pre;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.35;margin:0;width:100%}
-.line{border-bottom:1px dashed #000;margin:2mm 0;height:0}
+body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margin:0;padding:2mm;box-sizing:border-box}
+.header{text-align:center;font-weight:bold;margin-bottom:1mm;white-space:pre-wrap}
+.receipt-pre{white-space:pre;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;margin:0;width:100%}
+.line{border-bottom:1px dashed #000;margin:1mm 0;height:0}
 .text-center{text-align:center}.bold{font-weight:bold}`;
 
 export const RECEIPT_TEXT_WIDTH = 32;
@@ -148,6 +148,18 @@ export function receiptItemsHeaderLine() {
 /**
  * Itemized block: base row, optional portion, addons, dashed subtotal — identical to customer receipt.
  */
+function receiptItemDisplayName(item) {
+  let name = String(item.name || "");
+  if (!item.selectedPortion) return name;
+  const portion = String(item.selectedPortion);
+  const suffix = `(${portion})`;
+  const maxName = ITEM_NAME_COL - suffix.length;
+  if (name.length > maxName) {
+    name = name.slice(0, Math.max(4, maxName - 2)) + "..";
+  }
+  return name + suffix;
+}
+
 export function formatManifestItems(items) {
   const lineItems = Array.isArray(items) ? items : [];
   return lineItems
@@ -155,52 +167,34 @@ export function formatManifestItems(items) {
       const addonsTotal =
         item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
       const base = item.price - addonsTotal;
-      let line = receiptItemLine(item.name, item.qty, base * item.qty);
-      if (item.selectedPortion) line += "\n  Portion: " + item.selectedPortion;
+      let line = receiptItemLine(receiptItemDisplayName(item), item.qty, base * item.qty);
       if (item.selectedAddons?.length) {
         item.selectedAddons.forEach((a) => {
-          line +=
-            "\n" +
-            ("  + " + a.name).padEnd(22) +
-            ("Rs." + ((a.price || 0) * item.qty).toFixed(2)).padStart(10);
+          const addonName = `+ ${a.name}`;
+          line += "\n" + receiptItemLine(addonName, item.qty, (a.price || 0) * item.qty);
         });
-        line += "\n  " + "-".repeat(28);
-        line +=
-          "\n  " +
-          "Item Total".padEnd(18) +
-          ("Rs." + (item.price * item.qty).toFixed(2)).padStart(12);
       }
       return line;
     })
     .join("\n");
 }
 
-/** One line: dish name (left) + Qty n (right), 32-char monospace row */
-function kitchenNameQtyLine(name, qty) {
-  const right = `Qty ${String(qty ?? "")}`;
-  let left = String(name || "").trim();
-  const maxLeft = Math.max(4, RECEIPT_TEXT_WIDTH - right.length - 1);
-  if (left.length > maxLeft) {
-    left = left.slice(0, Math.max(1, maxLeft - 2)) + (maxLeft > 5 ? ".." : "");
-  }
-  return receiptPad(left, right, RECEIPT_TEXT_WIDTH);
-}
-
 /**
- * Kitchen ticket: dish names + qty on one aligned row; portion & add-ons below — no prices.
+ * Kitchen ticket: compact qty x name rows; portion inline — no prices.
  */
 export function formatKitchenManifestItems(items) {
   const lineItems = Array.isArray(items) ? items : [];
   return lineItems
     .map((item) => {
-      let block = kitchenNameQtyLine(item.name, item.qty);
-      if (item.selectedPortion) block += "\n  Portion: " + item.selectedPortion;
+      const qty = item.qty ?? item.quantity ?? 1;
+      let name = String(item.name || "").trim();
+      if (item.selectedPortion) name += ` (${item.selectedPortion})`;
+      let block = `${qty}x ${name}`;
       if (item.selectedAddons?.length) {
-        item.selectedAddons.forEach((a) => {
-          block += "\n  + " + String(a.name || "");
-        });
+        const addons = item.selectedAddons.map((a) => a.name).filter(Boolean).join(", ");
+        if (addons) block += `\n  + ${addons}`;
       }
       return block;
     })
-    .join("\n\n");
+    .join("\n");
 }

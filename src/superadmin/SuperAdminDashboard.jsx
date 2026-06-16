@@ -1,12 +1,14 @@
-import { useEffect, useState, useMemo, useRef } from "react";
-import { getAnalytics, getRestaurants, updateRestaurant } from "../api/restaurantApi";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAnalytics, getRestaurants, getSANotifications } from "../api/restaurantApi";
 import { 
   Building2, CheckCircle2, Clock, XCircle, DollarSign, Zap, 
   Users, ShoppingBag, TrendingUp, Calendar, ArrowUpRight, 
   ArrowDownRight, MoreVertical, Globe, ShieldCheck, Activity,
   Smartphone, CreditCard, LayoutDashboard, Download, Filter,
   Bell, AlertTriangle, Info, Search, ExternalLink, Ban, 
-  RefreshCw, MousePointer2, Briefcase, BarChart3, PieChart as PieIcon,Plus 
+  RefreshCw, MousePointer2, Briefcase, BarChart3, PieChart as PieIcon,Plus,
+  MessageSquare, Bot
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -23,6 +25,155 @@ const PERIODS = [
   { id: "month", label: "This Month" },
   { id: "year", label: "This Year" }
 ];
+
+const ACTIVITY_ICONS = {
+  payment: { icon: DollarSign, color: "text-emerald-500" },
+  new_restaurant: { icon: Building2, color: "text-pink-500" },
+  subscription_expiry: { icon: Clock, color: "text-amber-500" },
+  suspension: { icon: Ban, color: "text-rose-500" },
+  support_ticket: { icon: MessageSquare, color: "text-indigo-500" },
+  system: { icon: ShieldCheck, color: "text-slate-400" },
+};
+
+function formatRelativeTime(dateInput, nowMs = Date.now()) {
+  if (!dateInput) return "—";
+  const then = new Date(dateInput).getTime();
+  if (Number.isNaN(then)) return "—";
+  const seconds = Math.floor((nowMs - then) / 1000);
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateInput).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+function mapNotificationToActivity(n) {
+  return {
+    id: n._id,
+    type: n.type || "system",
+    user: n.restaurantName || n.restaurantId || "System",
+    action: n.title || n.message,
+    createdAt: n.createdAt,
+  };
+}
+
+function computePlatformInsights({ stats, restaurants, activityFeed, mrr }) {
+  const total = stats?.total || 0;
+  const active = stats?.active || 0;
+  const trial = stats?.trial || 0;
+  const suspended = stats?.suspended || 0;
+  const expired = stats?.expired || 0;
+
+  const avgPlanPrice = active > 0 ? Math.round(mrr / active) : 0;
+  const trialUpside = Math.round(trial * avgPlanPrice * 0.35);
+
+  const revenueMonths = stats?.revenueByMonth || [];
+  const lastRev = revenueMonths[revenueMonths.length - 1]?.revenue || 0;
+  const prevRev = revenueMonths[revenueMonths.length - 2]?.revenue || 0;
+  const revenueGrowthPct =
+    prevRev > 0 ? Math.round(((lastRev - prevRev) / prevRev) * 100) : lastRev > 0 ? 100 : 0;
+
+  const growthMonths = stats?.growth || [];
+  const lastTenants = growthMonths[growthMonths.length - 1]?.tenants || 0;
+  const prevTenants = growthMonths[growthMonths.length - 2]?.tenants || 0;
+  const tenantGrowthPct =
+    prevTenants > 0
+      ? Math.round(((lastTenants - prevTenants) / prevTenants) * 100)
+      : lastTenants > 0
+        ? 100
+        : 0;
+
+  const expiringSoon = restaurants.filter((r) => {
+    if (!r.subscriptionExpiry) return false;
+    const days = Math.ceil((new Date(r.subscriptionExpiry) - Date.now()) / 86400000);
+    return days >= 0 && days <= 7 && ["active", "trial"].includes(r.subscriptionStatus);
+  }).length;
+
+  const healthPct = total > 0 ? Math.round((active / total) * 100) : 0;
+
+  const payments24h = activityFeed.filter(
+    (a) => a.type === "payment" && Date.now() - new Date(a.createdAt).getTime() < 86400000
+  ).length;
+
+  const newNodes30d = restaurants.filter(
+    (r) => r.createdAt && Date.now() - new Date(r.createdAt).getTime() < 30 * 86400000
+  ).length;
+
+  const topFeature = (() => {
+    const usage = stats?.featureUsage || {};
+    const entries = Object.entries(usage).filter(([, v]) => v > 0);
+    if (!entries.length) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    const labels = {
+      hr: "HR Portal",
+      onlineOrders: "Online Orders",
+      qrMenu: "QR Menu",
+      kitchenPanel: "Kitchen Display",
+      waiterPanel: "Waiter Systems",
+      reservations: "Reservations",
+    };
+    return { name: labels[entries[0][0]] || entries[0][0], pct: total > 0 ? Math.round((entries[0][1] / total) * 100) : 0 };
+  })();
+
+  let summary = "";
+  const tags = [];
+
+  if (expiringSoon >= 2) {
+    const atRisk = expiringSoon * avgPlanPrice;
+    summary = `${expiringSoon} tenant${expiringSoon > 1 ? "s" : ""} expire within 7 days — up to ₹${atRisk.toLocaleString()} MRR at risk. Prioritize renewal outreach now.`;
+    tags.push({ label: `${expiringSoon} Expiring`, tone: "amber" });
+  } else if (revenueGrowthPct > 0 && lastRev > 0) {
+    summary = `Subscription revenue grew ${revenueGrowthPct}% month-over-month. Platform MRR is ₹${mrr.toLocaleString()} across ${active} active node${active !== 1 ? "s" : ""}.`;
+    tags.push({ label: `+${revenueGrowthPct}% Revenue`, tone: "pink" });
+  } else if (trial >= 2 && trialUpside > 0) {
+    summary = `${trial} trial${trial > 1 ? "s" : ""} on the grid — converting at typical rates could add ~₹${trialUpside.toLocaleString()} to monthly recurring revenue.`;
+    tags.push({ label: `${trial} Trials`, tone: "indigo" });
+  } else if (suspended > 0) {
+    summary = `${suspended} node${suspended > 1 ? "s" : ""} suspended and ${expired} expired. Review account status to recover platform revenue and uptime.`;
+    tags.push({ label: `${suspended} Suspended`, tone: "rose" });
+  } else if (payments24h > 0) {
+    summary = `${payments24h} subscription payment${payments24h > 1 ? "s" : ""} in the last 24 hours. Cashflow is active with ₹${mrr.toLocaleString()} current MRR.`;
+    tags.push({ label: `${payments24h} Payments Today`, tone: "emerald" });
+  } else if (newNodes30d > 0) {
+    summary = `${newNodes30d} new tenant${newNodes30d > 1 ? "s" : ""} deployed in the last 30 days. Fleet health at ${healthPct}% active with ${total} total nodes.`;
+    tags.push({ label: `+${newNodes30d} New Nodes`, tone: "emerald" });
+  } else if (topFeature) {
+    summary = `${topFeature.name} leads feature adoption at ${topFeature.pct}% penetration. ${active} active tenants generating ₹${mrr.toLocaleString()} MRR.`;
+    tags.push({ label: `${topFeature.pct}% ${topFeature.name}`, tone: "indigo" });
+  } else {
+    summary = `Platform stable — ${active} active, ${trial} trial, ${total} total tenants. MRR ₹${mrr.toLocaleString()} with ${healthPct}% fleet health.`;
+    tags.push({ label: `${healthPct}% Health`, tone: "emerald" });
+  }
+
+  if (tenantGrowthPct !== 0 && !tags.some((t) => t.label.includes("New"))) {
+    tags.push({
+      label: `${tenantGrowthPct >= 0 ? "+" : ""}${tenantGrowthPct}% Tenants`,
+      tone: tenantGrowthPct >= 0 ? "emerald" : "rose",
+    });
+  }
+
+  if (payments24h > 0 && !tags.some((t) => t.label.includes("Payment"))) {
+    tags.push({ label: "Live Payments", tone: "emerald" });
+  }
+
+  return {
+    summary,
+    tags: tags.slice(0, 3),
+    metrics: { revenueGrowthPct, tenantGrowthPct, healthPct, expiringSoon, payments24h },
+  };
+}
+
+const TAG_STYLES = {
+  pink: "bg-pink-500/10 text-pink-500 border-pink-500/20",
+  emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  amber: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  indigo: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+  rose: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+};
 
 const StatCard = ({ label, value, icon: Icon, color, trend, subValue, glowColor }) => (
   <div 
@@ -82,22 +233,73 @@ const FeatureCard = ({ label, count, total, icon: Icon, color }) => {
 };
 
 export default function SuperAdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("overview");
+  const [activityFeed, setActivityFeed] = useState([]);
+  const [feedUpdatedAt, setFeedUpdatedAt] = useState(null);
+  const [insightsUpdatedAt, setInsightsUpdatedAt] = useState(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const dashboardRef = useRef(null);
+
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const [{ data: sData }, { data: rData }] = await Promise.all([
+        getAnalytics({ skipCoalesce: true }),
+        getRestaurants({ skipCoalesce: true }),
+      ]);
+      setStats(sData);
+      setRestaurants(rData);
+      setInsightsUpdatedAt(new Date());
+      if (sData?.recentActivity?.length) {
+        setActivityFeed((prev) => (prev.length ? prev : sData.recentActivity));
+      }
+    } catch {
+      // keep last known snapshot on transient errors
+    }
+  }, []);
+
+  const fetchActivityFeed = useCallback(async () => {
+    try {
+      const { data } = await getSANotifications({ skipCoalesce: true });
+      const items = (data?.notifications || []).slice(0, 15).map(mapNotificationToActivity);
+      setActivityFeed(items);
+      setFeedUpdatedAt(new Date());
+      setInsightsUpdatedAt(new Date());
+    } catch {
+      // keep last known feed on transient errors
+    }
+  }, []);
 
   useEffect(() => {
     Promise.all([getAnalytics(), getRestaurants()])
       .then(([{ data: sData }, { data: rData }]) => {
         setStats(sData);
         setRestaurants(rData);
+        setInsightsUpdatedAt(new Date());
+        if (sData?.recentActivity?.length) {
+          setActivityFeed(sData.recentActivity);
+          setFeedUpdatedAt(new Date());
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+
+    fetchDashboardData();
+    fetchActivityFeed();
+    const pollId = setInterval(() => {
+      fetchDashboardData();
+      fetchActivityFeed();
+    }, 30000);
+    const tickId = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => {
+      clearInterval(pollId);
+      clearInterval(tickId);
+    };
+  }, [fetchDashboardData, fetchActivityFeed]);
 
   // -- Advanced Analytics Computations --
   const mrr = useMemo(() => {
@@ -108,6 +310,11 @@ export default function SuperAdminDashboard() {
   }, [restaurants]);
 
   const arr = mrr * 12;
+
+  const aiInsights = useMemo(
+    () => computePlatformInsights({ stats, restaurants, activityFeed, mrr }),
+    [stats, restaurants, activityFeed, mrr]
+  );
 
   const chartData = useMemo(() => {
     if (!stats) return [];
@@ -232,9 +439,9 @@ export default function SuperAdminDashboard() {
             >
               <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
             </button>
-            <button className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all shadow-xl active:scale-95">
+            {/* <button className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-pink-500 hover:text-white transition-all shadow-xl active:scale-95">
               <Plus className="w-4 h-4" /> Deploy Node
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -318,18 +525,35 @@ export default function SuperAdminDashboard() {
                     <h3 className="text-sm font-black text-white uppercase tracking-widest">AI Intelligence</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                       <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Analyzing Live Grid</span>
+                       <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">
+                         {insightsUpdatedAt
+                           ? `Live · ${formatRelativeTime(insightsUpdatedAt, nowTick)}`
+                           : "Analyzing Live Grid"}
+                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                    <p className="text-xs text-slate-300 font-medium leading-relaxed bg-slate-950/50 p-4 rounded-2xl border border-white/5 italic">
-                     "MRR is projected to grow by 14% next month based on current trial conversion patterns."
+                     &ldquo;{aiInsights.summary}&rdquo;
                    </p>
                    <div className="flex flex-wrap gap-2">
-                      <span className="px-2 py-1 bg-pink-500/10 text-pink-500 text-[8px] font-black uppercase tracking-widest rounded-lg border border-pink-500/20">+14% Growth</span>
-                      <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-widest rounded-lg border border-emerald-500/20">Optimized Ops</span>
+                      {aiInsights.tags.map((tag) => (
+                        <span
+                          key={tag.label}
+                          className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest rounded-lg border ${TAG_STYLES[tag.tone] || TAG_STYLES.emerald}`}
+                        >
+                          {tag.label}
+                        </span>
+                      ))}
                    </div>
+                   <button
+                     type="button"
+                     onClick={() => navigate("/superadmin/analyze-robot")}
+                     className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 hover:bg-indigo-500/20 transition-all"
+                   >
+                     <Bot className="w-4 h-4" /> Open Analytics Robot
+                   </button>
                 </div>
               </div>
 
@@ -462,31 +686,49 @@ export default function SuperAdminDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
              {/* Activity Feed */}
              <div className="bg-slate-900/40 border border-slate-800/80 rounded-[3rem] p-10">
-                <h2 className="text-xl font-black text-white mb-8 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-pink-500" /> Real-time Feed
-                </h2>
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-pink-500" /> Real-time Feed
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Live</span>
+                    {feedUpdatedAt && (
+                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter ml-1">
+                        · {formatRelativeTime(feedUpdatedAt, nowTick)}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-8 relative">
                    <div className="absolute left-4 top-2 bottom-2 w-px bg-slate-800" />
-                   {(stats?.recentActivity || [
-                     { user: 'RESTO004', action: 'Requested Payout', time: '2m ago', icon: DollarSign, color: 'text-emerald-500' },
-                     { user: 'Admin', action: 'New Node Deployed', time: '14m ago', icon: Zap, color: 'text-pink-500' },
-                     { user: 'RESTO012', action: 'Subscription Renewal', time: '45m ago', icon: RefreshCw, color: 'text-indigo-500' },
-                     { user: 'System', action: 'Econ Data Sync Complete', time: '1h ago', icon: ShieldCheck, color: 'text-slate-400' },
-                   ]).map((act, i) => (
-                     <div key={i} className="relative flex items-center gap-6 pl-10">
-                        <div className={`absolute left-0 w-8 h-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ${act.color}`}>
-                           {/* Map icons dynamically or use default */}
-                           {act.icon ? <act.icon className="w-3.5 h-3.5" /> : <Activity className="w-3.5 h-3.5" />}
-                        </div>
-                        <div className="flex-1">
-                           <div className="flex justify-between items-center">
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest">{act.user}</p>
-                              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">{act.time}</span>
-                           </div>
-                           <p className="text-xs text-slate-400 font-medium mt-1">{act.action}</p>
-                        </div>
+                   {activityFeed.length === 0 ? (
+                     <div className="text-center py-10 opacity-40">
+                       <Activity className="w-8 h-8 mx-auto mb-2 text-slate-500" />
+                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No platform activity yet</p>
                      </div>
-                   ))}
+                   ) : (
+                     activityFeed.map((act) => {
+                       const meta = ACTIVITY_ICONS[act.type] || ACTIVITY_ICONS.system;
+                       const Icon = meta.icon;
+                       return (
+                         <div key={act.id} className="relative flex items-center gap-6 pl-10">
+                           <div className={`absolute left-0 w-8 h-8 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center ${meta.color}`}>
+                             <Icon className="w-3.5 h-3.5" />
+                           </div>
+                           <div className="flex-1">
+                             <div className="flex justify-between items-center">
+                               <p className="text-[10px] font-black text-white uppercase tracking-widest">{act.user}</p>
+                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
+                                 {formatRelativeTime(act.createdAt, nowTick)}
+                               </span>
+                             </div>
+                             <p className="text-xs text-slate-400 font-medium mt-1">{act.action}</p>
+                           </div>
+                         </div>
+                       );
+                     })
+                   )}
                 </div>
              </div>
 

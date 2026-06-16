@@ -1,11 +1,25 @@
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { isCustomerOnlinePaymentEnabled } from "../utils/paymentFeature";
 
 /* Feature Guard — blocks direct URL access to disabled features (after branding/features load). */
 const FeatureGuard = ({ feature, children }) => {
-  const { features, featuresReady } = useTheme();
-  if (featuresReady && features[feature] === false) {
+  const { features, featuresReady, branding } = useTheme();
+  if (!featuresReady) return children;
+
+  if (feature === "customerOnlinePayment") {
+    if (
+      !isCustomerOnlinePaymentEnabled(features, branding.subscriptionPlan, {
+        featuresReady,
+      })
+    ) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    return children;
+  }
+
+  if (features[feature] === false) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   return children;
@@ -44,6 +58,10 @@ import RestaurantList from "../superadmin/RestaurantList";
 import PlanManager from "../superadmin/PlanManager";
 import SuperAdminAnalytics from "../superadmin/SuperAdminAnalytics";
 import SuperAdminNotifications from "../superadmin/SuperAdminNotifications";
+import SuperAdminPaymentSettings from "../superadmin/SuperAdminPaymentSettings";
+import SuperAdminPaymentHistory from "../superadmin/SuperAdminPaymentHistory";
+import SuperAdminProfile from "../superadmin/SuperAdminProfile";
+import SuperAdminAnalyzeRobot from "../superadmin/SuperAdminAnalyzeRobot";
 import SupportTicketManager from "../superadmin/SupportTicketManager";
 import SupportTeamManager from "../superadmin/SupportTeamManager";
 
@@ -57,6 +75,7 @@ import ProtectedSupportRoute from "./ProtectedSupportRoute";
 
 /* Admin Subscription Page */
 import SubscriptionPage from "../admin/SubscriptionPage";
+import PaymentSettingsPage from "../admin/PaymentSettingsPage";
 
 /* Admin Pages */
 import Dashboard from "../admin/Dashboard";
@@ -292,6 +311,14 @@ export default function AppRoutes() {
             }
           />
           <Route path="subscription" element={<SubscriptionPage />} />
+          <Route
+            path="payment-settings"
+            element={
+              <FeatureGuard feature="customerOnlinePayment">
+                <PaymentSettingsPage />
+              </FeatureGuard>
+            }
+          />
           <Route path="profile" element={<AdminProfile />} />
 
           {/* HR — outlet if any HR submodule or parent hr is on; each route has its own guard */}
@@ -389,8 +416,12 @@ export default function AppRoutes() {
           <Route path="restaurants" element={<RestaurantList />} />
           <Route path="plans" element={<PlanManager />} />
           <Route path="analytics" element={<SuperAdminAnalytics />} />
+          <Route path="analyze-robot" element={<SuperAdminAnalyzeRobot />} />
           <Route path="support-team" element={<SupportTeamManager />} />
           <Route path="notifications" element={<SuperAdminNotifications />} />
+          <Route path="payment-settings" element={<SuperAdminPaymentSettings />} />
+          <Route path="payment-history" element={<SuperAdminPaymentHistory />} />
+          <Route path="profile" element={<SuperAdminProfile />} />
           <Route path="support" element={<SupportTicketManager />} />
           <Route path="*" element={<Navigate to="dashboard" replace />} />
         </Route>

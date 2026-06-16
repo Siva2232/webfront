@@ -148,6 +148,11 @@ export const OrderProvider = ({ children }) => {
           `/orders?limit=${LIST_FETCH_LIMIT}&status=Pending,New,Preparing,Ready,Served,Paid,Closed`
         );
         setOrders((prev) => {
+        // If socket delivery is delayed/missed (common on spotty networks),
+        // ensure newly-seen orders still trigger the same kitchen auto-print fallback
+        // that manual orders use. Deduping is handled inside scheduleAutoPrintForOrder.
+        const prevIds = new Set((prev || []).map((o) => orderKey(o)));
+
         // Merge strategy: incoming data from server is the "source of truth",
         // but we preserve any very recent optimistic updates that haven't hit the DB yet.
         const now = Date.now();
@@ -183,6 +188,19 @@ export const OrderProvider = ({ children }) => {
         const final = [...localOnly, ...merged].sort((a, b) => 
           new Date(b.createdAt || b._optimisticAt || 0) - new Date(a.createdAt || a._optimisticAt || 0)
         );
+
+        try {
+          // Schedule auto-print fallback only for orders that are NEW to this client.
+          // This prevents re-scheduling on every poll and fixes QR orders when sockets drop.
+          for (const o of final) {
+            const id = orderKey(o);
+            if (!id || prevIds.has(id)) continue;
+            const st = normalizeStatus(o.status);
+            if (["pending", "new", "preparing", "ready", "served"].includes(st)) {
+              scheduleAutoPrintForOrder(id);
+            }
+          }
+        } catch (_) {}
 
         try { _tSet('cachedOrders', final); } catch {}
         return final;

@@ -7,13 +7,16 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { 
   ShoppingBag, Trash2, Plus, Minus,
   CheckCircle2, ReceiptText, ArrowRight, MessageSquare, 
-  UtensilsCrossed, AlertCircle, Package, CreditCard, Wallet, X, Loader2
+  UtensilsCrossed, AlertCircle, Package, CreditCard, Wallet, Loader2
 } from "lucide-react";
 import confetti from 'canvas-confetti';
 import toast from "react-hot-toast";
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import api from '../api/axios';
+import {
+  getPaymentConfig,
+  createCustomerOrder,
+  verifyCustomerPayment,
+} from "../api/restaurantApi";
+import { openRazorpayCheckout } from "../utils/razorpayCheckout";
 import { getCurrentRestaurantId, tenantKey, appendRestaurantQuery } from '../utils/tenantCache';
 import {
   computeGstFromSubtotal,
@@ -23,116 +26,6 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import TakeawayCustomerNameModal from "../components/TakeawayCustomerNameModal";
 import { persistTakeawayTrackOrderId } from "../utils/takeawayCustomer";
-
-// Initialize Stripe with publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
-// Stripe Checkout Form Component
-function StripeCheckoutForm({ amount, onSuccess, onCancel, orderDetails }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState(null);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      console.log('🔵 [Stripe] Creating payment intent...', { amount, orderDetails });
-      
-      const { data } = await api.post('/payment/create-payment-intent', {
-        amount: amount,
-        currency: 'inr',
-        orderId: orderDetails.orderId,
-        customerDetails: {
-          table: orderDetails.table,
-        }
-      });
-
-      const { clientSecret } = data;
-
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-        }
-      });
-
-      if (stripeError) {
-        setError(stripeError.message);
-        setIsProcessing(false);
-      } else if (paymentIntent.status === 'succeeded') {
-        onSuccess(paymentIntent);
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Payment failed. Please try again.');
-      setIsProcessing(false);
-    }
-  };
-
-  const cardElementOptions = {
-    style: {
-      base: {
-        fontSize: '16px',
-        color: '#1e293b',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        '::placeholder': {
-          color: '#94a3b8',
-        },
-      },
-      invalid: {
-        color: '#ef4444',
-      },
-    },
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-slate-50 p-4 rounded-2xl">
-        <CardElement options={cardElementOptions} />
-      </div>
-      
-      {error && (
-        <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-xl">
-          <AlertCircle size={16} />
-          {error}
-        </div>
-      )}
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1 py-4 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="flex-1 py-4 rounded-2xl font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              Processing...
-            </>
-          ) : (
-            <>Pay ₹{amount.toLocaleString()}</>
-          )}
-        </button>
-      </div>
-
-      <p className="text-center text-xs text-slate-400">
-        🔒 Secured by Stripe. Use test card: 4242 4242 4242 4242
-      </p>
-    </form>
-  );
-}
 
 export default function Cart({ hideTable = false }) {
   const {
@@ -159,17 +52,33 @@ export default function Cart({ hideTable = false }) {
 
   const { addOrder } = useOrders();
   const navigate = useNavigate();
-  const { features } = useTheme();
+  const { features, branding } = useTheme();
+
+  const [razorpayEnabled, setRazorpayEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPaymentConfig()
+      .then(({ data }) => {
+        if (!cancelled) setRazorpayEnabled(Boolean(data.enabled));
+      })
+      .catch(() => {
+        if (!cancelled) setRazorpayEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /** Super Admin / plan can disable pay-at-table or card checkout independently. */
   const { showPayLaterOption, showOnlineOption } = useMemo(() => {
     const payLater = features?.customerPayLater !== false;
-    const online = features?.customerOnlinePayment !== false;
+    const online = features?.customerOnlinePayment !== false && razorpayEnabled;
     if (!payLater && !online) {
       return { showPayLaterOption: true, showOnlineOption: false };
     }
     return { showPayLaterOption: payLater, showOnlineOption: online };
-  }, [features]);
+  }, [features, razorpayEnabled]);
 
   useEffect(() => {
     if (hideTable && table !== TAKEAWAY_TABLE) {
@@ -196,7 +105,7 @@ export default function Cart({ hideTable = false }) {
   const [paymentChoiceError, setPaymentChoiceError] = useState("");
   
   const [paymentMethod, setPaymentMethod] = useState(null);
-  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showTakeawayNameModal, setShowTakeawayNameModal] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(null);
 
@@ -304,7 +213,6 @@ export default function Cart({ hideTable = false }) {
     const effectiveTable = isTakeaway ? TAKEAWAY_TABLE : table;
     setPlacedDetails({ orderId: mergeId || orderId, table: effectiveTable, total: grandTotal, paymentMethod: paymentDetails ? 'online' : 'cod' });
     setShowSuccess(true);
-    setShowStripeModal(false);
     clearCart();
 
     confetti({
@@ -356,13 +264,57 @@ export default function Cart({ hideTable = false }) {
     }, 1200);
   };
 
+  const startOnlinePayment = async (nameOverride = null) => {
+    if (!table?.trim() && !isTakeaway) {
+      setTableError("Please enter your table number");
+      return;
+    }
+    if (cart.length === 0) return;
+
+    setIsProcessingPayment(true);
+    setTableError("");
+    setPaymentChoiceError("");
+
+    const orderId = generateId("ORD");
+    const effectiveTable = isTakeaway ? TAKEAWAY_TABLE : table;
+    const customerLabel = (nameOverride ?? customerName).trim() || undefined;
+
+    try {
+      const { data: orderData } = await createCustomerOrder({
+        amount: grandTotal,
+        orderId,
+        table: effectiveTable,
+        customerName: customerLabel,
+      });
+
+      const payment = await openRazorpayCheckout({
+        keyId: orderData.keyId,
+        orderId: orderData.orderId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: branding?.name || orderData.restaurantName || "Restaurant",
+        description: "Order payment",
+        prefill: customerLabel ? { name: customerLabel } : {},
+      });
+
+      await verifyCustomerPayment(payment);
+      placeOrder({ id: payment.razorpay_payment_id }, nameOverride);
+    } catch (err) {
+      if (err.message !== "Payment cancelled") {
+        toast.error(err.response?.data?.message || err.message || "Payment failed. Please try again.");
+      }
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   const proceedAfterTakeawayName = (name) => {
     setCustomerName(name);
     setShowTakeawayNameModal(false);
     const checkout = pendingCheckout;
     setPendingCheckout(null);
     if (checkout === "online") {
-      setShowStripeModal(true);
+      startOnlinePayment(name);
     } else {
       placeOrder(null, name);
     }
@@ -389,7 +341,7 @@ export default function Cart({ hideTable = false }) {
     }
 
     if (paymentMethod === "online" && showOnlineOption) {
-      setShowStripeModal(true);
+      startOnlinePayment();
       setIsSwiped(false);
     } else {
       placeOrder();
@@ -398,10 +350,6 @@ export default function Cart({ hideTable = false }) {
 
   const handleTakeawayNameConfirm = (name) => {
     proceedAfterTakeawayName(name);
-  };
-
-  const handlePaymentSuccess = (paymentIntent) => {
-    placeOrder(paymentIntent);
   };
 
   const bothPaymentChoices = showPayLaterOption && showOnlineOption;
@@ -925,51 +873,14 @@ export default function Cart({ hideTable = false }) {
         }}
       />
 
-      {/* Stripe Payment Modal */}
-      <AnimatePresence>
-        {showStripeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
-            onClick={() => setShowStripeModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[2rem] p-5 sm:p-6 w-full max-w-md max-h-[min(92dvh,40rem)] overflow-y-auto shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-black text-slate-900">Complete Payment</h2>
-                  <p className="text-sm text-slate-500">Amount: ₹{grandTotal.toLocaleString()}</p>
-                </div>
-                <button
-                  onClick={() => setShowStripeModal(false)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                >
-                  <X size={20} className="text-slate-500" />
-                </button>
-              </div>
-              
-              <Elements stripe={stripePromise}>
-                <StripeCheckoutForm
-                  amount={grandTotal}
-                  onSuccess={handlePaymentSuccess}
-                  onCancel={() => setShowStripeModal(false)}
-                  orderDetails={{
-                    orderId: generateId("ORD"),
-                    table: isTakeaway ? TAKEAWAY_TABLE : table,
-                  }}
-                />
-              </Elements>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isProcessingPayment && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 shadow-xl">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            <p className="text-sm font-bold text-slate-700">Processing payment…</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

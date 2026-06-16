@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo, startTransition } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
+import { isCustomerOnlinePaymentEnabled } from "../utils/paymentFeature";
 import { useTheme } from "../context/ThemeContext";
 import {
   LayoutDashboard,
@@ -163,6 +164,14 @@ export default function AdminLayout() {
   const { fetchOrders, fetchBills, fetchActiveKitchenBills } = useOrders();
   const { branding, features, featuresReady } = useTheme();
 
+  const onlinePaymentEnabled = useMemo(
+    () =>
+      isCustomerOnlinePaymentEnabled(features, branding.subscriptionPlan, {
+        featuresReady,
+      }),
+    [features, branding.subscriptionPlan, featuresReady],
+  );
+
   const serviceNotifications = useMemo(
     () =>
       notifications.filter((notif) => {
@@ -175,7 +184,11 @@ export default function AdminLayout() {
   );
 
   const billingNotifications = useMemo(
-    () => notifications.filter((notif) => notif.type === "SubscriptionBilling"),
+    () =>
+      notifications.filter(
+        (notif) =>
+          notif.type === "SubscriptionBilling" || notif.type === "SubscriptionPayment"
+      ),
     [notifications],
   );
 
@@ -297,6 +310,7 @@ export default function AdminLayout() {
     const lightOnly =
       /^\/admin\/(banner|offers)/.test(p) ||
       p.startsWith("/admin/profile") ||
+      p.startsWith("/admin/payment-settings") ||
       p.startsWith("/admin/subscription") ||
       p.startsWith("/admin/customer");
     const skipOrdersPrefetch =
@@ -1247,18 +1261,24 @@ export default function AdminLayout() {
                       ) : null}
 
                       {billingNotifications.length > 0 &&
-                        billingNotifications.map((notif) => (
+                        billingNotifications.map((notif) => {
+                          const isPayment = notif.type === "SubscriptionPayment";
+                          return (
                           <div
                             key={notif._id}
-                            className="p-4 border-b border-slate-50 hover:bg-amber-50/40 transition-colors group"
+                            className={`p-4 border-b border-slate-50 transition-colors group ${
+                              isPayment ? "hover:bg-emerald-50/40" : "hover:bg-amber-50/40"
+                            }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-amber-900 uppercase tracking-tight">
-                                  Plan expiry
+                                <p className={`text-xs font-bold uppercase tracking-tight ${
+                                  isPayment ? "text-emerald-800" : "text-amber-900"
+                                }`}>
+                                  {isPayment ? "Payment received" : "Plan expiry"}
                                 </p>
                                 <p className="text-sm text-slate-700 mt-1 leading-snug">
-                                  {notif.message || "Renew your subscription."}
+                                  {notif.message || (isPayment ? "Subscription payment recorded." : "Renew your subscription.")}
                                 </p>
                                 <span className="text-[10px] font-bold text-slate-400 mt-2 block uppercase tracking-tighter">
                                   {notif.createdAt
@@ -1268,6 +1288,7 @@ export default function AdminLayout() {
                                       })
                                     : ""}
                                 </span>
+                                {!isPayment && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1278,6 +1299,19 @@ export default function AdminLayout() {
                                 >
                                   Renew
                                 </button>
+                                )}
+                                {isPayment && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowBillingPanel(false);
+                                    navigate("/admin/subscription");
+                                  }}
+                                  className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-[10px] font-black uppercase tracking-widest text-emerald-800 hover:bg-emerald-100"
+                                >
+                                  View history
+                                </button>
+                                )}
                               </div>
                               <button
                                 type="button"
@@ -1291,7 +1325,8 @@ export default function AdminLayout() {
                               </button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </motion.div>
                   </>
@@ -1870,6 +1905,51 @@ export default function AdminLayout() {
                         size={16}
                         className="text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1"
                       />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!onlinePaymentEnabled}
+                      title={
+                        onlinePaymentEnabled
+                          ? "Configure Razorpay for customer checkout"
+                          : "Enable Customer — Pay online in your plan or module access"
+                      }
+                      className={`w-full flex items-center justify-between px-4 py-3.5 mt-2 text-sm font-bold rounded-xl transition-all duration-200 group ${
+                        onlinePaymentEnabled
+                          ? "text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                          : "cursor-not-allowed text-slate-400 opacity-70"
+                      }`}
+                      onClick={() => {
+                        if (!onlinePaymentEnabled) return;
+                        navigate("payment-settings");
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Settings
+                          size={20}
+                          className={
+                            onlinePaymentEnabled
+                              ? "text-slate-400 group-hover:text-indigo-600 transition-colors"
+                              : "text-slate-300"
+                          }
+                        />
+                        <div className="min-w-0 text-left">
+                          <span>Payment settings</span>
+                          {!onlinePaymentEnabled && (
+                            <p className="text-[10px] font-semibold normal-case tracking-normal text-slate-400 mt-0.5">
+                              Requires Customer — Pay online
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {onlinePaymentEnabled ? (
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1"
+                        />
+                      ) : null}
                     </button>
 
                     <button
