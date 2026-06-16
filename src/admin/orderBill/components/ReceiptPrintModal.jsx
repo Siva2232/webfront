@@ -26,7 +26,7 @@ export function ReceiptPrintModal({ order, cashierName, onClose }) {
       preview={<OrderReceiptPreview model={model} />}
       onPrint={handlePrint}
       onClose={onClose}
-      autoPrintOnOpen
+      autoPrintOnOpen={false}
     />
   );
 }

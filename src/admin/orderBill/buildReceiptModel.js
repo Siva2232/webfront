@@ -4,6 +4,7 @@ import { getReceiptHeader, escapeReceiptHtml } from "./receiptHeaderSettings";
 import {
   getReceiptHeaderBlock,
   receiptPad as pad,
+  buildReceiptItemRows,
   formatManifestItems,
   formatTakeawayReceiptLines,
   formatReceiptDateTime,
@@ -54,6 +55,8 @@ export function buildReceiptModel(order, cashierName = "N/A") {
     takeawayMeta,
     placedAt: formatReceiptDateTime(order.createdAt || order.billedAt),
     hasTakeawayItemsInDineIn,
+    itemsHeader: receiptItemsHeaderLine(),
+    itemRows: buildReceiptItemRows(receiptItems),
     itemsManifest: formatManifestItems(receiptItems),
     subtotal,
     tax,

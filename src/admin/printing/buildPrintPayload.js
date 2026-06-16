@@ -1,12 +1,12 @@
 import { buildReceiptModel, prepareReceiptItems } from "../orderBill/buildReceiptModel";
-import { formatManifestItems } from "../orderBill/receiptPrintCore";
+import { buildReceiptItemRows, formatManifestItems } from "../orderBill/receiptPrintCore";
 import { buildKitchenReceiptModel } from "../kitchenBill/buildKitchenReceiptModel";
 
 /** Structured payload for RestoPrint invoice ESC/POS generation */
 export function buildInvoicePrintPayload(order, cashierName = "N/A") {
   const model = buildReceiptModel(order, cashierName);
   const { receiptItems } = prepareReceiptItems(order);
-  const lines = (formatManifestItems(receiptItems) || "—").split("\n").filter(Boolean);
+  const itemRows = buildReceiptItemRows(receiptItems);
 
   return {
     header: model.header,
@@ -20,7 +20,20 @@ export function buildInvoicePrintPayload(order, cashierName = "N/A") {
     total: model.total,
     paymentStatus: model.paymentStatusText,
     paymentMethod: model.paymentMethod,
-    items: lines.map((line) => ({ line })),
+    items: itemRows.flatMap((row) => {
+      const main = {
+        name: row.name,
+        qty: row.qty,
+        amount: row.lineTotal,
+        portion: row.portion || undefined,
+      };
+      const addonLines = (row.addons || []).map((addon) => ({
+        name: `+ ${addon.name}`,
+        qty: row.qty,
+        amount: addon.lineTotal,
+      }));
+      return [main, ...addonLines];
+    }),
   };
 }
 
@@ -50,6 +63,10 @@ export function buildKotPrintPayload(kb) {
     orderRef: model.orderRef,
     tableLabel: model.tableLabel,
     placedAt: model.placedAt,
+    restaurantName: model.restaurantName,
+    batchNumber: kb.batchNumber > 1 ? kb.batchNumber : undefined,
+    customerName: kb.customerName || undefined,
+    tokenNumber: kb.tokenNumber,
     notes: model.notes || "",
     items,
   };

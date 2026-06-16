@@ -6,7 +6,10 @@ import { getRestaurantIdForTenantData, tenantKey, tenantGet, tenantSet, tenantRe
 import { isSuperAdminSession } from "../utils/sessionFlags";
 import { billIdentityKey } from "../utils/billIdentity";
 import { useAuth } from "./AuthContext";
-import { maybeAutoPrintKitchenBill, scheduleAutoPrintForOrder } from "../admin/kitchenBill/kitchenAutoPrint";
+import {
+  isOrderEligibleForFetchAutoPrint,
+  scheduleAutoPrintForOrder,
+} from "../admin/kitchenBill/kitchenAutoPrint";
 
 /** Invoice Center needs more than POS order list page size */
 const BILLS_FETCH_LIMIT = 20;
@@ -196,7 +199,10 @@ export const OrderProvider = ({ children }) => {
             const id = orderKey(o);
             if (!id || prevIds.has(id)) continue;
             const st = normalizeStatus(o.status);
-            if (["pending", "new", "preparing", "ready", "served"].includes(st)) {
+            if (
+              ["pending", "new", "preparing", "ready", "served"].includes(st) &&
+              isOrderEligibleForFetchAutoPrint(o)
+            ) {
               scheduleAutoPrintForOrder(id);
             }
           }
@@ -572,6 +578,7 @@ export const OrderProvider = ({ children }) => {
         return updated;
       });
 
+      scheduleAutoPrintForOrder(data?._id || data?.id);
       return data;
     } catch (error) {
       console.error("Error adding order:", error);
@@ -824,7 +831,6 @@ export const OrderProvider = ({ children }) => {
         const parsed = _tGet('cachedKitchenBills');
         _tSet('cachedKitchenBills', [kitchenBill, ...(Array.isArray(parsed) ? parsed : [])]);
       } catch (e) {}
-      void maybeAutoPrintKitchenBill(kitchenBill);
       try {
         window.dispatchEvent(
           new CustomEvent("kitchenBillCreated", { detail: kitchenBill })

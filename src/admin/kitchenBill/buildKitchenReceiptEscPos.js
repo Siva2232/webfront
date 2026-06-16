@@ -1,6 +1,9 @@
 import {
   formatKitchenManifestItems,
-  RECEIPT_DASH_LINE as DASH,
+  kitchenDashLine,
+  kitchenItemsHeaderLine,
+  KITCHEN_RECEIPT_TEXT_WIDTH,
+  receiptPad,
 } from "../orderBill/receiptPrintCore";
 import { escInit, escAlign, escBold, escCut, escFeed } from "../orderBill/escposCommands";
 import { buildKitchenReceiptModel } from "./buildKitchenReceiptModel";
@@ -17,22 +20,40 @@ export function buildKitchenReceiptEscPos(kb) {
   if (!m) return escInit();
 
   const itemsText = formatKitchenManifestItems(kb.items || []);
+  const dash = kitchenDashLine();
   const out = { value: escInit() };
 
+  writeln(out, m.restaurantName, { center: true, bold: true });
   writeln(out, "KITCHEN ORDER", { center: true, bold: true });
-  writeln(out, m.orderRef, { center: true });
-  writeln(out, `Table: ${m.tableLabel}`, { center: true });
-  writeln(out, `Time: ${m.placedAt}`, { center: true });
-  writeln(out, DASH);
+  if (m.batchNumber) {
+    writeln(out, `BATCH #${m.batchNumber}`, { center: true, bold: true });
+  }
+
+  writeln(out, receiptPad("Order", m.orderRef, KITCHEN_RECEIPT_TEXT_WIDTH));
+  writeln(out, receiptPad("Table", m.tableLabel, KITCHEN_RECEIPT_TEXT_WIDTH));
+  writeln(out, receiptPad("Time", m.placedAt, KITCHEN_RECEIPT_TEXT_WIDTH));
+
+  for (const row of m.takeawayMeta || []) {
+    writeln(out, receiptPad(row.label, row.value, KITCHEN_RECEIPT_TEXT_WIDTH));
+  }
+
+  writeln(out, dash);
+  writeln(out, kitchenItemsHeaderLine(), { bold: true });
+  writeln(out, dash);
 
   for (const line of (itemsText || "—").split("\n")) {
     if (!line) continue;
-    writeln(out, line, { bold: /^\d+x/.test(line.trim()) });
+    const trimmed = line.trimStart();
+    const isQtyLine = /^\d+x/.test(trimmed);
+    writeln(out, line, { bold: isQtyLine });
   }
 
   if (m.notes) {
-    writeln(out, DASH);
-    writeln(out, `Note: ${m.notes}`);
+    writeln(out, dash);
+    const noteLines = String(m.notes).split(/\n/);
+    noteLines.forEach((noteLine, idx) => {
+      writeln(out, idx === 0 ? `Note: ${noteLine}` : noteLine);
+    });
   }
 
   out.value += escFeed(2);
@@ -41,9 +62,10 @@ export function buildKitchenReceiptEscPos(kb) {
 }
 
 export function buildKitchenTestEscPos() {
+  const dash = kitchenDashLine();
   const out = { value: escInit() };
   writeln(out, "KITCHEN PRINTER TEST", { center: true, bold: true });
-  writeln(out, DASH);
+  writeln(out, dash);
   writeln(out, new Date().toLocaleString(), { center: true });
   writeln(out, "If you see this, kitchen direct print works.");
   out.value += escFeed(4);

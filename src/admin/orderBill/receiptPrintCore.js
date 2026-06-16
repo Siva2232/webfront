@@ -15,8 +15,22 @@ body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margi
 .line{border-bottom:1px dashed #000;margin:1mm 0;height:0}
 .text-center{text-align:center}.bold{font-weight:bold}`;
 
-export const RECEIPT_TEXT_WIDTH = 32;
+export const RECEIPT_TEXT_WIDTH = 48;
 export const RECEIPT_DASH_LINE = "-".repeat(RECEIPT_TEXT_WIDTH);
+
+/** 80mm thermal — kitchen tickets share the same printable width */
+export const KITCHEN_RECEIPT_TEXT_WIDTH = RECEIPT_TEXT_WIDTH;
+export const KITCHEN_DASH_LINE = "-".repeat(KITCHEN_RECEIPT_TEXT_WIDTH);
+const KITCHEN_QTY_COL = 5;
+
+export function kitchenDashLine(width = KITCHEN_RECEIPT_TEXT_WIDTH) {
+  return "-".repeat(width);
+}
+
+export function kitchenItemsHeaderLine(width = KITCHEN_RECEIPT_TEXT_WIDTH) {
+  const qtyCol = KITCHEN_QTY_COL;
+  return "QTY".padEnd(qtyCol) + "ITEM".padEnd(width - qtyCol);
+}
 
 /** ASCII-only datetime — avoid bullet/special chars that break ESC/POS code pages */
 export function formatReceiptDateTime(input) {
@@ -120,81 +134,130 @@ export function formatTakeawayReceiptLines(order, padFn = receiptPad) {
   return lines.length ? `${lines.join("\n")}\n` : "";
 }
 
-const ITEM_NAME_COL = 18;
 const ITEM_QTY_COL = 4;
-const ITEM_AMT_COL = RECEIPT_TEXT_WIDTH - ITEM_NAME_COL - ITEM_QTY_COL;
+const ITEM_AMT_COL = 11;
+const ITEM_NAME_COL = RECEIPT_TEXT_WIDTH - ITEM_QTY_COL - ITEM_AMT_COL;
 
-/** Column layout: name (18) + qty (4) + amount (10) = 32 chars */
-export function receiptItemLine(name, qty, lineTotal) {
+/** Column layout: name + qty + amount = full 80mm width */
+export function receiptItemLine(name, qty, lineTotal, width = RECEIPT_TEXT_WIDTH) {
+  const nameCol = width - ITEM_QTY_COL - ITEM_AMT_COL;
+  const amtCol = ITEM_AMT_COL;
+  const nRaw = String(name ?? "");
   const n =
-    String(name).length > ITEM_NAME_COL
-      ? String(name).substring(0, ITEM_NAME_COL)
-      : String(name);
-  return (
-    n.padEnd(ITEM_NAME_COL) +
-    String(qty).padStart(ITEM_QTY_COL) +
-    Number(lineTotal).toFixed(2).padStart(ITEM_AMT_COL)
-  );
+    nRaw.length > nameCol ? nRaw.substring(0, Math.max(4, nameCol - 2)) + ".." : nRaw;
+  const qtyStr = qty === "" || qty == null ? "".padStart(ITEM_QTY_COL) : String(qty).padStart(ITEM_QTY_COL);
+  const amtStr =
+    lineTotal === "" || lineTotal == null
+      ? "".padStart(amtCol)
+      : Number(lineTotal).toFixed(2).padStart(amtCol);
+  return n.padEnd(nameCol) + qtyStr + amtStr;
 }
 
-export function receiptItemsHeaderLine() {
+export function receiptItemsHeaderLine(width = RECEIPT_TEXT_WIDTH) {
+  const nameCol = width - ITEM_QTY_COL - ITEM_AMT_COL;
   return (
-    "Item".padEnd(ITEM_NAME_COL) +
+    "Item".padEnd(nameCol) +
     "Qty".padStart(ITEM_QTY_COL) +
     "Amount".padStart(ITEM_AMT_COL)
   );
 }
 
 /**
- * Itemized block: base row, optional portion, addons, dashed subtotal — identical to customer receipt.
+ * Itemized block: base row, portion on next line, addons — full 80mm width.
  */
-function receiptItemDisplayName(item) {
-  let name = String(item.name || "");
-  if (!item.selectedPortion) return name;
-  const portion = String(item.selectedPortion);
-  const suffix = `(${portion})`;
-  const maxName = ITEM_NAME_COL - suffix.length;
-  if (name.length > maxName) {
-    name = name.slice(0, Math.max(4, maxName - 2)) + "..";
-  }
-  return name + suffix;
+export function buildReceiptItemRows(items) {
+  const lineItems = Array.isArray(items) ? items : [];
+  return lineItems.map((item) => {
+    const addonsTotal =
+      item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
+    const base = item.price - addonsTotal;
+    return {
+      name: String(item.name || ""),
+      portion: item.selectedPortion ? String(item.selectedPortion) : null,
+      qty: item.qty ?? item.quantity ?? 1,
+      lineTotal: base * (item.qty ?? item.quantity ?? 1),
+      addons: (item.selectedAddons || []).map((a) => ({
+        name: a.name,
+        lineTotal: (a.price || 0) * (item.qty ?? item.quantity ?? 1),
+      })),
+    };
+  });
 }
 
-export function formatManifestItems(items) {
+export function formatManifestItems(items, width = RECEIPT_TEXT_WIDTH) {
   const lineItems = Array.isArray(items) ? items : [];
   return lineItems
     .map((item) => {
       const addonsTotal =
         item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
       const base = item.price - addonsTotal;
-      let line = receiptItemLine(receiptItemDisplayName(item), item.qty, base * item.qty);
+      const qty = item.qty ?? item.quantity ?? 1;
+      let block = receiptItemLine(String(item.name || ""), qty, base * qty, width);
+      if (item.selectedPortion) {
+        block += `\n  Portion: ${item.selectedPortion}`;
+      }
       if (item.selectedAddons?.length) {
         item.selectedAddons.forEach((a) => {
           const addonName = `+ ${a.name}`;
-          line += "\n" + receiptItemLine(addonName, item.qty, (a.price || 0) * item.qty);
+          block += "\n" + receiptItemLine(addonName, qty, (a.price || 0) * qty, width);
         });
-      }
-      return line;
-    })
-    .join("\n");
-}
-
-/**
- * Kitchen ticket: compact qty x name rows; portion inline — no prices.
- */
-export function formatKitchenManifestItems(items) {
-  const lineItems = Array.isArray(items) ? items : [];
-  return lineItems
-    .map((item) => {
-      const qty = item.qty ?? item.quantity ?? 1;
-      let name = String(item.name || "").trim();
-      if (item.selectedPortion) name += ` (${item.selectedPortion})`;
-      let block = `${qty}x ${name}`;
-      if (item.selectedAddons?.length) {
-        const addons = item.selectedAddons.map((a) => a.name).filter(Boolean).join(", ");
-        if (addons) block += `\n  + ${addons}`;
       }
       return block;
     })
     .join("\n");
+}
+
+function kitchenItemName(item) {
+  let name = String(item.name || item.productName || "").trim();
+  if (item.selectedPortion) name += ` (${item.selectedPortion})`;
+  return name || "Item";
+}
+
+/** Kitchen ticket rows for preview UI — [{ qty, name, addons }] */
+export function buildKitchenItemRows(items) {
+  const lineItems = Array.isArray(items) ? items : [];
+  return lineItems.map((item) => {
+    const qty = item.qty ?? item.quantity ?? 1;
+    const addons = (item.selectedAddons || [])
+      .map((a) => a?.name)
+      .filter(Boolean);
+    return {
+      qty,
+      name: kitchenItemName(item),
+      addons,
+      isTakeaway: Boolean(item.isTakeaway),
+    };
+  });
+}
+
+/**
+ * Kitchen ticket: full-width qty + item columns; portion inline — no prices.
+ */
+export function formatKitchenManifestItems(items, width = KITCHEN_RECEIPT_TEXT_WIDTH) {
+  const lineItems = Array.isArray(items) ? items : [];
+  const qtyCol = KITCHEN_QTY_COL;
+  const nameCol = Math.max(12, width - qtyCol);
+  const blocks = [];
+
+  for (const item of lineItems) {
+    const qty = item.qty ?? item.quantity ?? 1;
+    const name = kitchenItemName(item);
+    const qtyLabel = `${qty}x`.padEnd(qtyCol);
+    const nameLines = wrapReceiptText(name, nameCol);
+    const lines = [`${qtyLabel}${nameLines[0] || ""}`];
+    for (let i = 1; i < nameLines.length; i++) {
+      lines.push(`${" ".repeat(qtyCol)}${nameLines[i]}`);
+    }
+    if (item.selectedAddons?.length) {
+      const addonText = item.selectedAddons.map((a) => a.name).filter(Boolean).join(", ");
+      if (addonText) {
+        wrapReceiptText(`+ ${addonText}`, nameCol).forEach((addonLine) => {
+          lines.push(`${" ".repeat(qtyCol)}${addonLine}`);
+        });
+      }
+    }
+    blocks.push(lines.join("\n"));
+  }
+
+  return blocks.join("\n");
 }

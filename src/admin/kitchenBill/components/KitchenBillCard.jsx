@@ -101,42 +101,43 @@ export default function KitchenBillCard({ kb, colors, batchTotal, billTimestamp,
           </span>
         </div>
 
-        <div className="p-4 space-y-3 flex-1">
+        <div className="p-3 sm:p-4 space-y-2 flex-1">
           {kb.items?.map((item, idx) => {
             const addonsTotal = item.selectedAddons?.reduce((s, a) => s + (a.price || 0), 0) || 0;
             const basePrice = item.price - addonsTotal;
             return (
               <div
                 key={idx}
-                className={`p-3 rounded-2xl text-sm ${
+                className={`grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1 rounded-xl p-2.5 text-sm sm:rounded-2xl sm:p-3 ${
                   item.isTakeaway ? "bg-orange-50 border border-orange-100" : "bg-slate-50"
                 }`}
               >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 pr-2">
-            <div className="flex items-center gap-2">
-                      <p className="font-medium leading-tight">{item.name}</p>
-                      {item.isTakeaway && !isTakeawayOrder(kb) && (
-                        <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[8px] font-black uppercase tracking-widest">
-                          TAKEAWAY
-                        </span>
-                      )}
-                    </div>
-                    {item.selectedPortion && <p className="text-xs text-zinc-600">({item.selectedPortion})</p>}
-                  </div>
-                  <p className="font-bold shrink-0">×{item.qty}</p>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  ₹{basePrice} × {item.qty}
+                <p className="text-right text-base font-black tabular-nums leading-tight text-zinc-900">
+                  {item.qty}×
                 </p>
-
-                {item.selectedAddons?.length > 0 && (
-                  <div className="mt-2 text-xs text-emerald-700">
-                    {item.selectedAddons.map((a, i) => (
-                      <div key={i}>+ {a.name}</div>
-                    ))}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="break-words font-semibold leading-tight text-zinc-900">{item.name}</p>
+                    {item.isTakeaway && !isTakeawayOrder(kb) && (
+                      <span className="shrink-0 rounded-full bg-orange-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">
+                        T/A
+                      </span>
+                    )}
                   </div>
-                )}
+                  {item.selectedPortion && (
+                    <p className="text-xs text-zinc-600">({item.selectedPortion})</p>
+                  )}
+                  {item.selectedAddons?.length > 0 && (
+                    <div className="mt-1 space-y-0.5 text-xs text-emerald-700">
+                      {item.selectedAddons.map((a, i) => (
+                        <div key={i} className="break-words">+ {a.name}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="shrink-0 text-right text-[11px] font-bold tabular-nums text-zinc-600">
+                  ₹{(basePrice * item.qty).toLocaleString()}
+                </p>
               </div>
             );
           })}

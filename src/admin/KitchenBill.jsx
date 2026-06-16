@@ -200,7 +200,7 @@ export default function KitchenBill({ embedded = false }) {
           <KitchenReceiptPrintModal
             kb={printPreviewKb}
             onClose={() => setPrintPreviewKb(null)}
-            autoPrintOnOpen={printMode === "auto"}
+            autoPrintOnOpen={false}
           />
         )}
       </AnimatePresence>
