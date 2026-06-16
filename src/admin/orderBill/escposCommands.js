@@ -12,6 +12,11 @@ export function escAlign(mode) {
   return ESC + "a" + String.fromCharCode(mode);
 }
 
+/** Font A = 12x24 (~48 cols on 80mm). Font B = 9x17 (~56 cols on 80mm). */
+export function escFont(font = 0) {
+  return ESC + "M" + String.fromCharCode(font === 1 ? 1 : 0);
+}
+
 export function escBold(on) {
   return ESC + "E" + String.fromCharCode(on ? 1 : 0);
 }

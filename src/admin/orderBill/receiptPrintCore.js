@@ -15,7 +15,7 @@ body{font-family:'Courier New',Courier,monospace;font-size:12px;width:80mm;margi
 .line{border-bottom:1px dashed #000;margin:1mm 0;height:0}
 .text-center{text-align:center}.bold{font-weight:bold}`;
 
-export const RECEIPT_TEXT_WIDTH = 48;
+export const RECEIPT_TEXT_WIDTH = 56;
 export const RECEIPT_DASH_LINE = "-".repeat(RECEIPT_TEXT_WIDTH);
 
 /** 80mm thermal — kitchen tickets share the same printable width */

@@ -5,7 +5,7 @@ import {
   KITCHEN_RECEIPT_TEXT_WIDTH,
   receiptPad,
 } from "../orderBill/receiptPrintCore";
-import { escInit, escAlign, escBold, escCut, escFeed } from "../orderBill/escposCommands";
+import { escInit, escAlign, escBold, escCut, escFeed, escFont } from "../orderBill/escposCommands";
 import { buildKitchenReceiptModel } from "./buildKitchenReceiptModel";
 
 function writeln(out, text, { center = false, bold = false } = {}) {
@@ -21,7 +21,7 @@ export function buildKitchenReceiptEscPos(kb) {
 
   const itemsText = formatKitchenManifestItems(kb.items || []);
   const dash = kitchenDashLine();
-  const out = { value: escInit() };
+  const out = { value: escInit() + escFont(1) };
 
   writeln(out, m.restaurantName, { center: true, bold: true });
   writeln(out, "KITCHEN ORDER", { center: true, bold: true });
@@ -63,7 +63,7 @@ export function buildKitchenReceiptEscPos(kb) {
 
 export function buildKitchenTestEscPos() {
   const dash = kitchenDashLine();
-  const out = { value: escInit() };
+  const out = { value: escInit() + escFont(1) };
   writeln(out, "KITCHEN PRINTER TEST", { center: true, bold: true });
   writeln(out, dash);
   writeln(out, new Date().toLocaleString(), { center: true });

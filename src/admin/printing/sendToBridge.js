@@ -1,4 +1,5 @@
 import API from "../../api/axios";
+import { escPosStringToBase64 } from "./escposBytes";
 
 export function bridgeBaseUrl(settings) {
   const raw =
@@ -65,14 +66,19 @@ function normalizeCloudResult(data) {
   return data;
 }
 
-async function sendStructuredViaCloudRelay(payload, options = {}) {
+async function sendStructuredViaCloudRelay(payload, options = {}, escPosText = "") {
   try {
-    const { data } = await API.post("/print-jobs", {
+    const body = {
       type: options.type,
       printerType: options.printerType,
       payload,
       printerTarget: options.printerTarget || options.printerType,
-    });
+    };
+    if (escPosText) {
+      body.text = escPosStringToBase64(escPosText);
+      body.textEncoding = "base64";
+    }
+    const { data } = await API.post("/print-jobs", body);
     return normalizeCloudResult(data);
   } catch (err) {
     throw mapCloudError(err);
@@ -82,8 +88,8 @@ async function sendStructuredViaCloudRelay(payload, options = {}) {
 /**
  * Send structured print payload for RestoPrint app ESC/POS generation.
  */
-export async function sendStructuredPrintJob(payload, options = {}) {
-  return sendStructuredViaCloudRelay(payload, options);
+export async function sendStructuredPrintJob(payload, options = {}, escPosText = "") {
+  return sendStructuredViaCloudRelay(payload, options, escPosText);
 }
 
 async function sendViaCloudRelay(text, settings, options = {}) {
@@ -91,7 +97,7 @@ async function sendViaCloudRelay(text, settings, options = {}) {
   const host = String(settings?.host || "").trim();
 
   if (options.structuredPayload) {
-    return sendStructuredViaCloudRelay(options.structuredPayload, options);
+    return sendStructuredViaCloudRelay(options.structuredPayload, options, text);
   }
 
   if (!host) {
@@ -193,19 +199,19 @@ export async function sendToBridge(text, settings, options = {}) {
   const mobile = isProbablyMobile();
   const lanBridge = isLanBridgeUrl(settings?.bridgeUrl || bridgeBaseUrl(settings));
 
-  // Invoice/KOT structured jobs: send to backend → FlowDiner Connector on tablet.
+  // Invoice/KOT: send pre-built ESC/POS bytes so connector prints exact full-width layout.
   if (hasStructured) {
     if (mode === "local" && host) {
       try {
         return await sendViaLocalBridge(text, settings);
       } catch (err) {
         if (isLocalBridgeUnreachable(err)) {
-          return sendStructuredViaCloudRelay(options.structuredPayload, options);
+          return sendStructuredViaCloudRelay(options.structuredPayload, options, text);
         }
         throw localBridgeError(err, mobile);
       }
     }
-    return sendStructuredViaCloudRelay(options.structuredPayload, options);
+    return sendStructuredViaCloudRelay(options.structuredPayload, options, text);
   }
 
   if (!host) {

@@ -5,7 +5,7 @@ import {
   receiptItemsHeaderLine,
   RECEIPT_DASH_LINE as DASH,
 } from "./receiptPrintCore";
-import { escInit, escAlign, escBold, escCut, escFeed } from "./escposCommands";
+import { escInit, escAlign, escBold, escCut, escFeed, escFont } from "./escposCommands";
 
 function writeln(out, text, { center = false, bold = false } = {}) {
   out.value += center ? escAlign(1) : escAlign(0);
@@ -19,7 +19,7 @@ export function buildReceiptEscPos(order, cashierName = "N/A") {
   const m = buildReceiptModel(order, cashierName);
   const { receiptItems } = prepareReceiptItems(order);
   const itemsText = formatManifestItems(receiptItems);
-  const out = { value: escInit() };
+  const out = { value: escInit() + escFont(1) };
 
   const { header } = m;
   if (header.restaurantName) writeln(out, header.restaurantName, { center: true, bold: true });
@@ -65,7 +65,7 @@ export function buildReceiptEscPos(order, cashierName = "N/A") {
 }
 
 export function buildTestEscPos() {
-  const out = { value: escInit() };
+  const out = { value: escInit() + escFont(1) };
   writeln(out, "PRINTER TEST", { center: true, bold: true });
   writeln(out, DASH);
   writeln(out, new Date().toLocaleString(), { center: true });
