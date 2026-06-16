@@ -104,7 +104,7 @@ export async function maybeAutoPrintKitchenBill(kb, { showToast = true } = {}) {
  * Fallback when socket delivery is slow: poll kitchen bills for an order and auto-print.
  * Keeps polling when the latest batch was already printed (merge/add-more) until a new KOT appears.
  */
-export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 40, intervalMs = 500 } = {}) {
+export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 30, intervalMs = 200 } = {}) {
   if (getKitchenPrintMode(getCurrentRestaurantId()) !== "auto") return () => {};
   const id = String(orderId || "").trim();
   if (!id) return () => {};

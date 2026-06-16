@@ -17,6 +17,12 @@ export async function directPrintReceipt(order, cashierName = "N/A") {
   });
 }
 
+/** Manual Bill — print selected items to invoice thermal printer */
+export async function directPrintSplitReceipt(order, items, cashierName = "N/A") {
+  const splitOrder = { ...order, items, _splitBill: true };
+  return directPrintReceipt(splitOrder, cashierName);
+}
+
 export async function directPrintTestPage() {
   const settings = getPosPrinterSettings();
   const text = buildTestEscPos();

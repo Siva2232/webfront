@@ -94,10 +94,10 @@ export default function ManualBill() {
   }, []);
 
   const printNow = useCallback(
-    (cashierName) => {
+    async (cashierName) => {
       if (!foundBill) return;
       if (!customItems.length) return toast.error("No items to print");
-      printSplitReceipt({ order: foundBill, items: customItems, cashierName, toast });
+      await printSplitReceipt({ order: foundBill, items: customItems, cashierName, toast });
     },
     [foundBill, customItems],
   );

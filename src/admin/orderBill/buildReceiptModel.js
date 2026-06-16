@@ -48,7 +48,11 @@ export function buildReceiptModel(order, cashierName = "N/A") {
   return {
     header,
     isPaid,
-    statusLabel: isPaid ? "PAID" : "Collect Cash",
+    statusLabel: order._splitBill
+      ? "CUSTOM BILL (SPLIT)"
+      : isPaid
+        ? "PAID"
+        : "Collect Cash",
     cashierName,
     orderRef: `#${(order._id || "").slice(-8)}`,
     tableLabel: isTakeawayOrder ? "TAKEAWAY" : `TBL-${order.table}`,
