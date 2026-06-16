@@ -102,8 +102,9 @@ export async function maybeAutoPrintKitchenBill(kb, { showToast = true } = {}) {
 
 /**
  * Fallback when socket delivery is slow: poll kitchen bills for an order and auto-print.
+ * Keeps polling when the latest batch was already printed (merge/add-more) until a new KOT appears.
  */
-export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalMs = 500 } = {}) {
+export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 40, intervalMs = 500 } = {}) {
   if (getKitchenPrintMode(getCurrentRestaurantId()) !== "auto") return () => {};
   const id = String(orderId || "").trim();
   if (!id) return () => {};
@@ -127,9 +128,13 @@ export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalM
       const { data } = await API.get(`/kitchen-bills/order/${id}`);
       const latest = pickLatestKitchenBill(Array.isArray(data) ? data : []);
       if (latest) {
-        await maybeAutoPrintKitchenBill(latest);
-        stop();
-        return;
+        ensurePrintedIdsLoaded();
+        const kbId = kitchenBillId(latest);
+        if (kbId && !printedIds.has(kbId)) {
+          await maybeAutoPrintKitchenBill(latest);
+          stop();
+          return;
+        }
       }
     } catch (_) {}
 
@@ -142,4 +147,11 @@ export function scheduleAutoPrintForOrder(orderId, { maxAttempts = 12, intervalM
   }, intervalMs);
 
   return stop;
+}
+
+/** Clears in-flight dedupe so merge/add-more can start a fresh poll for a new KOT batch. */
+export function rescheduleAutoPrintForOrder(orderId, options) {
+  const id = String(orderId || "").trim();
+  if (id) scheduledOrderIds.delete(id);
+  return scheduleAutoPrintForOrder(orderId, options);
 }

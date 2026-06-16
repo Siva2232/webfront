@@ -8,6 +8,8 @@ import { billIdentityKey } from "../utils/billIdentity";
 import { useAuth } from "./AuthContext";
 import {
   isOrderEligibleForFetchAutoPrint,
+  maybeAutoPrintKitchenBill,
+  rescheduleAutoPrintForOrder,
   scheduleAutoPrintForOrder,
 } from "../admin/kitchenBill/kitchenAutoPrint";
 
@@ -774,6 +776,8 @@ export const OrderProvider = ({ children }) => {
     socket.on("orderItemsAdded", (data) => {
       // Dispatch a custom event that Notification component can listen to
       window.dispatchEvent(new CustomEvent("orderItemsAdded", { detail: data }));
+      const orderId = data?.order?._id || data?.order?.id;
+      if (orderId) rescheduleAutoPrintForOrder(orderId);
     });
 
     // listen for bill updates (e.g., when Add More Items merges into existing bill)
@@ -836,6 +840,7 @@ export const OrderProvider = ({ children }) => {
           new CustomEvent("kitchenBillCreated", { detail: kitchenBill })
         );
       } catch (_) {}
+      void maybeAutoPrintKitchenBill(kitchenBill);
     });
 
     socket.on("kitchenBillUpdated", (updatedKitchenBill) => {
