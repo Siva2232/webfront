@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import {
+  Boxes,
   ChevronDown,
   Edit3,
   IndianRupee,
@@ -13,6 +14,7 @@ export default function ProductCard({
   onToggle,
   onDelete,
   onEdit,
+  onUpdateStock,
   libraryPortions = [],
   libraryAddonGroups = [],
   onQuickAdd,
@@ -58,6 +60,11 @@ export default function ProductCard({
                       }`}
                     >
                       {p.name} — ₹{p.price}
+                      {p.trackStock ? (
+                        <span className="text-[7px] font-black uppercase ml-1 px-1 rounded bg-indigo-100 text-indigo-700">
+                          {Math.max(0, Number(p.stock) || 0)} left
+                        </span>
+                      ) : (
                       <span
                         className={`text-[7px] font-black uppercase ml-1 px-1 rounded ${
                           p.isAvailable === false
@@ -67,6 +74,7 @@ export default function ProductCard({
                       >
                         {p.isAvailable === false ? "Stock Out" : "Stock In"}
                       </span>
+                      )}
                     </span>
                   ))}
                 </div>
@@ -208,6 +216,15 @@ export default function ProductCard({
             )}
           </button>
 
+          <button
+            type="button"
+            onClick={() => onUpdateStock?.(product)}
+            className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 flex items-center justify-center gap-2"
+          >
+            <Boxes size={14} />
+            Update stock
+          </button>
+
           <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-50">
             <button
               onClick={() => onEdit(product._id)}
@@ -227,7 +244,7 @@ export default function ProductCard({
         </div>
       </div>
     ),
-    [product, libraryPortions, libraryAddonGroups, onToggle, onEdit, onDelete, onQuickAdd]
+    [product, libraryPortions, libraryAddonGroups, onToggle, onEdit, onDelete, onQuickAdd, onUpdateStock]
   );
 
   return (

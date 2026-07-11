@@ -12,11 +12,10 @@ import ExistingOrderPicker from "./manualOrder/components/ExistingOrderPicker";
 import OrderConfirmModal from "./manualOrder/components/OrderConfirmModal";
 import StickyPageHeader from "./components/StickyPageHeader";
 import {
+  applyPortionCartDelta,
   canAddProductQty,
   countProductQtyInCart,
   getProductId,
-  getRemainingStock,
-  getStockLimit,
   isProductSoldOut,
 } from "../utils/productStockCart";
 
@@ -45,18 +44,14 @@ export default function ManualOrder() {
   const [subItemProduct, setSubItemProduct] = useState(null);
   const [showSubItemModal, setShowSubItemModal] = useState(false);
 
+  useEffect(() => {
+    if (!subItemProduct?._id) return;
+    const fresh = products.find((p) => getProductId(p) === getProductId(subItemProduct));
+    if (fresh) setSubItemProduct(fresh);
+  }, [products, subItemProduct?._id]);
+
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState([]);
-
-  const subItemStockProps = useMemo(() => {
-    if (!subItemProduct) return {};
-    const pid = getProductId(subItemProduct);
-    return {
-      maxQty: getRemainingStock(subItemProduct, items) ?? undefined,
-      stockLimit: getStockLimit(subItemProduct),
-      cartQty: countProductQtyInCart(items, pid),
-    };
-  }, [subItemProduct, items]);
 
   // Fetch orders on mount for "Add More Items" functionality
   useEffect(() => {
@@ -176,15 +171,15 @@ export default function ManualOrder() {
     );
   }, []);
 
-  // Open SubItem customisation modal
+  // Open SubItem customisation modal — stock is validated inside modal per portion/addon
   const openCustomise = useCallback((product) => {
-    if (isProductSoldOut(product)) {
-      toast.error("This item is sold out");
+    if (product?.isAvailable === false) {
+      toast.error("This item is unavailable");
       return;
     }
-    const check = canAddProductQty(product, items, 1);
-    if (!check.ok) {
-      toast.error(check.message);
+    const inCart = countProductQtyInCart(items, getProductId(product));
+    if (isProductSoldOut(product, items) && inCart <= 0) {
+      toast.error("This item is sold out");
       return;
     }
     setSubItemProduct(product);
@@ -195,7 +190,7 @@ export default function ManualOrder() {
   const handleConfiguredAdd = useCallback((configuredItem) => {
     const addQty = configuredItem.qty || 1;
     setItems((prev) => {
-      const check = canAddProductQty(configuredItem, prev, addQty);
+      const check = canAddProductQty(configuredItem, prev, addQty, configuredItem.selectedPortion);
       if (!check.ok) {
         toast.error(check.message);
         return prev;
@@ -212,6 +207,24 @@ export default function ManualOrder() {
       return [...prev, { ...configuredItem, isTakeaway: false }];
     });
   }, []);
+
+  const handlePortionQtyChange = useCallback(
+    (portionName, delta) => {
+      if (!subItemProduct) return;
+      setItems((prev) => {
+        const result = applyPortionCartDelta(prev, subItemProduct, portionName, delta);
+        if (!result.ok) {
+          toast.error(result.message);
+          return prev;
+        }
+        return result.cart.map((item) => ({
+          ...item,
+          isTakeaway: item.isTakeaway ?? false,
+        }));
+      });
+    },
+    [subItemProduct],
+  );
 
   // Modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -540,7 +553,8 @@ export default function ManualOrder() {
         isOpen={showSubItemModal}
         onClose={() => { setShowSubItemModal(false); setSubItemProduct(null); }}
         onAddToCart={handleConfiguredAdd}
-        {...subItemStockProps}
+        onPortionQtyChange={handlePortionQtyChange}
+        cart={items}
       />
     </div>
   );

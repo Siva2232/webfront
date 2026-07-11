@@ -18,12 +18,16 @@ import ProductCard from "./products/components/ProductCard";
 import EmptyState from "./products/components/EmptyState";
 import DeleteProductModal from "./products/components/DeleteProductModal";
 import StockChangeModal from "./products/components/StockChangeModal";
+import StockUpdateModal from "./products/components/StockUpdateModal";
 import AddProductModal from "./products/components/AddProductModal";
 import { compressImage } from "./products/utils/compressImage";
 import {
   buildStockApiPayload,
+  buildPortionApiPayload,
   defaultStockFormFields,
+  defaultPortionFormFields,
   validateStockForm,
+  validatePortionsStock,
 } from "./products/utils/productStockForm";
 import StickyPageHeader from "./components/StickyPageHeader";
 import { useTheme } from "../context/ThemeContext";
@@ -31,7 +35,7 @@ import { getPlanLimitsFromBranding } from "../utils/planLimits";
 
 export default function AdminProducts() {
   const { branding } = useTheme();
-  const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, orderedCategories = [], addCategory, subitems = [] } = useProducts();
+  const { products, toggleAvailability, deleteProduct, addProduct, updateProduct, adjustProductStock, orderedCategories = [], addCategory, subitems = [] } = useProducts();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -46,6 +50,10 @@ export default function AdminProducts() {
   // Modal state for stock out/restore confirmation
   const [stockModal, setStockModal] = useState({ show: false, product: null, type: "" }); // type: "out" | "restore"
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+
+  // Quick stock update (qty) without opening edit page
+  const [stockUpdateModal, setStockUpdateModal] = useState({ show: false, product: null });
+  const [isSavingStockUpdate, setIsSavingStockUpdate] = useState(false);
 
   // Modal state for adding product
   const [showAddModal, setShowAddModal] = useState(false);
@@ -72,7 +80,11 @@ export default function AdminProducts() {
   const libraryAddonGroups = useMemo(() => subitems.filter(s => s.type === "addonGroup"), [subitems]);
 
   // --- Portion helpers ---
-  const addPortion = () => setProductForm(prev => ({ ...prev, portions: [...prev.portions, { name: "", price: "" }] }));
+  const addPortion = () =>
+    setProductForm(prev => ({
+      ...prev,
+      portions: [...prev.portions, { name: "", price: "", ...defaultPortionFormFields() }],
+    }));
   const updatePortion = (idx, field, value) => {
     setProductForm(prev => {
       const newPortions = [...prev.portions];
@@ -185,8 +197,14 @@ export default function AdminProducts() {
       return;
     }
 
+    const portionStockError = validatePortionsStock(productForm.portions);
+    if (portionStockError) {
+      toast.error(portionStockError);
+      return;
+    }
+
     const cleanPortions = productForm.hasPortions
-      ? productForm.portions.map(p => ({ name: p.name.trim(), price: Number(p.price) }))
+      ? productForm.portions.map(p => buildPortionApiPayload(p))
       : [];
 
     const cleanAddonGroups = productForm.addonGroups
@@ -281,6 +299,27 @@ export default function AdminProducts() {
       toast.error("Failed to update status");
     } finally {
       setIsUpdatingStock(false);
+    }
+  };
+
+  const handleOpenStockUpdate = (product) => {
+    setStockUpdateModal({ show: true, product });
+  };
+
+  const handleSaveStockUpdate = async (payload) => {
+    if (!stockUpdateModal.product) return;
+    setIsSavingStockUpdate(true);
+    const { product } = stockUpdateModal;
+    try {
+      await adjustProductStock(product._id, payload);
+      toast.success(`${product.name} stock updated`, {
+        icon: <CheckCircle size={18} className="text-emerald-500" />,
+      });
+      setStockUpdateModal({ show: false, product: null });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update stock");
+    } finally {
+      setIsSavingStockUpdate(false);
     }
   };
 
@@ -442,6 +481,7 @@ export default function AdminProducts() {
                   onToggle={handleToggleAvailability} 
                   onDelete={() => handleDeleteClick(p)}
                   onEdit={(id) => navigate(`/admin/products/edit/${id}`)}
+                  onUpdateStock={handleOpenStockUpdate}
                   libraryPortions={libraryPortions}
                   libraryAddonGroups={libraryAddonGroups}
                   onQuickAdd={async (productId, type, libId) => {
@@ -527,6 +567,14 @@ export default function AdminProducts() {
           onConfirm={confirmStockChange}
         />
 
+        <StockUpdateModal
+          open={stockUpdateModal.show}
+          product={stockUpdateModal.product}
+          isSaving={isSavingStockUpdate}
+          onClose={() => setStockUpdateModal({ show: false, product: null })}
+          onSave={handleSaveStockUpdate}
+        />
+
         <AddProductModal
           open={showAddModal}
           isAdding={isAdding}
@@ -556,7 +604,7 @@ export default function AdminProducts() {
             }
             setProductForm((prev) => ({
               ...prev,
-              portions: [...prev.portions, { name: lib.name, price: lib.price || "", isAvailable: true }],
+              portions: [...prev.portions, { name: lib.name, price: lib.price || "", isAvailable: true, ...defaultPortionFormFields() }],
             }));
           }}
           onAddAddonGroup={addAddonGroup}

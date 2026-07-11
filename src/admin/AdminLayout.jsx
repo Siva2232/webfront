@@ -55,6 +55,10 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
+import {
+  collectPortionStockAlerts,
+  formatPortionAlertLabel,
+} from "../utils/portionStockAlerts";
 import { useOrders } from "../context/OrderContext";
 import { useUI } from "../context/UIContext";
 import { useAuth } from "../context/AuthContext";
@@ -350,6 +354,7 @@ export default function AdminLayout() {
   const {
     outOfStockProducts,
     outOfStockSubitems,
+    portionStockAlerts,
     lowStockCount,
     outOfStockAlertItems,
   } = useMemo(() => {
@@ -359,14 +364,28 @@ export default function AdminLayout() {
     const outOfStockSubitems = subitems.filter(
       (s) => s && s.isAvailable === false && !clearedIds.includes(s._id || s.id),
     );
-    const lowStockCount = outOfStockProducts.length + outOfStockSubitems.length;
+    const portionStockAlerts = collectPortionStockAlerts(products).filter(
+      (a) => !clearedIds.includes(a.id),
+    );
+    const lowStockCount =
+      outOfStockProducts.length + outOfStockSubitems.length + portionStockAlerts.length;
     const outOfStockAlertItems = [
       ...outOfStockProducts.map((item) => ({ ...item, _alertType: "product" })),
       ...outOfStockSubitems.map((item) => ({ ...item, _alertType: "subitem" })),
+      ...portionStockAlerts.map((item) => ({
+        _id: item.id,
+        id: item.id,
+        name: formatPortionAlertLabel(item),
+        image: item.image,
+        issue: item.issue,
+        stock: item.stock,
+        _alertType: "portion",
+      })),
     ];
     return {
       outOfStockProducts,
       outOfStockSubitems,
+      portionStockAlerts,
       lowStockCount,
       outOfStockAlertItems,
     };
@@ -604,6 +623,7 @@ export default function AdminLayout() {
               const ids = [
                 ...outOfStockProducts.map((p) => p._id || p.id),
                 ...outOfStockSubitems.map((s) => s._id || s.id),
+                ...portionStockAlerts.map((a) => a.id),
               ];
               setClearedIds((prev) => [...prev, ...ids]);
               setShowStockAlert(false);
@@ -1673,7 +1693,6 @@ export default function AdminLayout() {
                             <div
                               key={item._id || item.id}
                               onClick={() => {
-                                // navigate to the appropriate archive page for this item type
                                 const target =
                                   item._alertType === "subitem"
                                     ? "/admin/sub-items?filter=out-of-stock"
@@ -1701,6 +1720,13 @@ export default function AdminLayout() {
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     loading="lazy"
                                   />
+                                ) : item._alertType === "portion" ? (
+                                  <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 text-amber-500">
+                                    <Layers size={24} />
+                                    <span className="text-[8px] font-black uppercase mt-0.5">
+                                      PTN
+                                    </span>
+                                  </div>
                                 ) : item._alertType === "subitem" ? (
                                   <div className="w-full h-full flex flex-col items-center justify-center bg-indigo-50 text-indigo-400">
                                     <Layers size={24} />
@@ -1727,7 +1753,9 @@ export default function AdminLayout() {
                                     className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
                                       item._alertType === "subitem"
                                         ? "bg-indigo-100 text-indigo-600"
-                                        : "bg-slate-100 text-slate-500"
+                                        : item._alertType === "portion"
+                                          ? "bg-amber-100 text-amber-700"
+                                          : "bg-slate-100 text-slate-500"
                                     }`}
                                   >
                                     {item._alertType}
@@ -1740,7 +1768,9 @@ export default function AdminLayout() {
 
                               <div className="flex flex-col items-end gap-1">
                                 <span className="text-xs font-bold bg-red-50 text-red-700 px-2.5 py-1 rounded-full border border-red-100">
-                                  0 LEFT
+                                  {item._alertType === "portion"
+                                    ? item.issue || "Sold out"
+                                    : "0 LEFT"}
                                 </span>
                               </div>
                             </div>
@@ -1764,7 +1794,8 @@ export default function AdminLayout() {
 
                       {/* Footer Action */}
                       {(outOfStockProducts.length > 0 ||
-                        outOfStockSubitems.length > 0) && (
+                        outOfStockSubitems.length > 0 ||
+                        portionStockAlerts.length > 0) && (
                         <div className="px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-100 space-y-2">
                           {outOfStockProducts.length > 0 && (
                             <button

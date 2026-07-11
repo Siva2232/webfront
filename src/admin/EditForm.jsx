@@ -8,8 +8,11 @@ import { compressImage } from "./products/utils/compressImage";
 import StockTrackingFields from "./products/components/StockTrackingFields";
 import {
   buildStockApiPayload,
+  buildPortionApiPayload,
   defaultStockFormFields,
+  defaultPortionFormFields,
   validateStockForm,
+  validatePortionsStock,
 } from "./products/utils/productStockForm";
 
 export default function EditForm() {
@@ -60,7 +63,13 @@ export default function EditForm() {
           image: existingProduct.image || "",
           category: existingProduct.category?.name || existingProduct.category || "Main Courses",
           hasPortions: existingProduct.hasPortions || false,
-          portions: existingProduct.portions || [],
+          portions: (existingProduct.portions || []).map((p) => ({
+            name: p.name || "",
+            price: String(p.price ?? ""),
+            trackStock: Boolean(p.trackStock),
+            stock: p.trackStock ? String(p.stock ?? "") : "",
+            isAvailable: p.isAvailable !== false,
+          })),
           addonGroups: existingProduct.addonGroups || [],
           trackStock: Boolean(existingProduct.trackStock),
           stock: existingProduct.trackStock
@@ -76,7 +85,7 @@ export default function EditForm() {
   const addPortion = () => {
     setFormData(prev => ({
       ...prev,
-      portions: [...prev.portions, { name: "", price: "" }],
+      portions: [...prev.portions, { name: "", price: "", ...defaultPortionFormFields() }],
     }));
   };
 
@@ -216,9 +225,20 @@ export default function EditForm() {
       if (new Set(names).size !== names.length) { toast.error("Duplicate portion names are not allowed"); return; }
     }
 
-    // Clean portion/addon data
+    const stockError = validateStockForm(formData);
+    if (stockError) {
+      toast.error(stockError);
+      return;
+    }
+
+    const portionStockError = validatePortionsStock(formData.portions);
+    if (portionStockError) {
+      toast.error(portionStockError);
+      return;
+    }
+
     const cleanPortions = formData.hasPortions
-      ? formData.portions.map(p => ({ name: p.name.trim(), price: Number(p.price) }))
+      ? formData.portions.map(p => buildPortionApiPayload(p))
       : [];
 
     const cleanAddonGroups = formData.addonGroups
@@ -230,12 +250,6 @@ export default function EditForm() {
           .filter(a => a.name?.trim())
           .map(a => ({ name: a.name.trim(), price: Number(a.price) || 0 })),
       }));
-
-    const stockError = validateStockForm(formData);
-    if (stockError) {
-      toast.error(stockError);
-      return;
-    }
 
     const formattedData = {
       ...formData,
@@ -445,26 +459,49 @@ export default function EditForm() {
                 <div className="space-y-3 pl-2">
                   <p className="text-[10px] text-slate-400 font-medium">E.g. Half, Full, Family Pack. Each portion has its own price.</p>
                   {formData.portions.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-3">
-                      <input
-                        placeholder="Portion name"
-                        value={p.name}
-                        onChange={(e) => updatePortion(idx, "name", e.target.value)}
-                        className="flex-1 px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">₹</span>
+                    <div key={idx} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                      <div className="flex items-center gap-3">
                         <input
-                          type="number"
-                          placeholder="Price"
-                          value={p.price}
-                          onChange={(e) => updatePortion(idx, "price", e.target.value)}
-                          className="w-28 pl-7 pr-3 py-3 bg-slate-50 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Portion name"
+                          value={p.name}
+                          onChange={(e) => updatePortion(idx, "name", e.target.value)}
+                          className="flex-1 px-4 py-3 bg-white rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">₹</span>
+                          <input
+                            type="number"
+                            placeholder="Price"
+                            value={p.price}
+                            onChange={(e) => updatePortion(idx, "price", e.target.value)}
+                            className="w-28 pl-7 pr-3 py-3 bg-white rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <button type="button" onClick={() => removePortion(idx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <button type="button" onClick={() => removePortion(idx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex flex-wrap items-center gap-3 pl-1">
+                        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(p.trackStock)}
+                            onChange={(e) => updatePortion(idx, "trackStock", e.target.checked)}
+                            className="rounded border-slate-300"
+                          />
+                          Track stock
+                        </label>
+                        {p.trackStock ? (
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Qty"
+                            value={p.stock ?? ""}
+                            onChange={(e) => updatePortion(idx, "stock", e.target.value)}
+                            className="w-24 px-3 py-2 bg-white border border-slate-100 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                   <div className="flex flex-wrap items-center gap-2">
@@ -490,7 +527,7 @@ export default function EditForm() {
                             }
                             setFormData((prev) => ({
                               ...prev,
-                              portions: [...prev.portions, { name: lib.name, price: lib.price || "" }],
+                              portions: [...prev.portions, { name: lib.name, price: lib.price || "", ...defaultPortionFormFields() }],
                             }));
                           }
                         }}

@@ -1,6 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Check } from "lucide-react";
+import {
+  countPortionQtyInCart,
+  countProductQtyInCart,
+  getPortionUnavailableInfo,
+  getProductId,
+  getRemainingStock,
+  getStockLimit,
+  isPortionSelectable,
+  tracksPortionStock,
+} from "../utils/productStockCart";
 
 /**
  * SubItem Modal — Swiggy/Zomato-style customisation sheet.
@@ -18,44 +28,94 @@ export default function SubItemModal({
   isOpen,
   onClose,
   onAddToCart,
+  onPortionQtyChange,
   initialQty = 1,
   maxQty,
-  stockLimit,
-  cartQty = 0,
+  cart = [],
 }) {
-  if (!product) return null;
+  const name = product?.name ?? "";
+  const price = product?.price ?? 0;
+  const image = product?.image;
+  const type = product?.type ?? "veg";
+  const hasPortions = Boolean(product?.hasPortions && product?.portions?.length > 0);
+  const portions = product?.portions ?? [];
+  const addonGroups = (product?.addonGroups ?? []).filter(
+    (group) => group.isAvailable !== false && group.name && (group.addons?.length || 0) > 0,
+  );
+  const perPortionQtyMode = hasPortions && addonGroups.length === 0;
 
-  const {
-    name,
-    price,
-    image,
-    type = "veg",
-    hasPortions,
-    portions = [],
-    addonGroups = [],
-  } = product;
+  const [selectedPortion, setSelectedPortion] = useState(null);
+  const [selectedAddons, setSelectedAddons] = useState([]);
+  const [qty, setQty] = useState(initialQty);
 
-  // ── Local state ──
-  const [selectedPortion, setSelectedPortion] = useState(() => {
-    if (hasPortions && portions.length > 0) {
-      const firstAvailable = portions.find(p => p.isAvailable !== false);
-      return firstAvailable ? firstAvailable.name : portions[0].name;
+  useEffect(() => {
+    if (!isOpen || !product) return;
+    const firstAvailable = portions.find((p) =>
+      isPortionSelectable(product, p.name, cart),
+    );
+    setSelectedPortion(
+      hasPortions ? firstAvailable?.name ?? portions[0]?.name ?? null : null,
+    );
+    setSelectedAddons([]);
+    setQty(initialQty);
+  }, [isOpen, product?._id, product?.id, hasPortions, portions, initialQty, cart]);
+
+  const effectiveStockLimit = useMemo(
+    () => (product ? getStockLimit(product, selectedPortion) : null),
+    [product, selectedPortion],
+  );
+  const effectiveRemaining = useMemo(
+    () => (product ? getRemainingStock(product, cart, selectedPortion) : null),
+    [product, cart, selectedPortion],
+  );
+  const effectiveCartQty = useMemo(() => {
+    if (!product) return 0;
+    const pid = getProductId(product);
+    if (selectedPortion && tracksPortionStock(product, selectedPortion)) {
+      return countPortionQtyInCart(cart, pid, selectedPortion);
     }
-    return null;
-  });
-  const [selectedAddons, setSelectedAddons] = useState([]); // [{ name, price, groupName }]
-  const maxAllowed =
-    maxQty != null && Number.isFinite(maxQty)
-      ? Math.max(1, Math.floor(maxQty))
-      : 99;
+    return countProductQtyInCart(cart, pid);
+  }, [product, cart, selectedPortion]);
 
-  const [qty, setQty] = useState(() => Math.min(initialQty, maxAllowed));
+  const maxAllowed =
+    effectiveRemaining != null && Number.isFinite(effectiveRemaining)
+      ? Math.max(0, Math.floor(effectiveRemaining))
+      : maxQty != null && Number.isFinite(maxQty)
+        ? Math.max(0, Math.floor(maxQty))
+        : 99;
+
+  const selectedInfo = useMemo(
+    () =>
+      selectedPortion && product
+        ? getPortionUnavailableInfo(product, selectedPortion, cart)
+        : null,
+    [product, selectedPortion, cart],
+  );
+  const canAdd = selectedInfo?.selectable !== false && maxAllowed > 0;
+
+  const stockHintText = useMemo(() => {
+    if (!canAdd && selectedInfo && !selectedInfo.selectable) {
+      return selectedInfo.reason
+        ? `${selectedInfo.title} — ${selectedInfo.reason}`
+        : selectedInfo.title || "Sold out";
+    }
+    if (effectiveStockLimit == null) return null;
+    if (effectiveCartQty > 0) {
+      return `${maxAllowed} more allowed (${effectiveStockLimit} total, ${effectiveCartQty} in cart)`;
+    }
+    return `${maxAllowed} available`;
+  }, [canAdd, selectedInfo, effectiveStockLimit, effectiveCartQty, maxAllowed]);
 
   useEffect(() => {
     if (isOpen) {
-      setQty((q) => Math.min(Math.max(1, q), maxAllowed));
+      setQty((q) =>
+        Math.min(
+          Math.max(canAdd ? 1 : 0, q),
+          Math.max(canAdd ? 1 : 0, maxAllowed),
+        ),
+      );
     }
-  }, [isOpen, maxAllowed]);
+  }, [isOpen, maxAllowed, canAdd]);
 
   // ── Derived price ──
   const portionPrice = useMemo(() => {
@@ -71,6 +131,25 @@ export default function SubItemModal({
 
   const unitPrice = portionPrice + addonsTotal;
   const totalPrice = unitPrice * qty;
+
+  const portionOverview = useMemo(() => {
+    if (!perPortionQtyMode || !product) {
+      return { lines: [], total: 0, totalQty: 0 };
+    }
+    const pid = getProductId(product);
+    const lines = portions
+      .map((p) => {
+        const portionName = p.name;
+        const qty = countPortionQtyInCart(cart, pid, portionName);
+        if (qty <= 0) return null;
+        const unit = Number(p.price) || price;
+        return { name: portionName, qty, unit, total: unit * qty };
+      })
+      .filter(Boolean);
+    const total = lines.reduce((sum, line) => sum + line.total, 0);
+    const totalQty = lines.reduce((sum, line) => sum + line.qty, 0);
+    return { lines, total, totalQty };
+  }, [perPortionQtyMode, product, cart, portions, price]);
 
   // ── Addon toggle ──
   const toggleAddon = (addon, group) => {
@@ -105,6 +184,13 @@ export default function SubItemModal({
 
   // ── Submit ──
   const handleAdd = () => {
+    if (!product) return;
+    if (
+      selectedPortion &&
+      !isPortionSelectable(product, selectedPortion, cart)
+    ) {
+      return;
+    }
     const configuredItem = {
       ...product,
       baseProductPrice: product.price,
@@ -130,15 +216,19 @@ export default function SubItemModal({
     // reset
     setSelectedAddons([]);
     setQty(1);
-    if (hasPortions && portions.length > 0)
-      setSelectedPortion(portions[0].name);
+    if (hasPortions && portions.length > 0) {
+      const next = portions.find((p) =>
+        isPortionSelectable(product, p.name, cart),
+      );
+      setSelectedPortion(next?.name ?? portions[0]?.name ?? null);
+    }
   };
 
   const isVeg = type === "veg";
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {isOpen && product && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -194,33 +284,144 @@ export default function SubItemModal({
             {/* ── Scrollable Body ── */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
               {/* ── Portions ── */}
-              {hasPortions && portions.length > 0 && portions.some(p => p.isAvailable !== false) && (
+              {hasPortions && portions.length > 0 && (
                 <div>
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-3">
                     Select Portion
                   </h3>
                   <div className="space-y-2">
-                    {portions
-                      .filter((p) => p.isAvailable !== false)
-                      .map((p) => (
+                    {portions.map((p) => {
+                      if (perPortionQtyMode) {
+                        const portionName = p.name;
+                        const pid = getProductId(product);
+                        const inCart = countPortionQtyInCart(cart, pid, portionName);
+                        const unavailable = getPortionUnavailableInfo(
+                          product,
+                          portionName,
+                          cart,
+                        );
+                        const remaining = getRemainingStock(product, cart, portionName);
+                        const stockLimit = getStockLimit(product, portionName);
+                        const canIncrease =
+                          unavailable.selectable &&
+                          (remaining === null || remaining > 0);
+                        const canDecrease = inCart > 0;
+                        const showQtyControls = unavailable.selectable || inCart > 0;
+
+                        return (
+                          <div
+                            key={p.name}
+                            className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all ${
+                              inCart > 0
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-100 bg-white"
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-sm font-bold truncate ${
+                                  unavailable.selectable || inCart > 0
+                                    ? "text-slate-800"
+                                    : "text-slate-400 line-through decoration-rose-300"
+                                }`}
+                              >
+                                {p.name}
+                              </p>
+                              <p className="text-sm font-black text-slate-900 mt-0.5">
+                                ₹{p.price}
+                              </p>
+                              {stockLimit != null && unavailable.selectable && remaining != null && remaining > 0 && (
+                                <p className="text-[9px] font-bold uppercase tracking-wide text-indigo-600 mt-1">
+                                  {remaining} left
+                                </p>
+                              )}
+                            </div>
+                            {!showQtyControls ? (
+                              <div className="shrink-0 text-right max-w-[7.5rem]">
+                                <span className="block text-[10px] font-black uppercase tracking-wide text-rose-600">
+                                  {unavailable.title}
+                                </span>
+                                {unavailable.reason ? (
+                                  <span className="mt-0.5 block text-[9px] font-bold text-rose-500 normal-case">
+                                    {unavailable.reason}
+                                  </span>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                {!unavailable.selectable && unavailable.reason ? (
+                                  <div className="text-right max-w-[7.5rem]">
+                                    <span className="block text-[10px] font-black uppercase tracking-wide text-rose-600">
+                                      {unavailable.title}
+                                    </span>
+                                    <span className="mt-0.5 block text-[9px] font-bold text-rose-500 normal-case">
+                                      {unavailable.reason}
+                                    </span>
+                                  </div>
+                                ) : null}
+                                <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={!canDecrease}
+                                    onClick={() => onPortionQtyChange?.(portionName, -1)}
+                                    className="w-9 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    <Minus size={15} strokeWidth={3} />
+                                  </button>
+                                  <span className="w-7 text-center font-black text-sm tabular-nums">
+                                    {inCart}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={!canIncrease}
+                                    onClick={() => onPortionQtyChange?.(portionName, 1)}
+                                    className={`w-9 h-10 flex items-center justify-center transition-colors ${
+                                      !canIncrease
+                                        ? "cursor-not-allowed text-slate-300"
+                                        : "hover:bg-slate-200"
+                                    }`}
+                                  >
+                                    <Plus size={15} strokeWidth={3} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      const unavailable = getPortionUnavailableInfo(
+                        product,
+                        p.name,
+                        cart,
+                      );
+                      const selectable = unavailable.selectable;
+                      const isSelected = selectedPortion === p.name;
+                      return (
                         <button
                           key={p.name}
-                          onClick={() => setSelectedPortion(p.name)}
+                          type="button"
+                          disabled={!selectable}
+                          onClick={() => selectable && setSelectedPortion(p.name)}
                           className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border-2 transition-all ${
-                            selectedPortion === p.name
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-slate-100 bg-white hover:border-slate-200"
+                            !selectable
+                              ? "cursor-not-allowed border-rose-100 bg-rose-50/80 opacity-95"
+                              : isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-slate-100 bg-white hover:border-slate-200"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                selectedPortion === p.name
-                                  ? "border-blue-500 bg-blue-500"
-                                  : "border-slate-300"
+                              className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all ${
+                                !selectable
+                                  ? "border-rose-200 bg-rose-100"
+                                  : isSelected
+                                    ? "border-blue-500 bg-blue-500"
+                                    : "border-slate-300"
                               }`}
                             >
-                              {selectedPortion === p.name && (
+                              {isSelected && selectable && (
                                 <Check
                                   size={12}
                                   className="text-white"
@@ -228,23 +429,41 @@ export default function SubItemModal({
                                 />
                               )}
                             </div>
-                            <span className="text-sm font-bold text-slate-800">
+                            <span
+                              className={`text-sm font-bold truncate ${
+                                selectable
+                                  ? "text-slate-800"
+                                  : "text-slate-400 line-through decoration-rose-300"
+                              }`}
+                            >
                               {p.name}
                             </span>
                           </div>
-                          <span className="text-sm font-black text-slate-900">
-                            ₹{p.price}
-                          </span>
+                          {!selectable ? (
+                            <div className="shrink-0 text-right max-w-[7.5rem]">
+                              <span className="block text-[10px] font-black uppercase tracking-wide text-rose-600">
+                                {unavailable.title}
+                              </span>
+                              {unavailable.reason ? (
+                                <span className="mt-0.5 block text-[9px] font-bold text-rose-500 normal-case">
+                                  {unavailable.reason}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-sm font-black text-slate-900 shrink-0">
+                              ₹{p.price}
+                            </span>
+                          )}
                         </button>
-                      ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
               {/* ── Addon Groups ── */}
-              {addonGroups
-                .filter((group) => group.isAvailable !== false)
-                .map((group) => (
+              {addonGroups.map((group) => (
                   <div key={group.name}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
@@ -304,19 +523,80 @@ export default function SubItemModal({
             </div>
 
             {/* ── Footer: Qty + Add ── */}
-            {maxQty != null && stockLimit != null && (
-              <p className="shrink-0 px-5 pt-3 text-center text-[10px] font-bold uppercase tracking-wide text-indigo-600 tabular-nums">
-                {cartQty > 0
-                  ? `${maxAllowed} more allowed (${stockLimit} total, ${cartQty} in cart)`
-                  : `${maxAllowed} available`}
+            {stockHintText && !perPortionQtyMode && (
+              <p
+                className={`shrink-0 px-5 pt-3 text-center text-[10px] font-bold uppercase tracking-wide tabular-nums ${
+                  canAdd ? "text-indigo-600" : "text-rose-600"
+                }`}
+              >
+                {stockHintText}
               </p>
             )}
+            {perPortionQtyMode ? (
+              <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-5 py-3 min-h-[7rem]">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">
+                  Order overview
+                </p>
+                {portionOverview.lines.length > 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      {portionOverview.lines.map((line) => (
+                        <div
+                          key={line.name}
+                          className="flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 truncate">
+                              {line.name}
+                            </p>
+                            <p className="text-[10px] font-semibold text-slate-500 tabular-nums">
+                              ₹{line.unit.toLocaleString()} × {line.qty}
+                            </p>
+                          </div>
+                          <p className="text-sm font-black text-slate-900 tabular-nums shrink-0">
+                            ₹{line.total.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="my-3 border-t border-slate-200" />
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-black uppercase tracking-wide text-indigo-600">
+                        Total ({portionOverview.totalQty}{" "}
+                        {portionOverview.totalQty === 1 ? "item" : "items"})
+                      </p>
+                      <p className="text-lg font-black text-indigo-600 tabular-nums">
+                        ₹{portionOverview.total.toLocaleString()}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs font-medium text-slate-400 italic">
+                    Tap + on portions to add to your order
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {perPortionQtyMode ? (
+              <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm uppercase tracking-wider transition-all"
+                >
+                  {portionOverview.total > 0
+                    ? `Done · ₹${portionOverview.total.toLocaleString()}`
+                    : "Done"}
+                </button>
+              </div>
+            ) : (
             <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4 flex items-center gap-4">
               {/* qty selector */}
               <div className="flex items-center bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                  disabled={!canAdd || qty <= 1}
+                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Minus size={16} strokeWidth={3} />
                 </button>
@@ -325,9 +605,9 @@ export default function SubItemModal({
                 </span>
                 <button
                   onClick={() => setQty((q) => Math.min(maxAllowed, q + 1))}
-                  disabled={qty >= maxAllowed}
+                  disabled={!canAdd || qty >= maxAllowed}
                   className={`w-10 h-10 flex items-center justify-center transition-colors ${
-                    qty >= maxAllowed
+                    !canAdd || qty >= maxAllowed
                       ? "cursor-not-allowed text-slate-300"
                       : "hover:bg-slate-200"
                   }`}
@@ -338,12 +618,30 @@ export default function SubItemModal({
 
               {/* add button */}
               <button
+                type="button"
                 onClick={handleAdd}
-                className="flex-1 h-12 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-white rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-200"
+                disabled={!canAdd}
+                className={`flex-1 min-h-12 rounded-2xl font-black text-sm uppercase tracking-wider flex flex-col items-center justify-center gap-0.5 transition-all ${
+                  canAdd
+                    ? "bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-white shadow-lg shadow-emerald-200"
+                    : "cursor-not-allowed bg-slate-300 text-slate-500 py-2"
+                }`}
               >
-                Add — ₹{totalPrice.toLocaleString()}
+                {canAdd ? (
+                  `Add — ₹${totalPrice.toLocaleString()}`
+                ) : (
+                  <>
+                    <span>{selectedInfo?.title || "Sold out"}</span>
+                    {selectedInfo?.reason ? (
+                      <span className="text-[10px] font-bold normal-case tracking-normal text-slate-400">
+                        {selectedInfo.reason}
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </button>
             </div>
+            )}
           </motion.div>
         </motion.div>
       )}

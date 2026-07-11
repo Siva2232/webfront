@@ -7,6 +7,10 @@ import { useTheme } from "../context/ThemeContext";
 import API from "../api/axios";
 import { fetchTablesCoalesced, parseTablesPayload } from "../api/fetchTablesCoalesced";
 import { getCurrentRestaurantId, tenantKey } from "../utils/tenantCache";
+import {
+  collectPortionStockAlerts,
+  formatPortionAlertLabel,
+} from "../utils/portionStockAlerts";
 import { motion, AnimatePresence } from "framer-motion";
 import { taxOnTaxableAmount, GST_TOTAL_PCT_LABEL } from "../utils/gstRates";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -112,6 +116,9 @@ export default function Dashboard() {
     } catch { return []; }
   });
 
+  const [portionRows, setPortionRows] = useState([]);
+  const [portionAlerts, setPortionAlerts] = useState([]);
+
   // Performance enhancement: Persistent sync tracker to skip heavy refetching if data is fresh
   const lastSyncRef = useRef(Number(localStorage.getItem(tenantKey("dashboard_last_sync", _rid)) || 0));
 
@@ -132,13 +139,16 @@ export default function Dashboard() {
       setIsSyncing(true);
       try {
         // Run stats + tables in parallel (2 calls instead of 3)
-        const [statsRes, tableData] = await Promise.all([
+        const [statsRes, tableData, portionRes] = await Promise.all([
           API.get('/orders/stats').catch(() => null),
           fetchTablesCoalesced().catch(() => null),
+          API.get('/orders/analytics/portions', {
+            params: { startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10) },
+          }).catch(() => null),
         ]);
 
         if (statsRes?.data) {
-          const { todayCount, totalRevenue, bestSellers } = statsRes.data;
+          const { todayCount, totalRevenue, bestSellers, portionAlerts: nextPortionAlerts } = statsRes.data;
           
           if (typeof totalRevenue === 'number') {
             setTotalRevenue(totalRevenue);
@@ -152,9 +162,16 @@ export default function Dashboard() {
             setBestSellers(bestSellers);
             localStorage.setItem(tenantKey("dashboard_best_sellers", _rid), JSON.stringify(bestSellers));
           }
+          if (Array.isArray(nextPortionAlerts)) {
+            setPortionAlerts(nextPortionAlerts);
+          }
           
           lastSyncRef.current = now;
           localStorage.setItem(tenantKey("dashboard_last_sync", _rid), now.toString());
+        }
+
+        if (portionRes?.data?.rows) {
+          setPortionRows(Array.isArray(portionRes.data.rows) ? portionRes.data.rows : []);
         }
 
         if (tableData) {
@@ -439,7 +456,15 @@ export default function Dashboard() {
         type: 'subitem'
       }));
 
-    return [...prodAlerts, ...subAlerts].slice(0, 10);
+    const portionStockAlerts = collectPortionStockAlerts(products).map((a) => ({
+      id: a.id,
+      name: formatPortionAlertLabel(a),
+      issue: a.issue,
+      image: a.image,
+      type: "portion",
+    }));
+
+    return [...prodAlerts, ...subAlerts, ...portionStockAlerts].slice(0, 10);
   }, [products, subitems]);
 
   // Export functionality
@@ -730,6 +755,53 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
+        {/* Portion sales & balance */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[2rem] border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-900/5 sm:p-8"
+        >
+          <div className="mb-6 flex items-center gap-3">
+            <div className="rounded-2xl bg-indigo-600 p-3 text-white">
+              <Tag size={18} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black tracking-tight text-zinc-900">Portion sales & balance</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Today · e.g. Biryani Half sold / left</p>
+            </div>
+          </div>
+          {portionRows.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                    <th className="py-3 pr-4">Product</th>
+                    <th className="py-3 pr-4">Portion</th>
+                    <th className="py-3 pr-4">Sold today</th>
+                    <th className="py-3">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portionRows.slice(0, 10).map((row) => (
+                    <tr key={`${row.productId}-${row.portion}`} className="border-b border-zinc-50">
+                      <td className="py-3 pr-4 font-bold text-zinc-800">{row.productName}</td>
+                      <td className="py-3 pr-4 font-medium text-zinc-600">{row.portion}</td>
+                      <td className="py-3 pr-4 font-black tabular-nums text-indigo-600">{row.soldQty}</td>
+                      <td className="py-3 font-bold tabular-nums text-zinc-700">
+                        {row.trackStock ? `${row.stock} left` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="py-6 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              No portion sales or tracked stock yet
+            </p>
+          )}
+        </motion.div>
+
         {/* --- 4. INVENTORY & FISCAL HEALTH SECTION --- */}
         <div className="space-y-4 lg:space-y-6">
           <h2 className="flex items-center gap-2 text-xl font-black text-zinc-900 sm:gap-3 sm:text-2xl md:text-3xl">
@@ -1005,13 +1077,15 @@ const StockAlertSection = ({ items }) => (
             <div>
               <p className="font-black text-slate-800 text-lg tracking-tight group-hover/item:text-rose-600">{item.name}</p>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                Type: {item.type === 'subitem' ? 'Sub-item' : 'Product'}
+                Type: {item.type === 'subitem' ? 'Sub-item' : item.type === 'portion' ? 'Portion' : 'Product'}
               </p>
             </div>
           </div>
           <div className="flex flex-col items-end">
              <div className="h-2 w-2 rounded-full bg-rose-500 mb-2 animate-pulse" />
-             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Out of Stock</p>
+             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
+               {item.issue || 'Out of Stock'}
+             </p>
           </div>
         </motion.div>
       ))}

@@ -430,6 +430,19 @@ export const ProductProvider = ({ children }) => {
     }
   };
 
+  const adjustProductStock = async (id, payload) => {
+    try {
+      const { data } = await API.patch(`/products/${id}/stock`, payload);
+      const updated = products.map(p => p._id === id ? data : p);
+      setProducts(updated);
+      tenantSet('products', getLiveRid(), updated);
+      return data;
+    } catch (error) {
+      console.error("Error adjusting stock:", error);
+      throw error;
+    }
+  };
+
   const updateSubItem = async (id, updates) => {
     try {
       const { data } = await API.put(`/sub-items/${id}`, updates);
@@ -511,6 +524,7 @@ export const ProductProvider = ({ children }) => {
     addProduct,
     addCategory,
     updateProduct,
+    adjustProductStock,
     updateSubItem,
     updateSubItemStatus,
     deleteProduct,

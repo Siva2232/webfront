@@ -268,32 +268,55 @@ export default function AddProductModal({
                       E.g. Half, Full, Family Pack. Each portion has its own price.
                     </p>
                     {productForm.portions.map((p, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <input
-                          placeholder="Portion name"
-                          value={p.name}
-                          onChange={(e) => onUpdatePortion(idx, "name", e.target.value)}
-                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
-                        />
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">
-                            ₹
-                          </span>
+                      <div key={idx} className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                        <div className="flex items-center gap-3">
                           <input
-                            type="number"
-                            placeholder="Price"
-                            value={p.price}
-                            onChange={(e) => onUpdatePortion(idx, "price", e.target.value)}
-                            className="w-28 pl-7 pr-3 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-black outline-none focus:border-indigo-500"
+                            placeholder="Portion name"
+                            value={p.name}
+                            onChange={(e) => onUpdatePortion(idx, "name", e.target.value)}
+                            className="flex-1 px-4 py-3 bg-white border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
                           />
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-black">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              placeholder="Price"
+                              value={p.price}
+                              onChange={(e) => onUpdatePortion(idx, "price", e.target.value)}
+                              className="w-28 pl-7 pr-3 py-3 bg-white border border-slate-100 rounded-xl text-sm font-black outline-none focus:border-indigo-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onRemovePortion(idx)}
+                            className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => onRemovePortion(idx)}
-                          className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex flex-wrap items-center gap-3 pl-1">
+                          <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(p.trackStock)}
+                              onChange={(e) => onUpdatePortion(idx, "trackStock", e.target.checked)}
+                              className="rounded border-slate-300"
+                            />
+                            Track stock
+                          </label>
+                          {p.trackStock ? (
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Qty"
+                              value={p.stock ?? ""}
+                              onChange={(e) => onUpdatePortion(idx, "stock", e.target.value)}
+                              className="w-24 px-3 py-2 bg-white border border-slate-100 rounded-lg text-sm font-bold outline-none focus:border-indigo-500"
+                            />
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                     <div className="flex flex-wrap items-center gap-2">

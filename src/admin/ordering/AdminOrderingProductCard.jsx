@@ -22,13 +22,15 @@ const AdminOrderingProductCard = memo(function AdminOrderingProductCard({
     (product.hasPortions && product.portions?.length > 0) ||
     (product.addonGroups?.length > 0);
 
-  const soldOut = isProductSoldOut(product);
+  const soldOut = isProductSoldOut(product, orderItems);
   const available = !soldOut;
   const remaining = getRemainingStock(product, orderItems);
   const stockLimit = getStockLimit(product);
   const cartQty = countProductQtyInCart(orderItems, prodId);
-  const atCartLimit = tracksProductStock(product) && remaining !== null && remaining <= 0;
-  const canIncrease = available && !atCartLimit;
+  const atCartLimit =
+    soldOut ||
+    (tracksProductStock(product) && remaining !== null && remaining <= 0);
+  const canIncrease = hasCustomisation ? true : available && !atCartLimit;
 
   return (
     <div

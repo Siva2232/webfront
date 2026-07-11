@@ -19,16 +19,16 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
+  applyPortionCartDelta,
+  buildPortionCartItem,
+  buildPortionCartKey,
   canAddProductQty,
-  countProductQtyInCart,
   getProductId,
-  getRemainingStock,
-  getStockLimit,
 } from "../utils/productStockCart";
 import { getProductCategoryNameFromProduct } from "../utils/productCategory";
 
 export default function AdminProductsOrdering() {
-  const { addToCart, decrementProductFromCart, cart = [], table, setTable } = useCart();
+  const { addToCart, decrementProductFromCart, cart = [], table, setTable, updateQuantity, removeFromCart } = useCart();
 
   const cartAdd = useCallback((product) => {
     if (product.isAvailable === false) return;
@@ -59,16 +59,6 @@ export default function AdminProductsOrdering() {
     return map;
   }, [cart]);
 
-  const subItemStockProps = useMemo(() => {
-    if (!subItemProduct) return {};
-    const pid = getProductId(subItemProduct);
-    return {
-      maxQty: getRemainingStock(subItemProduct, cart) ?? undefined,
-      stockLimit: getStockLimit(subItemProduct),
-      cartQty: countProductQtyInCart(cart, pid),
-    };
-  }, [subItemProduct, cart]);
-
   const openCustomise = useCallback((product) => {
     setSubItemProduct(product);
     setShowSubItemModal(true);
@@ -77,7 +67,7 @@ export default function AdminProductsOrdering() {
   const handleConfiguredAdd = useCallback(
     (configuredItem) => {
       const addQty = configuredItem.qty || 1;
-      const check = canAddProductQty(configuredItem, cart, addQty);
+      const check = canAddProductQty(configuredItem, cart, addQty, configuredItem.selectedPortion);
       if (!check.ok) {
         toast.error(check.message);
         return;
@@ -87,6 +77,25 @@ export default function AdminProductsOrdering() {
       setSubItemProduct(null);
     },
     [cart, cartAdd]
+  );
+
+  const handlePortionQtyChange = useCallback(
+    (portionName, delta) => {
+      if (!subItemProduct) return;
+      if (delta > 0) {
+        const item = buildPortionCartItem(subItemProduct, portionName);
+        const result = addToCart(item);
+        if (result?.ok === false) toast.error(result.message);
+        return;
+      }
+      const cartKey = buildPortionCartKey(getProductId(subItemProduct), portionName);
+      const line = cart.find((i) => i.cartKey === cartKey);
+      if (!line) return;
+      const pid = getProductId(line);
+      if (line.qty <= 1) removeFromCart(pid, cartKey);
+      else updateQuantity(pid, line.qty - 1, cartKey);
+    },
+    [subItemProduct, cart, addToCart, updateQuantity, removeFromCart],
   );
 
   const adjustQty = useCallback(
@@ -358,7 +367,8 @@ export default function AdminProductsOrdering() {
           setSubItemProduct(null);
         }}
         onAddToCart={handleConfiguredAdd}
-        {...subItemStockProps}
+        onPortionQtyChange={handlePortionQtyChange}
+        cart={cart}
       />
     </div>
   );

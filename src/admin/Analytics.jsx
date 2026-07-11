@@ -52,6 +52,7 @@ import OperationsInsightsSection from "./analytics/OperationsInsightsSection";
 import ForecastSection from "./analytics/ForecastSection";
 import LowPerformersSection from "./analytics/LowPerformersSection";
 import { parseLocalYMD, getOrderGross, getOrderTax } from "./analytics/salesMetrics";
+import API from "../api/axios";
 
 const PIE_COLORS = ["#18181b", "#3f3f46", "#71717a", "#a1a1aa", "#d4d4d8"];
 
@@ -77,6 +78,9 @@ export default function Analytics() {
   const [dishSearch, setDishSearch] = useState("");
   const [catalogSearch, setCatalogSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [portionRows, setPortionRows] = useState([]);
+  const [portionLoading, setPortionLoading] = useState(false);
+  const [portionError, setPortionError] = useState(null);
   const [dateRange, setDateRange] = useState(() => {
     const end = new Date();
     const start = subDays(end, 29);
@@ -367,6 +371,40 @@ export default function Analytics() {
     () => mergeZeroSaleProducts(operationsInsights.lowPerformingMenu, products, 8),
     [operationsInsights.lowPerformingMenu, products],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    setPortionLoading(true);
+    setPortionError(null);
+    API.get("/orders/analytics/portions", {
+      params: { startDate: dateRange.start, endDate: dateRange.end },
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPortionRows(Array.isArray(res.data?.rows) ? res.data.rows : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPortionError(err?.response?.data?.message || "Failed to load portion analytics");
+        setPortionRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPortionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange.start, dateRange.end]);
+
+  const filteredPortionRows = useMemo(() => {
+    const q = dishSearch.trim().toLowerCase();
+    if (!q) return portionRows;
+    return portionRows.filter(
+      (r) =>
+        String(r.productName || "").toLowerCase().includes(q) ||
+        String(r.portion || "").toLowerCase().includes(q),
+    );
+  }, [portionRows, dishSearch]);
 
   const catalogSnapshot = useMemo(() => {
     const filtered = products.filter((p) => {
@@ -903,6 +941,75 @@ export default function Analytics() {
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="rounded-3xl border border-zinc-100 bg-white p-6 shadow-sm ring-1 ring-zinc-100/80 md:p-8">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-base font-bold text-zinc-900">
+                  <Layers className="text-zinc-500" size={18} />
+                  Portion breakdown
+                </h3>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Units sold per portion in range, with remaining stock when tracked (e.g. Biryani Half).
+                </p>
+              </div>
+              <span className="rounded-full border border-zinc-100 bg-zinc-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                {dateRange.start} → {dateRange.end}
+              </span>
+            </div>
+            {portionError ? (
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{portionError}</p>
+            ) : portionLoading ? (
+              <p className="py-8 text-center text-sm text-zinc-400">Loading portion analytics…</p>
+            ) : filteredPortionRows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                      <th className="py-3 pr-4">Product</th>
+                      <th className="py-3 pr-4">Portion</th>
+                      <th className="py-3 pr-4">Units sold</th>
+                      <th className="py-3 pr-4">Balance</th>
+                      <th className="py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPortionRows.slice(0, 20).map((row) => (
+                      <tr key={`${row.productId}-${row.portion}`} className="border-b border-zinc-50">
+                        <td className="py-3 pr-4 font-bold text-zinc-800">{row.productName}</td>
+                        <td className="py-3 pr-4 text-zinc-600">{row.portion}</td>
+                        <td className="py-3 pr-4 font-black tabular-nums text-indigo-600">{row.soldQty}</td>
+                        <td className="py-3 pr-4 font-bold tabular-nums text-zinc-700">
+                          {row.trackStock ? row.stock : "—"}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                              row.trackStock && row.stock <= 0
+                                ? "bg-rose-100 text-rose-700"
+                                : row.isAvailable === false
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-emerald-100 text-emerald-700"
+                            }`}
+                          >
+                            {row.trackStock && row.stock <= 0
+                              ? "Sold out"
+                              : row.isAvailable === false
+                                ? "Unavailable"
+                                : "Active"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-zinc-400">
+                No portion sales in this range{dishSearch.trim() ? " for this search" : ""}.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">

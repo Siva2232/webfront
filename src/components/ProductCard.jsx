@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import SubItemModal from "./SubItemModal";
 import { useCart } from "../context/CartContext";
 import {
+  buildPortionCartItem,
+  buildPortionCartKey,
   canAddProductQty,
   countProductQtyInCart,
   getProductId,
@@ -36,17 +38,20 @@ export default function ProductCard({
   isTakeawayMode = false,
 }) {
   const { name, description, price, image, type = "veg" } = product;
-  const { cart, decrementProductFromCart } = useCart();
+  const { cart, decrementProductFromCart, addToCart, updateQuantity, removeFromCart } = useCart();
 
   const [showSubItem, setShowSubItem] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   const productId = getProductId(product);
+  const needsModal = hasCustomisation(product);
   const cartQty = countProductQtyInCart(cart, productId);
   const remaining = getRemainingStock(product, cart);
   const stockLimit = getStockLimit(product);
-  const soldOut = isProductSoldOut(product);
+  const soldOut = isProductSoldOut(product, cart);
   const available = !soldOut;
+  const canInteract = available || (needsModal && cartQty > 0);
+  const showSoldOutOverlay = soldOut && !(needsModal && cartQty > 0);
 
   const [quantity, setQuantity] = useState(cartQty || initialQty);
 
@@ -54,12 +59,11 @@ export default function ProductCard({
     setQuantity(cartQty);
   }, [cartQty]);
 
-  const needsModal = hasCustomisation(product);
   const descriptionText = typeof description === "string" ? description.trim() : "";
   const showReadMore = descriptionText.length > 80;
 
-  const tryAdd = (addQty = 1) => {
-    const check = canAddProductQty(product, cart, addQty);
+  const tryAdd = (addQty = 1, portionName = null) => {
+    const check = canAddProductQty(product, cart, addQty, portionName);
     if (!check.ok) {
       toast.error(check.message);
       return false;
@@ -69,17 +73,9 @@ export default function ProductCard({
 
   const handleIncrement = (e) => {
     e.stopPropagation();
-    if (!available) return;
+    if (!available && !(needsModal && cartQty > 0)) return;
 
     if (needsModal) {
-      if (atCartLimit) {
-        toast.error(
-          stockLimit === 1
-            ? "Only 1 available — already in your cart"
-            : `Only ${stockLimit} available — your cart is full for this item`
-        );
-        return;
-      }
       setShowSubItem(true);
       return;
     }
@@ -96,7 +92,7 @@ export default function ProductCard({
 
   const handleConfiguredAdd = (configuredItem) => {
     const addQty = configuredItem.qty || 1;
-    if (!tryAdd(addQty)) return;
+    if (!tryAdd(addQty, configuredItem.selectedPortion)) return;
 
     if (onAddConfigured) {
       onAddConfigured(configuredItem);
@@ -108,7 +104,33 @@ export default function ProductCard({
     setShowSubItem(false);
   };
 
-  const atCartLimit = tracksProductStock(product) && remaining !== null && remaining <= 0;
+  const handlePortionQtyChange = (portionName, delta) => {
+    if (delta > 0) {
+      const item = buildPortionCartItem(product, portionName);
+      if (!tryAdd(1, portionName)) return;
+      if (onAddConfigured) {
+        onAddConfigured({ ...item, qty: 1 });
+      } else {
+        const result = addToCart(item, isTakeawayMode);
+        if (result?.ok === false) toast.error(result.message);
+      }
+      return;
+    }
+    const cartKey = buildPortionCartKey(getProductId(product), portionName);
+    const line = cart.find(
+      (i) => i.cartKey === cartKey && (i.isTakeaway || false) === isTakeawayMode,
+    );
+    if (!line) return;
+    const pid = getProductId(line);
+    if (line.qty <= 1) removeFromCart(pid, cartKey, isTakeawayMode);
+    else updateQuantity(pid, line.qty - 1, cartKey, isTakeawayMode);
+  };
+
+  const atCartLimit =
+    !needsModal &&
+    tracksProductStock(product) &&
+    remaining !== null &&
+    remaining <= 0;
 
   return (
     <div className="group relative flex flex-col bg-white border border-gray-100 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden hover:shadow-2xl hover:border-black transition-all duration-500 h-full">
@@ -116,12 +138,12 @@ export default function ProductCard({
         <img
           src={image || "https://via.placeholder.com/600x600"}
           alt={name}
-          className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${!available ? "grayscale brightness-95" : ""}`}
+          className={`w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 ${showSoldOutOverlay ? "grayscale brightness-95" : ""}`}
         />
         <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 bg-white p-1.5 rounded-xl shadow-sm">
           <FoodTypeIcon type={type} />
         </div>
-        {!available && (
+        {showSoldOutOverlay && (
           <div className="absolute inset-0 z-20 bg-white/40 flex items-center justify-center backdrop-blur-[2px]">
             <div className="bg-rose-600 text-white px-5 py-2 font-black text-[10px] uppercase tracking-widest">
               Sold Out
@@ -182,7 +204,7 @@ export default function ProductCard({
         )}
 
         <div className="mt-auto pt-3 sm:pt-4 border-t border-gray-100">
-          {available ? (
+          {canInteract ? (
             <div className="h-10 sm:h-11 md:h-12 w-full">
               <AnimatePresence mode="wait">
                 {quantity === 0 ? (
@@ -215,9 +237,9 @@ export default function ProductCard({
                     </div>
                     <button
                       onClick={handleIncrement}
-                      disabled={atCartLimit}
+                      disabled={!needsModal && atCartLimit}
                       className={`flex items-center justify-center border-l-2 border-black transition-colors ${
-                        atCartLimit
+                        !needsModal && atCartLimit
                           ? "cursor-not-allowed bg-gray-100 text-gray-300"
                           : "hover:bg-gray-50"
                       }`}
@@ -241,6 +263,8 @@ export default function ProductCard({
         isOpen={showSubItem}
         onClose={() => setShowSubItem(false)}
         onAddToCart={handleConfiguredAdd}
+        onPortionQtyChange={handlePortionQtyChange}
+        cart={cart}
         maxQty={remaining ?? undefined}
         stockLimit={stockLimit}
         cartQty={cartQty}
