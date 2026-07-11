@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Building2, CreditCard, BarChart3,
   Shield, LogOut, Settings, ChevronRight, ChevronDown,
-  Bell, User, CreditCard as CardIcon, MessageSquare, Wallet, History, Bot
+  Bell, User, CreditCard as CardIcon, MessageSquare, Wallet, History, Bot, Truck
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -20,6 +20,7 @@ const nav = [
   { label: "Restaurants",   icon: Building2,       to: "/superadmin/restaurants" },
   { label: "Plans",         icon: CreditCard,      to: "/superadmin/plans" },
   { label: "Payment Settings", icon: Wallet,       to: "/superadmin/payment-settings" },
+  { label: "Swiggy / Zomato", icon: Truck,        to: "/superadmin/aggregator" },
   { label: "Payment History",  icon: History,      to: "/superadmin/payment-history" },
   { label: "Analytics",     icon: BarChart3,       to: "/superadmin/analytics" },
   { label: "Analytics Robot", icon: Bot,           to: "/superadmin/analyze-robot" },

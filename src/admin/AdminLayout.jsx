@@ -4,6 +4,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Notification from "../components/Notification";
 import { isCustomerOnlinePaymentEnabled } from "../utils/paymentFeature";
+import { isAggregatorOrdersEnabled } from "../utils/aggregatorFeature";
 import { useTheme } from "../context/ThemeContext";
 import {
   LayoutDashboard,
@@ -53,6 +54,7 @@ import {
   Repeat,
   BellRing,
   CreditCard,
+  Truck,
 } from "lucide-react";
 import { useProducts } from "../context/ProductContext";
 import {
@@ -171,6 +173,14 @@ export default function AdminLayout() {
   const onlinePaymentEnabled = useMemo(
     () =>
       isCustomerOnlinePaymentEnabled(features, branding.subscriptionPlan, {
+        featuresReady,
+      }),
+    [features, branding.subscriptionPlan, featuresReady],
+  );
+
+  const aggregatorOrdersEnabled = useMemo(
+    () =>
+      isAggregatorOrdersEnabled(features, branding.subscriptionPlan, {
         featuresReady,
       }),
     [features, branding.subscriptionPlan, featuresReady],
@@ -315,6 +325,7 @@ export default function AdminLayout() {
       /^\/admin\/(banner|offers)/.test(p) ||
       p.startsWith("/admin/profile") ||
       p.startsWith("/admin/payment-settings") ||
+      p.startsWith("/admin/aggregator-settings") ||
       p.startsWith("/admin/subscription") ||
       p.startsWith("/admin/customer");
     const skipOrdersPrefetch =
@@ -1979,6 +1990,51 @@ export default function AdminLayout() {
                         <ChevronRight
                           size={16}
                           className="text-slate-300 group-hover:text-indigo-400 transition-transform group-hover:translate-x-1"
+                        />
+                      ) : null}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!aggregatorOrdersEnabled}
+                      title={
+                        aggregatorOrdersEnabled
+                          ? "Configure Swiggy and Zomato integration"
+                          : "Enable Swiggy / Zomato orders in your plan or module access"
+                      }
+                      className={`w-full flex items-center justify-between px-4 py-3.5 mt-2 text-sm font-bold rounded-xl transition-all duration-200 group ${
+                        aggregatorOrdersEnabled
+                          ? "text-slate-700 hover:bg-orange-50 hover:text-orange-700"
+                          : "cursor-not-allowed text-slate-400 opacity-70"
+                      }`}
+                      onClick={() => {
+                        if (!aggregatorOrdersEnabled) return;
+                        navigate("aggregator-settings");
+                        setIsProfileOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Truck
+                          size={20}
+                          className={
+                            aggregatorOrdersEnabled
+                              ? "text-slate-400 group-hover:text-orange-600 transition-colors"
+                              : "text-slate-300"
+                          }
+                        />
+                        <div className="min-w-0 text-left">
+                          <span>Swiggy / Zomato</span>
+                          {!aggregatorOrdersEnabled && (
+                            <p className="text-[10px] font-semibold normal-case tracking-normal text-slate-400 mt-0.5">
+                              Requires aggregator orders module
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {aggregatorOrdersEnabled ? (
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-orange-400 transition-transform group-hover:translate-x-1"
                         />
                       ) : null}
                     </button>

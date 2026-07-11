@@ -67,6 +67,7 @@ const FEATURE_KEYS = [
   { key: "reports",      label: "Reports" },
   { key: "qrMenu",       label: "QR Menu" },
   { key: "onlineOrders", label: "Online Orders" },
+  { key: "aggregatorOrders", label: "Swiggy / Zomato orders" },
   { key: "customerPayLater", label: "Customer cart — Pay at table (later)" },
   { key: "customerOnlinePayment", label: "Customer cart — Pay online (card)" },
   { key: "kitchenPanel", label: "Kitchen Panel" },
@@ -85,7 +86,7 @@ const BLANK_FORM = {
   primaryColor: "#f72585", secondaryColor: "#0f172a", accentColor: "#7209b7",
   sidebarBgColor: "#ffffff", sidebarTextColor: "#1e293b",
   theme: "light", fontFamily: "Inter",
-  features: { hr: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, customerPayLater: true, customerOnlinePayment: true, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
+  features: { hr: true, inventory: false, reports: true, qrMenu: true, onlineOrders: false, aggregatorOrders: false, customerPayLater: true, customerOnlinePayment: true, kitchenPanel: true, waiterPanel: true, waiterCall: true, billRequest: true, accounting: true, hrStaff: true, hrAttendance: true, hrLeaves: true, reservations: true },
   subscriptionPlan: "", // Selected plan ID
   subscriptionStatus: "trial",
   logoBase64: "",

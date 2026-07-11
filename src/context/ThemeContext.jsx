@@ -38,6 +38,7 @@ const DEFAULT_THEME = {
     reservations: true,
     customerPayLater: true,
     customerOnlinePayment: true,
+    aggregatorOrders: false,
   },
 };
 

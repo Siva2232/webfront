@@ -32,6 +32,7 @@ const PLAN_FEATURES = [
   ["reports", "Reports & analytics"],
   ["qrMenu", "QR Menu Suite"],
   ["onlineOrders", "Online Store"],
+  ["aggregatorOrders", "Swiggy / Zomato orders"],
   ["customerPayLater", "Cash payment - pay at table (Cart)"],
   ["customerOnlinePayment", "Online card payment (Cart)"],
   ["kitchenPanel", "Kitchen Display"],

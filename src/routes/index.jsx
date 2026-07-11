@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { isCustomerOnlinePaymentEnabled } from "../utils/paymentFeature";
+import { isAggregatorOrdersEnabled } from "../utils/aggregatorFeature";
 
 /* Feature Guard — blocks direct URL access to disabled features (after branding/features load). */
 const FeatureGuard = ({ feature, children }) => {
@@ -11,6 +12,17 @@ const FeatureGuard = ({ feature, children }) => {
   if (feature === "customerOnlinePayment") {
     if (
       !isCustomerOnlinePaymentEnabled(features, branding.subscriptionPlan, {
+        featuresReady,
+      })
+    ) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    return children;
+  }
+
+  if (feature === "aggregatorOrders") {
+    if (
+      !isAggregatorOrdersEnabled(features, branding.subscriptionPlan, {
         featuresReady,
       })
     ) {
@@ -60,6 +72,7 @@ import SuperAdminAnalytics from "../superadmin/SuperAdminAnalytics";
 import SuperAdminNotifications from "../superadmin/SuperAdminNotifications";
 import SuperAdminPaymentSettings from "../superadmin/SuperAdminPaymentSettings";
 import SuperAdminPaymentHistory from "../superadmin/SuperAdminPaymentHistory";
+import SuperAdminAggregatorMonitor from "../superadmin/SuperAdminAggregatorMonitor";
 import SuperAdminProfile from "../superadmin/SuperAdminProfile";
 import SuperAdminAnalyzeRobot from "../superadmin/SuperAdminAnalyzeRobot";
 import SupportTicketManager from "../superadmin/SupportTicketManager";
@@ -76,6 +89,7 @@ import ProtectedSupportRoute from "./ProtectedSupportRoute";
 /* Admin Subscription Page */
 import SubscriptionPage from "../admin/SubscriptionPage";
 import PaymentSettingsPage from "../admin/PaymentSettingsPage";
+import AggregatorSettingsPage from "../admin/AggregatorSettingsPage";
 
 /* Admin Pages */
 import Dashboard from "../admin/Dashboard";
@@ -319,6 +333,14 @@ export default function AppRoutes() {
               </FeatureGuard>
             }
           />
+          <Route
+            path="aggregator-settings"
+            element={
+              <FeatureGuard feature="aggregatorOrders">
+                <AggregatorSettingsPage />
+              </FeatureGuard>
+            }
+          />
           <Route path="profile" element={<AdminProfile />} />
 
           {/* HR — outlet if any HR submodule or parent hr is on; each route has its own guard */}
@@ -420,6 +442,7 @@ export default function AppRoutes() {
           <Route path="support-team" element={<SupportTeamManager />} />
           <Route path="notifications" element={<SuperAdminNotifications />} />
           <Route path="payment-settings" element={<SuperAdminPaymentSettings />} />
+          <Route path="aggregator" element={<SuperAdminAggregatorMonitor />} />
           <Route path="payment-history" element={<SuperAdminPaymentHistory />} />
           <Route path="profile" element={<SuperAdminProfile />} />
           <Route path="support" element={<SupportTicketManager />} />

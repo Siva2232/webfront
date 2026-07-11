@@ -18,6 +18,7 @@ import {
   GST_TOTAL_PCT_LABEL,
 } from "../../../utils/gstRates";
 import { getOrderRoundTiming } from "../../utils/tableOrderTime";
+import OrderSourceBadge, { isAggregatorOrder } from "../../aggregator/OrderSourceBadge";
 
 export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted }) {
   const [timeAgo, setTimeAgo] = useState("");
@@ -37,6 +38,13 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
   const grandTotal = order.billDetails?.grandTotal ?? computedGst.grandTotal;
 
   const status = order.status;
+  const aggregatorOrder = isAggregatorOrder(order);
+  const statusActions = aggregatorOrder
+    ? ["New", "Preparing", "Ready", "Closed"]
+    : ["New", "Preparing", "Ready", "Served"];
+  const statusLabels = aggregatorOrder
+    ? { New: "New", Preparing: "Preparing", Ready: "Ready", Closed: "Dispatched" }
+    : { New: "New", Preparing: "Preparing", Ready: "Ready", Served: "Served" };
   const sessionRef = order.sessionRef
     ? String(order.sessionRef).slice(-8)
     : null;
@@ -87,8 +95,9 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
               {order.table === DELIVERY_TABLE ? "HD" : "TA"}
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+              <h3 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight flex flex-wrap items-center gap-2">
                 {isTakeawayOrder(order) ? (order.table === DELIVERY_TABLE ? "Delivery" : "Takeaway") : `Table ${order.table}`}
+                <OrderSourceBadge order={order} />
                 {order.hasTakeaway && !isTakeawayOrder(order) && (
                   <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase tracking-wider rounded-full">
                     <Package size={10} /> + Takeaway
@@ -104,6 +113,11 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
               )}
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 flex-wrap">
                 <Timer size={12} /> {timeAgo} • #{(order._id || order.id || "").slice(-5)}
+                {order.externalOrderId && (
+                  <span className="inline-flex items-center px-2 py-0.5 bg-violet-50 text-violet-700 text-[9px] font-black uppercase tracking-wider rounded-full">
+                    Ext {order.externalOrderId}
+                  </span>
+                )}
                 {sessionRef && (
                   <span className="inline-flex items-center px-2 py-0.5 bg-violet-100 text-violet-700 text-[9px] font-black uppercase tracking-wider rounded-full">
                     Session {sessionRef}
@@ -229,10 +243,17 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
               Move Status
             </p>
             <div className="grid grid-cols-2 gap-2 md:flex md:flex-col">
-              {["New", "Preparing", "Ready", "Served"].map((s) => {
-                const statusOrder = { New: 0, Preparing: 1, Ready: 2, Served: 3 };
+              {statusActions.map((s) => {
+                const statusOrder = aggregatorOrder
+                  ? { New: 0, Preparing: 1, Ready: 2, Closed: 3 }
+                  : { New: 0, Preparing: 1, Ready: 2, Served: 3 };
                 // Backend sometimes sends "Pending" for fresh orders; treat it same as "New"
-                const currentStatusLabel = statusKey === "pending" ? "New" : status;
+                const currentStatusLabel =
+                  statusKey === "pending"
+                    ? "New"
+                    : aggregatorOrder && statusKey === "closed"
+                      ? "Closed"
+                      : status;
                 const currentStatusLevel = statusOrder[currentStatusLabel] ?? -1;
                 const buttonStatusLevel = statusOrder[s] ?? -1;
                 const isCurrentStatus = s === currentStatusLabel;
@@ -256,7 +277,7 @@ export default function PremiumOrderCard({ order, updateOrderStatus, isCompleted
                           : "bg-slate-200 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50"
                     }`}
                   >
-                    {s}
+                    {statusLabels[s] || s}
                   </button>
                 );
               })}

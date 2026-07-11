@@ -10,6 +10,14 @@ import PremiumOrderCard from "./orders/components/PremiumOrderCard";
 import { isTakeawayOrder } from "./orders/utils/isTakeawayOrder";
 import { isStatusActive, normalizeStatus } from "./orders/utils/orderStatus";
 import { computeGstFromSubtotal } from "../utils/gstRates";
+import { getOrderSource } from "./aggregator/OrderSourceBadge";
+
+const SOURCE_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "swiggy", label: "Swiggy" },
+  { id: "zomato", label: "Zomato" },
+  { id: "inhouse", label: "In-house" },
+];
 
 export default function OrdersDashboard({ overrideOrders = null }) {
   const { orders: ctxOrders, updateOrderStatus: ctxUpdateStatus, fetchOrders, isLoading } = useOrders();
@@ -20,6 +28,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
   const [servedPendingIds, setServedPendingIds] = useState(new Set());
   const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState("all");
   const PER_PAGE = 15;
 
   // Use a ref to track if we've already done the initial fetch to avoid loops
@@ -46,10 +55,15 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     ctxUpdateStatus(id, status);
   };
 
+  const filteredOrders = useMemo(() => {
+    if (sourceFilter === "all") return orders;
+    return orders.filter((o) => getOrderSource(o) === sourceFilter);
+  }, [orders, sourceFilter]);
+
   // DASHBOARD CALCULATIONS
   const statsData = useMemo(() => {
     // Only process orders that are relevant for the current view
-    const relevantOrders = orders.filter(o => isStatusActive(o.status));
+    const relevantOrders = filteredOrders.filter(o => isStatusActive(o.status));
 
     const active = relevantOrders
       .filter((o) => !["served", "paid", "closed"].includes(normalizeStatus(o.status)) || servedPendingIds.has(o._id))
@@ -97,7 +111,7 @@ export default function OrdersDashboard({ overrideOrders = null }) {
       activeTakeawayCount: activeTA, 
       servedTakeawayCount: servedTA 
     };
-  }, [orders, servedPendingIds]);
+  }, [filteredOrders, servedPendingIds]);
 
   const { activeOrders, servedOrders, totalRevenue, totalItemsSold, liveTablesCount, activeTakeawayCount, servedTakeawayCount } = statsData;
   const activePages = Math.max(1, Math.ceil(activeOrders.length / PER_PAGE));
@@ -111,12 +125,12 @@ export default function OrdersDashboard({ overrideOrders = null }) {
     { label: "Total Revenue", value: `₹${totalRevenue.toLocaleString()}`, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Live Tables", value: liveTablesCount, icon: Users, color: "text-orange-600", bg: "bg-orange-50" },
     { label: "Active Takeaways/Delivery", value: activeTakeawayCount, icon: ShoppingBag, color: "text-pink-600", bg: "bg-pink-50" },
-    { label: "Ready", value: orders.filter(o => normalizeStatus(o.status) === "ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ready", value: filteredOrders.filter(o => normalizeStatus(o.status) === "ready").length, icon: BellRing, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Total Served", value: servedOrders.length, icon: PackageCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Takeaways/Delivery Served", value: servedTakeawayCount, icon: PackageCheck, color: "text-pink-600", bg: "bg-pink-50" },
     { label: "Items Sold", value: totalItemsSold, icon: UtensilsCrossed, color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Kitchen Load", value: activeOrders.length > 5 ? "High" : "Normal", icon: Activity, color: "text-slate-600", bg: "bg-slate-50" },
-  ], [totalRevenue, liveTablesCount, activeTakeawayCount, orders, servedOrders.length, servedTakeawayCount, totalItemsSold, activeOrders.length]);
+  ], [totalRevenue, liveTablesCount, activeTakeawayCount, filteredOrders, servedOrders.length, servedTakeawayCount, totalItemsSold, activeOrders.length]);
 
   if (isLoading && orders.length === 0) {
     return (
@@ -144,6 +158,27 @@ export default function OrdersDashboard({ overrideOrders = null }) {
                 Real-time Operations & History
               </p>
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {SOURCE_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => {
+                  setSourceFilter(filter.id);
+                  setActivePage(1);
+                  setHistoryPage(1);
+                }}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                  sourceFilter === filter.id
+                    ? "bg-orange-500 border-orange-500 text-white shadow-md"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-orange-200 hover:text-orange-600"
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
