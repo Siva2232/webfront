@@ -117,7 +117,12 @@ export default function Dashboard() {
   });
 
   const [portionRows, setPortionRows] = useState([]);
+  const [portionPage, setPortionPage] = useState(1);
   const [portionAlerts, setPortionAlerts] = useState([]);
+  const [bestSellersPage, setBestSellersPage] = useState(1);
+  const [criticalAlertPage, setCriticalAlertPage] = useState(1);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LIST_PER_PAGE = 10;
 
   // Performance enhancement: Persistent sync tracker to skip heavy refetching if data is fresh
   const lastSyncRef = useRef(Number(localStorage.getItem(tenantKey("dashboard_last_sync", _rid)) || 0));
@@ -464,8 +469,52 @@ export default function Dashboard() {
       type: "portion",
     }));
 
-    return [...prodAlerts, ...subAlerts, ...portionStockAlerts].slice(0, 10);
+    return [...prodAlerts, ...subAlerts, ...portionStockAlerts];
   }, [products, subitems]);
+
+  const portionTotalPages = Math.max(1, Math.ceil(portionRows.length / LIST_PER_PAGE));
+  const portionSafePage = Math.min(portionPage, portionTotalPages);
+  const paginatedPortionRows = useMemo(() => {
+    const start = (portionSafePage - 1) * LIST_PER_PAGE;
+    return portionRows.slice(start, start + LIST_PER_PAGE);
+  }, [portionRows, portionSafePage]);
+
+  const bestSellersTotalPages = Math.max(1, Math.ceil(bestSellers.length / LIST_PER_PAGE));
+  const bestSellersSafePage = Math.min(bestSellersPage, bestSellersTotalPages);
+  const paginatedBestSellers = useMemo(() => {
+    const start = (bestSellersSafePage - 1) * LIST_PER_PAGE;
+    return bestSellers.slice(start, start + LIST_PER_PAGE);
+  }, [bestSellers, bestSellersSafePage]);
+
+  const criticalAlertTotalPages = Math.max(1, Math.ceil(criticalProducts.length / LIST_PER_PAGE));
+  const criticalAlertSafePage = Math.min(criticalAlertPage, criticalAlertTotalPages);
+  const paginatedCriticalAlert = useMemo(() => {
+    const start = (criticalAlertSafePage - 1) * LIST_PER_PAGE;
+    return criticalProducts.slice(start, start + LIST_PER_PAGE);
+  }, [criticalProducts, criticalAlertSafePage]);
+
+  const ledgerTotalPages = Math.max(1, Math.ceil(products.length / LIST_PER_PAGE));
+  const ledgerSafePage = Math.min(ledgerPage, ledgerTotalPages);
+  const paginatedLedgerProducts = useMemo(() => {
+    const start = (ledgerSafePage - 1) * LIST_PER_PAGE;
+    return products.slice(start, start + LIST_PER_PAGE);
+  }, [products, ledgerSafePage]);
+
+  useEffect(() => {
+    if (portionPage > portionTotalPages) setPortionPage(portionTotalPages);
+  }, [portionPage, portionTotalPages]);
+
+  useEffect(() => {
+    if (bestSellersPage > bestSellersTotalPages) setBestSellersPage(bestSellersTotalPages);
+  }, [bestSellersPage, bestSellersTotalPages]);
+
+  useEffect(() => {
+    if (criticalAlertPage > criticalAlertTotalPages) setCriticalAlertPage(criticalAlertTotalPages);
+  }, [criticalAlertPage, criticalAlertTotalPages]);
+
+  useEffect(() => {
+    if (ledgerPage > ledgerTotalPages) setLedgerPage(ledgerTotalPages);
+  }, [ledgerPage, ledgerTotalPages]);
 
   // Export functionality
   const handleExport = (format) => {
@@ -693,12 +742,14 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-8">
-              {bestSellers.length > 0 ? (
-                bestSellers.map((item, idx) => (
+              {paginatedBestSellers.length > 0 ? (
+                paginatedBestSellers.map((item, idx) => {
+                  const absoluteIdx = (bestSellersSafePage - 1) * LIST_PER_PAGE + idx;
+                  return (
                   <div key={item.name} className="space-y-3">
                     <div className="flex items-end justify-between">
                       <span className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-zinc-800">
-                        {idx === 0 && <Crown size={14} className="text-amber-500" />}
+                        {absoluteIdx === 0 && <Crown size={14} className="text-amber-500" />}
                         {item.name}
                       </span>
                       <span className="text-xs font-black text-zinc-500">{item.qty} sales</span>
@@ -708,17 +759,27 @@ export default function Dashboard() {
                         initial={{ width: 0 }}
                         animate={{ width: `${(item.qty / bestSellers[0].qty) * 100}%` }}
                         transition={{ duration: 1.5, ease: "circOut" }}
-                        className={`h-full rounded-full ${idx === 0 ? 'bg-indigo-600' : 'bg-slate-900'}`}
+                        className={`h-full rounded-full ${absoluteIdx === 0 ? 'bg-indigo-600' : 'bg-slate-900'}`}
                       />
                     </div>
                   </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="py-10 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                   Waiting for sales data…
                 </div>
               )}
             </div>
+            {bestSellers.length > LIST_PER_PAGE && (
+              <ListPagination
+                page={bestSellersSafePage}
+                totalPages={bestSellersTotalPages}
+                onPrev={() => setBestSellersPage((p) => Math.max(1, p - 1))}
+                onNext={() => setBestSellersPage((p) => Math.min(bestSellersTotalPages, p + 1))}
+                className="mt-8"
+              />
+            )}
           </motion.div>
 
           {/* Performance Highlight Card */}
@@ -771,30 +832,41 @@ export default function Dashboard() {
             </div>
           </div>
           {portionRows.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-100 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                    <th className="py-3 pr-4">Product</th>
-                    <th className="py-3 pr-4">Portion</th>
-                    <th className="py-3 pr-4">Sold today</th>
-                    <th className="py-3">Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {portionRows.slice(0, 10).map((row) => (
-                    <tr key={`${row.productId}-${row.portion}`} className="border-b border-zinc-50">
-                      <td className="py-3 pr-4 font-bold text-zinc-800">{row.productName}</td>
-                      <td className="py-3 pr-4 font-medium text-zinc-600">{row.portion}</td>
-                      <td className="py-3 pr-4 font-black tabular-nums text-indigo-600">{row.soldQty}</td>
-                      <td className="py-3 font-bold tabular-nums text-zinc-700">
-                        {row.trackStock ? `${row.stock} left` : "—"}
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                      <th className="py-3 pr-4">Product</th>
+                      <th className="py-3 pr-4">Portion</th>
+                      <th className="py-3 pr-4">Sold today</th>
+                      <th className="py-3">Balance</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginatedPortionRows.map((row) => (
+                      <tr key={`${row.productId}-${row.portion}`} className="border-b border-zinc-50">
+                        <td className="py-3 pr-4 font-bold text-zinc-800">{row.productName}</td>
+                        <td className="py-3 pr-4 font-medium text-zinc-600">{row.portion}</td>
+                        <td className="py-3 pr-4 font-black tabular-nums text-indigo-600">{row.soldQty}</td>
+                        <td className="py-3 font-bold tabular-nums text-zinc-700">
+                          {row.trackStock ? `${row.stock} left` : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {portionRows.length > LIST_PER_PAGE && (
+                <ListPagination
+                  page={portionSafePage}
+                  totalPages={portionTotalPages}
+                  onPrev={() => setPortionPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setPortionPage((p) => Math.min(portionTotalPages, p + 1))}
+                  className="mt-6"
+                />
+              )}
+            </>
           ) : (
             <p className="py-6 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-400">
               No portion sales or tracked stock yet
@@ -862,7 +934,7 @@ export default function Dashboard() {
                   </div>
                   
                   <div className="space-y-3 text-sm">
-                    {criticalProducts.map(p => (
+                    {paginatedCriticalAlert.map(p => (
                       <div key={p._id || p.id} className="flex justify-between items-center font-medium">
                         <span className="text-zinc-800">{p.name}</span>
                         <span className={`${
@@ -873,6 +945,16 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
+                  {criticalProducts.length > LIST_PER_PAGE && (
+                    <ListPagination
+                      page={criticalAlertSafePage}
+                      totalPages={criticalAlertTotalPages}
+                      onPrev={() => setCriticalAlertPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setCriticalAlertPage((p) => Math.min(criticalAlertTotalPages, p + 1))}
+                      className="mt-4"
+                      light
+                    />
+                  )}
                 </div>
               )}
             </motion.div>
@@ -907,7 +989,7 @@ export default function Dashboard() {
 
               {/* Mobile card list — desktop table unchanged below lg */}
               <div className="space-y-3 lg:hidden">
-                {products.slice(0, 10).map((p, i) => {
+                {paginatedLedgerProducts.map((p, i) => {
                   const unitPrice = Number(p.price) || 0;
                   const unitTax = taxOnTaxableAmount(unitPrice);
                   const lineTotal = unitPrice + unitTax;
@@ -955,12 +1037,12 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {products.slice(0, 10).map((p, i) => {
+                    {paginatedLedgerProducts.map((p, i) => {
                       const unitPrice = Number(p.price) || 0;
                       const unitTax = taxOnTaxableAmount(unitPrice);
                       const lineTotal = unitPrice + unitTax;
                       return (
-                      <tr key={i} className="group transition-colors hover:bg-zinc-50">
+                      <tr key={p._id || p.id || i} className="group transition-colors hover:bg-zinc-50">
                         <td className="py-4 font-medium text-sm">{p.name}</td>
                         <td className="py-4 font-black text-zinc-900">₹{p.price?.toLocaleString() || "—"}</td>
                         <td className="py-4 text-sm text-zinc-600">₹{unitTax.toFixed(0)}</td>
@@ -977,6 +1059,16 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {products.length > LIST_PER_PAGE && (
+                <ListPagination
+                  page={ledgerSafePage}
+                  totalPages={ledgerTotalPages}
+                  onPrev={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setLedgerPage((p) => Math.min(ledgerTotalPages, p + 1))}
+                  className="mt-6"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1046,7 +1138,54 @@ const StatCard = ({ label, value, icon: Icon, color, trend, isAlert }) => {
   );
 };
 
-const StockAlertSection = ({ items }) => (
+const LIST_PAGE_SIZE = 10;
+
+const ListPagination = ({ page, totalPages, onPrev, onNext, className = "", light = false }) => (
+  <div className={`flex items-center justify-between ${className}`}>
+    <button
+      type="button"
+      onClick={onPrev}
+      disabled={page <= 1}
+      className={`rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
+        light
+          ? "border-rose-200 text-rose-800 hover:bg-rose-100/60"
+          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+      }`}
+    >
+      Prev
+    </button>
+    <div className={`text-[10px] font-black uppercase tracking-widest ${light ? "text-rose-400" : "text-zinc-400"}`}>
+      Page {page} / {totalPages}
+    </div>
+    <button
+      type="button"
+      onClick={onNext}
+      disabled={page >= totalPages}
+      className={`rounded-xl border px-4 py-2 text-[10px] font-black uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
+        light
+          ? "border-rose-200 text-rose-800 hover:bg-rose-100/60"
+          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+      }`}
+    >
+      Next
+    </button>
+  </div>
+);
+
+const StockAlertSection = ({ items }) => {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / LIST_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedItems = useMemo(() => {
+    const start = (safePage - 1) * LIST_PAGE_SIZE;
+    return items.slice(start, start + LIST_PAGE_SIZE);
+  }, [items, safePage]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  return (
   <div className="flex flex-col lg:flex-row">
     <div className="lg:w-1/3 p-12 bg-rose-500 text-white flex flex-col justify-between relative overflow-hidden">
       <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -1064,7 +1203,7 @@ const StockAlertSection = ({ items }) => (
       </Link>
     </div>
     <div className="flex-1 p-8 lg:p-12 space-y-4 max-h-[600px] overflow-y-auto bg-slate-50/30">
-      {items.map((item, idx) => (
+      {pagedItems.map((item, idx) => (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={item.id} className="flex items-center justify-between p-5 bg-white rounded-[2rem] border border-slate-100 group/item transition-all">
           <div className="flex items-center gap-5">
             <div className="h-16 w-16 rounded-[1.2rem] overflow-hidden grayscale group-hover/item:grayscale-0 transition-all shadow-inner bg-slate-100 flex items-center justify-center">
@@ -1089,9 +1228,19 @@ const StockAlertSection = ({ items }) => (
           </div>
         </motion.div>
       ))}
+      {items.length > LIST_PAGE_SIZE && (
+        <ListPagination
+          page={safePage}
+          totalPages={totalPages}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          className="pt-2"
+        />
+      )}
     </div>
   </div>
-);
+  );
+};
 
 const EmptyStateSection = ({ totalProducts, totalSubitems }) => (
   <div className="flex flex-col lg:flex-row min-h-0 lg:min-h-[500px]">

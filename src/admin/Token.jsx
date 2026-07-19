@@ -258,7 +258,7 @@ export default function Token() {
         }
       />
 
-      <main className="mx-auto max-w-5xl px-3 py-4 sm:p-6">
+      <main className="mx-auto max-w-8xl px-3 py-4 sm:p-6">
         {/* Stats Grid */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard label="Total Active" value={activeCount} color="zinc" icon={Ticket} />
