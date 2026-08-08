@@ -364,8 +364,8 @@ export const UIProvider = ({ children }) => {
     const backendURL = import.meta.env.VITE_API_URL
       ? String(import.meta.env.VITE_API_URL).replace(/\/api\/?$/, "")
       : import.meta.env.PROD
-        ? (import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api").replace(/\/api\/?$/, "")
-        : (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "");
+        ? (import.meta.env.VITE_API_BASE_URL || "https://backend-res-sln4.onrender.com/api").replace(/\/api\/?$/, "")
+        : (import.meta.env.VITE_API_BASE_URL_DEV || "https://backend-res-sln4.onrender.com").replace(/\/api\/?$/, "");
 
     const socket = socketIOClient(backendURL, {
       transports: ["websocket", "polling"],

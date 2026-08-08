@@ -22,10 +22,10 @@ import {
 const SOCKET_URL =
   import.meta.env.VITE_API_URL ||
   (!import.meta.env.PROD
-    ? (import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5001").replace(/\/api\/?$/, "")
+    ? (import.meta.env.VITE_API_BASE_URL_DEV || "https://backend-res-sln4.onrender.com").replace(/\/api\/?$/, "")
     : import.meta.env.VITE_API_BASE_URL
       ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
-      : "https://backend-res-ikeb.onrender.com");
+      : "https://backend-res-sln4.onrender.com");
 
 // MODULE-LEVEL SINGLETONS — created once, never recreated on component re-mount
 // This prevents creating new socket/audio on every navigation

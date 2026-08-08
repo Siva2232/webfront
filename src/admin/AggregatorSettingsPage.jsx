@@ -26,7 +26,7 @@ import {
 function buildWebhookUrl(restaurantId) {
   const isProd = import.meta.env.PROD;
   const apiBase = isProd
-    ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api"
+    ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-sln4.onrender.com/api"
     : import.meta.env.VITE_API_BASE_URL_DEV || "http://localhost:5000/api";
   return `${String(apiBase).replace(/\/$/, "")}/aggregator/webhook?restaurantId=${encodeURIComponent(restaurantId)}`;
 }

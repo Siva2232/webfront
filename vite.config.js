@@ -12,14 +12,15 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "https://backend-res-sln4.onrender.com",
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
       "/socket.io": {
-        target: "http://localhost:5000",
+        target: "https://backend-res-sln4.onrender.com",
         ws: true,
         changeOrigin: true,
+        secure: true,
       },
     },
   },

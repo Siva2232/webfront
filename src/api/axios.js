@@ -16,7 +16,7 @@ import { getCurrentRestaurantId } from "../utils/tenantCache";
 
 const isProd = import.meta.env.PROD;
 const baseURL = isProd
-  ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-ikeb.onrender.com/api"
+  ? import.meta.env.VITE_API_BASE_URL || "https://backend-res-sln4.onrender.com/api"
   : import.meta.env.VITE_API_BASE_URL_DEV || "/api";
 
 const API = axios.create({
